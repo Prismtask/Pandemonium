@@ -2,12 +2,12 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.ally as ally_mod
-import combat.ally_skills as ask
-import combat.palette_ally as pal
-import combat.palette_chromatic_artisan as pca
-import combat.weapon.chronoweave as chrono
-import combat.weapon.palette_brush as pb
+import pandemonium.combat.ally as ally_mod
+import pandemonium.combat.ally_skills as ask
+import pandemonium.combat.palette_ally as pal
+import pandemonium.combat.palette_chromatic_artisan as pca
+import pandemonium.combat.weapon.chronoweave as chrono
+import pandemonium.combat.weapon.palette_brush as pb
 
 # Silence I/O
 def _quiet(*a, **k):
@@ -115,7 +115,7 @@ assert fake_player["current_hp"] == 1
 
 # Without any survival effect the player dies
 chrono.check_chronoweave_fatal_survival = lambda a, d: (d, False)
-import combat.weapon.wedding_specials as wed
+import pandemonium.combat.weapon.wedding_specials as wed
 wed.apply_wedding_fatal_blow_survival = lambda a, d: d
 fake_player["current_hp"] = 150
 assert pca._apply_signature_ko(fake_player, ctx) is False

@@ -11,7 +11,7 @@ This file is the PyInstaller entry point.
 import sys
 import threading
 import traceback
-from gui.app import run_gui
+from pandemonium.gui.app import run_gui
 
 def _setup_thread_excepthook():
     """Register a global handler for unhandled exceptions in background threads."""

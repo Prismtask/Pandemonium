@@ -27,7 +27,7 @@ try:  # piped consoles on Windows may default to a legacy codepage
 except (AttributeError, OSError):
     pass
 
-import combat.hallucination as hall
+import pandemonium.combat.hallucination as hall
 
 
 class _FakeRandom:
@@ -50,7 +50,7 @@ def _player(**kw):
          "inventory": [], "allies": [],
          "active_buffs": [], "active_debuffs": []}
     p.update(kw)
-    from character import player_max_hp
+    from pandemonium.core.character import player_max_hp
     p.setdefault("current_hp", player_max_hp(p))
     return p
 
@@ -98,7 +98,7 @@ def main():
     print("PASS 3: illusion generator — immunity, evasion, glitch, tier boost")
 
     # ── 4. Immunity path ─────────────────────────────────────────────────
-    from combat.status_effects import check_status_resisted
+    from pandemonium.combat.status_effects import check_status_resisted
     assert check_status_resisted(e3) is True
     print("PASS 4: 100% status immunity rides check_status_resisted")
 
@@ -176,7 +176,7 @@ def main():
     # Regression (Pande playtest): ensure_party_order() pruned party_order
     # against the parked (empty) allies list mid-illusion, so the front/bench
     # arrangement silently reset to default for the next real fight.
-    import combat.combat_engine as engine
+    import pandemonium.combat.combat_engine as engine
 
     p7c = _player(fatigue_stacks=0)
     p7c["allies"] = [
@@ -194,7 +194,7 @@ def main():
     def fake_inner(player, enemy_keys, floor=None, room_num=None,
                    total_rooms=None, enemies=None):
         park_seen["parked"] = list(player.get("allies") or [])
-        from combat.ally import ensure_party_order
+        from pandemonium.combat.ally import ensure_party_order
         ensure_party_order(player)          # this used to wipe party_order
         park_seen["wiped"] = list(player.get("party_order") or [])
         return "victory"
@@ -217,7 +217,7 @@ def main():
     print("PASS 7c: solo parking preserves party order (front/bench kept)")
 
     # ── 8. Fatigue stat penalty ──────────────────────────────────────────
-    from combat.stats import get_effective_attribute
+    from pandemonium.combat.stats import get_effective_attribute
     p8 = _player(fatigue_stacks=0)
     base = get_effective_attribute(p8, "Strength")
     p8["fatigue_stacks"] = 2
@@ -230,9 +230,9 @@ def main():
     print("PASS 8: fatigue −N all stats (Pandemonium penalized; EH suppressed)")
 
     # ── 9. Personalized ally dialogue (victory + collapse) ───────────────
-    from resources.enemies import ENEMIES
-    from combat import hallucination_dialogue as hd
-    import utils as _utils
+    from pandemonium.resources.enemies import ENEMIES
+    from pandemonium.combat import hallucination_dialogue as hd
+    import pandemonium.core.utils as _utils
 
     girls = [k for k, v in ENEMIES.items() if v.get("monster_girl")]
     heroines = ["alice", "red_hood", "dorothy", "palette"]

@@ -8,7 +8,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import (
+from pandemonium.resources.items import (
     ITEMS, build_item, intrinsic_value, item_value, item_value_at_rarity,
     cap_rarity_for_item, fusion_fee,
 )
@@ -66,7 +66,7 @@ check("greatsword +10 common -> legendary fee", fusion_fee(gs_common10, "legenda
 check("minimum fee", fusion_fee(build_item("sword", "common"), "rare"), 200)
 
 print("=== Owned-item migration (v4) ===")
-from character import _migrate_item_economy
+from pandemonium.core.character import _migrate_item_economy
 
 old = {
     "id": "inferno_greatsword", "name": "Inferno Greatsword +5",
@@ -94,7 +94,7 @@ _migrate_item_economy(player)
 check("migration is idempotent (flag)", old["mods"]["Strength"], 999)
 
 print("=== Rarity-linked enhancement cap ===")
-from resources.items import ENHANCE_CAP_BY_RARITY, enhance_cap_for
+from pandemonium.resources.items import ENHANCE_CAP_BY_RARITY, enhance_cap_for
 check("common cap", enhance_cap_for({"rarity": "common"}), 5)
 check("rare cap", enhance_cap_for({"rarity": "rare"}), 7)
 check("epic cap", enhance_cap_for({"rarity": "epic"}), 8)

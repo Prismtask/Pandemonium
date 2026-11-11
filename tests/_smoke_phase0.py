@@ -6,14 +6,14 @@ errors = []
 
 # Test imports that don't need a display
 try:
-    from gui.theme import Theme, FONT_FAMILY, WINDOW_DEFAULT_SIZE
+    from pandemonium.gui.theme import Theme, FONT_FAMILY, WINDOW_DEFAULT_SIZE
     print("[OK] gui.theme")
 except Exception as e:
     errors.append(f"gui.theme: {e}")
     print(f"[FAIL] gui.theme: {e}")
 
 try:
-    from gui.notification_queue import NotificationQueue
+    from pandemonium.gui.notification_queue import NotificationQueue
     nq = NotificationQueue()
     nq.push("test", "info")
     assert len(nq) == 1
@@ -23,7 +23,7 @@ except Exception as e:
     print(f"[FAIL] gui.notification_queue: {e}")
 
 try:
-    from gui.io_redirector import GUIRedirector
+    from pandemonium.gui.io_redirector import GUIRedirector
     print("[OK] gui.io_redirector")
 except Exception as e:
     errors.append(f"gui.io_redirector: {e}")
@@ -43,20 +43,20 @@ try:
     root = tk.Tk()
     root.withdraw()
 
-    from gui.widgets.hp_bar import HPBar
+    from pandemonium.gui.widgets.hp_bar import HPBar
     bar = HPBar(root, current=50, maximum=100)
     assert bar.get_percentage() == 50.0
     print("[OK] gui.widgets.hp_bar")
 
-    from gui.widgets.stat_display import StatDisplay
+    from pandemonium.gui.widgets.stat_display import StatDisplay
     sd = StatDisplay(root, name="STR", base=8, equipment=2, buff=1)
     print("[OK] gui.widgets.stat_display")
 
-    from gui.widgets.item_card import ItemCard
+    from pandemonium.gui.widgets.item_card import ItemCard
     ic = ItemCard(root, item={"name": "Test Sword", "rarity": "rare", "slot": "weapon", "stats": {"atk": 5}})
     print("[OK] gui.widgets.item_card")
 
-    from gui.widgets.confirm_dialog import confirm_dialog, ok_dialog
+    from pandemonium.gui.widgets.confirm_dialog import confirm_dialog, ok_dialog
     print("[OK] gui.widgets.confirm_dialog")
 
     root.destroy()
@@ -70,14 +70,14 @@ try:
     root = tk.Tk()
     root.withdraw()
 
-    from gui.screens.base_screen import BaseScreen
+    from pandemonium.gui.screens.base_screen import BaseScreen
     print("[OK] gui.screens.base_screen")
 
-    from gui.screen_manager import ScreenManager
+    from pandemonium.gui.screen_manager import ScreenManager
     sm = ScreenManager(root)
     print("[OK] gui.screen_manager")
 
-    from gui.app import PandemoniumApp, run_gui
+    from pandemonium.gui.app import PandemoniumApp, run_gui
     print("[OK] gui.app")
 
     root.destroy()

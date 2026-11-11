@@ -15,7 +15,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from facilities.house import get_house_data, save_house_data  # noqa: E402
+from pandemonium.facilities.house import get_house_data, save_house_data  # noqa: E402
 
 # ── Scenario: backup save (40 girls) but origin_city points at a city with no
 #    house — this is the exact state that wiped the live save. ──────────────

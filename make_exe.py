@@ -3,7 +3,7 @@
 Build script for Pandemonium executable.
 
 Usage:
-    cd C:\\Code\\TerminalRPG
+    cd C:\\Code\\Pandemonium
     .venv\\Scripts\\python.exe make_exe.py
 
 This creates a clean distribution in dist/Pandemonium/ that you can zip
@@ -47,19 +47,24 @@ def collect_data_files():
     datas = []
 
     # Enemy YAML data (loaded via os.listdir() in enemy_loader.py)
-    enemy_data_dir = os.path.join(PROJECT_ROOT, "resources", "enemies", "enemies_data")
+    enemy_data_dir = os.path.join(PROJECT_ROOT, "pandemonium", "resources", "enemies", "enemies_data")
     if os.path.exists(enemy_data_dir):
-        datas.append(f'--add-data={enemy_data_dir};resources/enemies/enemies_data')
+        datas.append(f'--add-data={enemy_data_dir};pandemonium/resources/enemies/enemies_data')
 
     # Skill book YAMLs (loaded via os.path.join(__file__, ...) in skill_loader.py / ally_skills.py)
-    skill_book_dir = os.path.join(PROJECT_ROOT, "resources", "skill_book")
+    skill_book_dir = os.path.join(PROJECT_ROOT, "pandemonium", "resources", "skill_book")
     if os.path.exists(skill_book_dir):
-        datas.append(f'--add-data={skill_book_dir};resources/skill_book')
+        datas.append(f'--add-data={skill_book_dir};pandemonium/resources/skill_book')
 
     # GUI package data (JSON configs, assets, etc. if added later)
-    gui_dir = os.path.join(PROJECT_ROOT, "gui")
+    gui_dir = os.path.join(PROJECT_ROOT, "pandemonium", "gui")
     if os.path.exists(gui_dir):
-        datas.append(f'--add-data={gui_dir};gui')
+        datas.append(f'--add-data={gui_dir};pandemonium/gui')
+
+    # Family scene dialogue (loaded via os.path.join(__file__, ...) in family_scenes.py)
+    family_scenes = os.path.join(PROJECT_ROOT, "pandemonium", "resources", "family_scenes.yaml")
+    if os.path.exists(family_scenes):
+        datas.append(f'--add-data={family_scenes};pandemonium/resources')
 
     return datas
 

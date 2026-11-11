@@ -3,8 +3,8 @@ import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 import random
 
-import combat.player_actions as pact
-import combat.stats as pstats
+import pandemonium.combat.player_actions as pact
+import pandemonium.combat.stats as pstats
 
 captured = []
 pact.c_print = lambda *a, **k: captured.append(" ".join(str(x) for x in a))

@@ -24,8 +24,8 @@ try:  # piped consoles on Windows may default to a legacy codepage
 except (AttributeError, OSError):
     pass
 
-import events
-import time_blocks as tb
+import pandemonium.core.events as events
+import pandemonium.core.time_blocks as tb
 
 
 def main():

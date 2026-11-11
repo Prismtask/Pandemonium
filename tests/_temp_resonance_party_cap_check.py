@@ -14,10 +14,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from combat.ally import (MAX_ALLIES, get_ally_capacity, get_resonance_tier,
+from pandemonium.combat.ally import (MAX_ALLIES, get_ally_capacity, get_resonance_tier,
                          recruit_ally_from_house)
-from resources.quests import get_grade_name
-from wonderland_guests import resolve_late_arc
+from pandemonium.resources.quests import get_grade_name
+from pandemonium.world.wonderland_guests import resolve_late_arc
 
 SAVE_DIR = Path(__file__).resolve().parent.parent / "savefile"
 
@@ -46,7 +46,7 @@ def main():
 
     # 2. House recruitment at capacity must ask who makes room (cancel path),
     #    even though the roster is below MAX_ALLIES.
-    from gui.terminal import term
+    from pandemonium.gui.terminal import term
     prompts = []
 
     def fake_menu(options, prompt=None, allow_cancel=False):

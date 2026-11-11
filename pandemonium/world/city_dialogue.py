@@ -1,0 +1,374 @@
+# city_dialogue.py
+import random
+from pandemonium.resources.dialogues import (
+    # Solmere
+    SOLMERE_RECEPTIONIST_DIALOGUE,
+    SOLMERE_SHOPKEEPER_DIALOGUE,
+    SOLMERE_INNKEEPER_DIALOGUE,
+    SOLMERE_BLACKSMITH_DIALOGUE,
+    SOLMERE_TRADE_HALL_DIALOGUE,
+    SOLMERE_TEMPLE_DIALOGUE,
+    SOLMERE_GUILD_DIALOGUE,
+    SOLMERE_GAMES_DIALOGUE,
+
+    # Brinewatch
+    BRINEWATCH_RECEPTIONIST_DIALOGUE,
+    BRINEWATCH_SHOPKEEPER_DIALOGUE,
+    BRINEWATCH_INNKEEPER_DIALOGUE,
+    BRINEWATCH_BLACKSMITH_DIALOGUE,
+    BRINEWATCH_PORTMASTER_DIALOGUE,
+    BRINEWATCH_SHIPYARD_DIALOGUE,
+    BRINEWATCH_TRADE_HALL_DIALOGUE,
+
+    # Greyharbor
+    GREYHARBOR_RECEPTIONIST_DIALOGUE,
+    GREYHARBOR_SHOPKEEPER_DIALOGUE,
+    GREYHARBOR_INNKEEPER_DIALOGUE,
+    GREYHARBOR_TRADE_HALL_DIALOGUE,
+    GREYHARBOR_GUILD_DIALOGUE,
+
+    # Elderfen
+    ELDERFEN_RECEPTIONIST_DIALOGUE,
+    ELDERFEN_SHOPKEEPER_DIALOGUE,
+    ELDERFEN_INNKEEPER_DIALOGUE,
+    ELDERFEN_HERBALIST_DIALOGUE,
+
+    # Irondeep
+    IRONDEEP_RECEPTIONIST_DIALOGUE,
+    IRONDEEP_SHOPKEEPER_DIALOGUE,
+    IRONDEEP_INNKEEPER_DIALOGUE,
+    IRONDEEP_BLACKSMITH_DIALOGUE,
+    IRONDEEP_BARRACKS_DIALOGUE,
+    IRONDEEP_GUILD_DIALOGUE,
+
+    # Skylume
+    SKYLUME_RECEPTIONIST_DIALOGUE,
+    SKYLUME_SHOPKEEPER_DIALOGUE,
+    SKYLUME_INNKEEPER_DIALOGUE,
+    SKYLUME_ARCANE_TOWER_DIALOGUE,
+    SKYLUME_GIFT_SHOP_DIALOGUE,
+
+    # Ashkara
+    ASHKARA_RECEPTIONIST_DIALOGUE,
+    ASHKARA_SHOPKEEPER_DIALOGUE,
+    ASHKARA_INNKEEPER_DIALOGUE,
+    ASHKARA_BLACK_MARKET_DIALOGUE,
+    ASHKARA_BLACKSMITH_DIALOGUE,
+    ASHKARA_GUILD_DIALOGUE,
+    ASHKARA_BACK_ROOM_DIALOGUE,
+
+    # Sunreach
+    SUNREACH_RECEPTIONIST_DIALOGUE,
+    SUNREACH_SHOPKEEPER_DIALOGUE,
+    SUNREACH_INNKEEPER_DIALOGUE,
+    SUNREACH_TEMPLE_DIALOGUE,
+    SUNREACH_TRADE_HALL_DIALOGUE,
+
+    # Thornwall
+    THORNWALL_RECEPTIONIST_DIALOGUE,
+    THORNWALL_SHOPKEEPER_DIALOGUE,
+    THORNWALL_INNKEEPER_DIALOGUE,
+    THORNWALL_BARRACKS_DIALOGUE,
+
+    # Dunemar
+    DUNEMAR_RECEPTIONIST_DIALOGUE,
+    DUNEMAR_SHOPKEEPER_DIALOGUE,
+    DUNEMAR_INNKEEPER_DIALOGUE,
+    DUNEMAR_PORTMASTER_DIALOGUE,
+    DUNEMAR_TRADE_HALL_DIALOGUE,
+    DUNEMAR_BLACK_MARKET_DIALOGUE,
+    DUNEMAR_ARCANE_TOWER_DIALOGUE,
+
+    # Tidebreak
+    TIDEBREAK_RECEPTIONIST_DIALOGUE,
+    TIDEBREAK_SHOPKEEPER_DIALOGUE,
+    TIDEBREAK_INNKEEPER_DIALOGUE,
+    TIDEBREAK_PORTMASTER_DIALOGUE,
+    TIDEBREAK_SHIPYARD_DIALOGUE,
+    TIDEBREAK_TRADE_HALL_DIALOGUE,
+
+    # Stormhold
+    STORMHOLD_RECEPTIONIST_DIALOGUE,
+    STORMHOLD_SHOPKEEPER_DIALOGUE,
+    STORMHOLD_INNKEEPER_DIALOGUE,
+    STORMHOLD_BARRACKS_DIALOGUE,
+    STORMHOLD_GIFT_SHOP_DIALOGUE,
+    STORMHOLD_ARCANE_TOWER_DIALOGUE,
+
+    # Coralhaven
+    CORALHAVEN_RECEPTIONIST_DIALOGUE,
+    CORALHAVEN_SHOPKEEPER_DIALOGUE,
+    CORALHAVEN_INNKEEPER_DIALOGUE,
+    CORALHAVEN_PORTMASTER_DIALOGUE,
+    CORALHAVEN_HERBALIST_DIALOGUE,
+    CORALHAVEN_TEMPLE_DIALOGUE,
+    CORALHAVEN_GIFT_SHOP_DIALOGUE,
+    CORALHAVEN_GUILD_DIALOGUE,
+
+    # Blackwake
+    BLACKWAKE_RECEPTIONIST_DIALOGUE,
+    BLACKWAKE_INNKEEPER_DIALOGUE,
+    BLACKWAKE_PORTMASTER_DIALOGUE,
+    BLACKWAKE_BLACK_MARKET_DIALOGUE,
+    BLACKWAKE_GAMES_DIALOGUE,
+    BLACKWAKE_BACK_ROOM_DIALOGUE,
+
+    # Isle of Glass
+    ISLE_OF_GLASS_RECEPTIONIST_DIALOGUE,
+    ISLE_OF_GLASS_PORTMASTER_DIALOGUE,
+    ISLE_OF_GLASS_ARCANE_TOWER_DIALOGUE,
+
+    # Mirefall
+    MIREFALL_RECEPTIONIST_DIALOGUE,
+    MIREFALL_SHOPKEEPER_DIALOGUE,
+    MIREFALL_INNKEEPER_DIALOGUE,
+    MIREFALL_HERBALIST_DIALOGUE,
+    MIREFALL_BLACK_MARKET_DIALOGUE,
+
+    # Saltmarsh
+    SALTMARSH_RECEPTIONIST_DIALOGUE,
+    SALTMARSH_SHOPKEEPER_DIALOGUE,
+    SALTMARSH_INNKEEPER_DIALOGUE,
+    SALTMARSH_PORTMASTER_DIALOGUE,
+
+    # Cinderpeak
+    CINDERPEAK_RECEPTIONIST_DIALOGUE,
+    CINDERPEAK_SHOPKEEPER_DIALOGUE,
+    CINDERPEAK_INNKEEPER_DIALOGUE,
+    CINDERPEAK_BLACKSMITH_DIALOGUE,
+
+    # Veilholt
+    VEILHOLT_RECEPTIONIST_DIALOGUE,
+    VEILHOLT_SHOPKEEPER_DIALOGUE,
+    VEILHOLT_INNKEEPER_DIALOGUE,
+    VEILHOLT_HERBALIST_DIALOGUE,
+    VEILHOLT_ARCANE_TOWER_DIALOGUE,
+    VEILHOLT_GUILD_DIALOGUE,
+
+    # Wonderland
+    WONDERLAND_RECEPTIONIST_DIALOGUE,
+    WONDERLAND_SHOPKEEPER_DIALOGUE,
+    WONDERLAND_INNKEEPER_DIALOGUE,
+    WONDERLAND_HERBALIST_DIALOGUE,
+    WONDERLAND_ARCANE_TOWER_DIALOGUE,
+    WONDERLAND_BLACK_MARKET_DIALOGUE,
+    WONDERLAND_TEMPLE_DIALOGUE,
+    WONDERLAND_GIFT_SHOP_DIALOGUE,
+
+    # Celestia (northern celestial city)
+    CELESTIA_RECEPTIONIST_DIALOGUE,
+    CELESTIA_SHOPKEEPER_DIALOGUE,
+    CELESTIA_INNKEEPER_DIALOGUE,
+    CELESTIA_TEMPLE_DIALOGUE,
+    CELESTIA_GIFT_SHOP_DIALOGUE,
+)
+
+# Build master dialogue dictionary
+CITY_DIALOGUES = {
+    "solmere": {
+        "receptionist": SOLMERE_RECEPTIONIST_DIALOGUE,
+        "shop": SOLMERE_SHOPKEEPER_DIALOGUE,
+        "inn": SOLMERE_INNKEEPER_DIALOGUE,
+        "blacksmith": SOLMERE_BLACKSMITH_DIALOGUE,
+        "trade_hall": SOLMERE_TRADE_HALL_DIALOGUE,
+        "temple": SOLMERE_TEMPLE_DIALOGUE,
+        "guild": SOLMERE_GUILD_DIALOGUE,
+        "games": SOLMERE_GAMES_DIALOGUE,
+    },
+    "brinewatch": {
+        "receptionist": BRINEWATCH_RECEPTIONIST_DIALOGUE,
+        "shop": BRINEWATCH_SHOPKEEPER_DIALOGUE,
+        "inn": BRINEWATCH_INNKEEPER_DIALOGUE,
+        "blacksmith": BRINEWATCH_BLACKSMITH_DIALOGUE,
+        "port": BRINEWATCH_PORTMASTER_DIALOGUE,
+        "shipyard": BRINEWATCH_SHIPYARD_DIALOGUE,
+        "trade_hall": BRINEWATCH_TRADE_HALL_DIALOGUE,
+    },
+    "greyharbor": {
+        "receptionist": GREYHARBOR_RECEPTIONIST_DIALOGUE,
+        "shop": GREYHARBOR_SHOPKEEPER_DIALOGUE,
+        "inn": GREYHARBOR_INNKEEPER_DIALOGUE,
+        "trade_hall": GREYHARBOR_TRADE_HALL_DIALOGUE,
+        "guild": GREYHARBOR_GUILD_DIALOGUE,
+    },
+    "elderfen": {
+        "receptionist": ELDERFEN_RECEPTIONIST_DIALOGUE,
+        "shop": ELDERFEN_SHOPKEEPER_DIALOGUE,
+        "inn": ELDERFEN_INNKEEPER_DIALOGUE,
+        "herbalist": ELDERFEN_HERBALIST_DIALOGUE,
+    },
+    "irondeep": {
+        "receptionist": IRONDEEP_RECEPTIONIST_DIALOGUE,
+        "shop": IRONDEEP_SHOPKEEPER_DIALOGUE,
+        "inn": IRONDEEP_INNKEEPER_DIALOGUE,
+        "blacksmith": IRONDEEP_BLACKSMITH_DIALOGUE,
+        "barracks": IRONDEEP_BARRACKS_DIALOGUE,
+        "guild": IRONDEEP_GUILD_DIALOGUE,
+    },
+    "skylume": {
+        "receptionist": SKYLUME_RECEPTIONIST_DIALOGUE,
+        "shop": SKYLUME_SHOPKEEPER_DIALOGUE,
+        "inn": SKYLUME_INNKEEPER_DIALOGUE,
+        "arcane_tower": SKYLUME_ARCANE_TOWER_DIALOGUE,
+        "gift_shop": SKYLUME_GIFT_SHOP_DIALOGUE
+    },
+    "ashkara": {
+        "receptionist": ASHKARA_RECEPTIONIST_DIALOGUE,
+        "shop": ASHKARA_SHOPKEEPER_DIALOGUE,
+        "inn": ASHKARA_INNKEEPER_DIALOGUE,
+        "black_market": ASHKARA_BLACK_MARKET_DIALOGUE,
+        "blacksmith": ASHKARA_BLACKSMITH_DIALOGUE,
+        "guild": ASHKARA_GUILD_DIALOGUE,
+        "back_room": ASHKARA_BACK_ROOM_DIALOGUE,
+    },
+    "sunreach": {
+        "receptionist": SUNREACH_RECEPTIONIST_DIALOGUE,
+        "shop": SUNREACH_SHOPKEEPER_DIALOGUE,
+        "inn": SUNREACH_INNKEEPER_DIALOGUE,
+        "temple": SUNREACH_TEMPLE_DIALOGUE,
+        "trade_hall": SUNREACH_TRADE_HALL_DIALOGUE,
+    },
+    "thornwall": {
+        "receptionist": THORNWALL_RECEPTIONIST_DIALOGUE,
+        "shop": THORNWALL_SHOPKEEPER_DIALOGUE,
+        "inn": THORNWALL_INNKEEPER_DIALOGUE,
+        "barracks": THORNWALL_BARRACKS_DIALOGUE,
+    },
+    "dunemar": {
+        "receptionist": DUNEMAR_RECEPTIONIST_DIALOGUE,
+        "shop": DUNEMAR_SHOPKEEPER_DIALOGUE,
+        "inn": DUNEMAR_INNKEEPER_DIALOGUE,
+        "port": DUNEMAR_PORTMASTER_DIALOGUE,
+        "trade_hall": DUNEMAR_TRADE_HALL_DIALOGUE,
+        "black_market": DUNEMAR_BLACK_MARKET_DIALOGUE,
+        "arcane_tower": DUNEMAR_ARCANE_TOWER_DIALOGUE,
+    },
+    "tidebreak": {
+        "receptionist": TIDEBREAK_RECEPTIONIST_DIALOGUE,
+        "shop": TIDEBREAK_SHOPKEEPER_DIALOGUE,
+        "inn": TIDEBREAK_INNKEEPER_DIALOGUE,
+        "port": TIDEBREAK_PORTMASTER_DIALOGUE,
+        "shipyard": TIDEBREAK_SHIPYARD_DIALOGUE,
+        "trade_hall": TIDEBREAK_TRADE_HALL_DIALOGUE,
+    },
+    "stormhold": {
+        "receptionist": STORMHOLD_RECEPTIONIST_DIALOGUE,
+        "shop": STORMHOLD_SHOPKEEPER_DIALOGUE,
+        "inn": STORMHOLD_INNKEEPER_DIALOGUE,
+        "barracks": STORMHOLD_BARRACKS_DIALOGUE,
+        "gift_shop": STORMHOLD_GIFT_SHOP_DIALOGUE,
+        "arcane_tower": STORMHOLD_ARCANE_TOWER_DIALOGUE,
+    },
+    "coralhaven": {
+        "receptionist": CORALHAVEN_RECEPTIONIST_DIALOGUE,
+        "shop": CORALHAVEN_SHOPKEEPER_DIALOGUE,
+        "inn": CORALHAVEN_INNKEEPER_DIALOGUE,
+        "port": CORALHAVEN_PORTMASTER_DIALOGUE,
+        "herbalist": CORALHAVEN_HERBALIST_DIALOGUE,
+        "temple": CORALHAVEN_TEMPLE_DIALOGUE,
+        "gift_shop": CORALHAVEN_GIFT_SHOP_DIALOGUE,
+        "guild": CORALHAVEN_GUILD_DIALOGUE,
+    },
+    "blackwake": {
+        "receptionist": BLACKWAKE_RECEPTIONIST_DIALOGUE,
+        "inn": BLACKWAKE_INNKEEPER_DIALOGUE,
+        "port": BLACKWAKE_PORTMASTER_DIALOGUE,
+        "black_market": BLACKWAKE_BLACK_MARKET_DIALOGUE,
+        "games": BLACKWAKE_GAMES_DIALOGUE,
+        "back_room": BLACKWAKE_BACK_ROOM_DIALOGUE,
+    },
+    "isle_of_glass": {
+        "receptionist": ISLE_OF_GLASS_RECEPTIONIST_DIALOGUE,
+        "port": ISLE_OF_GLASS_PORTMASTER_DIALOGUE,
+        "arcane_tower": ISLE_OF_GLASS_ARCANE_TOWER_DIALOGUE,
+    },
+    "mirefall": {
+        "receptionist": MIREFALL_RECEPTIONIST_DIALOGUE,
+        "shop": MIREFALL_SHOPKEEPER_DIALOGUE,
+        "inn": MIREFALL_INNKEEPER_DIALOGUE,
+        "herbalist": MIREFALL_HERBALIST_DIALOGUE,
+        "black_market": MIREFALL_BLACK_MARKET_DIALOGUE,
+    },
+    "saltmarsh": {
+        "receptionist": SALTMARSH_RECEPTIONIST_DIALOGUE,
+        "shop": SALTMARSH_SHOPKEEPER_DIALOGUE,
+        "inn": SALTMARSH_INNKEEPER_DIALOGUE,
+        "port": SALTMARSH_PORTMASTER_DIALOGUE,
+    },
+    "cinderpeak": {
+        "receptionist": CINDERPEAK_RECEPTIONIST_DIALOGUE,
+        "shop": CINDERPEAK_SHOPKEEPER_DIALOGUE,
+        "inn": CINDERPEAK_INNKEEPER_DIALOGUE,
+        "blacksmith": CINDERPEAK_BLACKSMITH_DIALOGUE,
+    },
+    "veilholt": {
+        "receptionist": VEILHOLT_RECEPTIONIST_DIALOGUE,
+        "shop": VEILHOLT_SHOPKEEPER_DIALOGUE,
+        "inn": VEILHOLT_INNKEEPER_DIALOGUE,
+        "herbalist": VEILHOLT_HERBALIST_DIALOGUE,
+        "arcane_tower": VEILHOLT_ARCANE_TOWER_DIALOGUE,
+        "guild": VEILHOLT_GUILD_DIALOGUE,
+    },
+    "wonderland": {
+        "receptionist": WONDERLAND_RECEPTIONIST_DIALOGUE,
+        "shop": WONDERLAND_SHOPKEEPER_DIALOGUE,
+        "inn": WONDERLAND_INNKEEPER_DIALOGUE,
+        "herbalist": WONDERLAND_HERBALIST_DIALOGUE,
+        "arcane_tower": WONDERLAND_ARCANE_TOWER_DIALOGUE,
+        "black_market": WONDERLAND_BLACK_MARKET_DIALOGUE,
+        "temple": WONDERLAND_TEMPLE_DIALOGUE,
+        "gift_shop": WONDERLAND_GIFT_SHOP_DIALOGUE,
+    },
+    "celestia": {
+        "receptionist": CELESTIA_RECEPTIONIST_DIALOGUE,
+        "shop": CELESTIA_SHOPKEEPER_DIALOGUE,
+        "inn": CELESTIA_INNKEEPER_DIALOGUE,
+        "temple": CELESTIA_TEMPLE_DIALOGUE,
+        "gift_shop": CELESTIA_GIFT_SHOP_DIALOGUE,
+    },
+}
+
+_GENERIC_GAMES_DIALOGUE = {
+    "enter": [
+        "The innkeeper clears a table. 'Dice or cards? The house doesn't care which way you lose.'",
+        "A scarred board and a worn deck wait under a lamp. 'Sit. The night is young.'",
+    ],
+    "leave": [
+        "The innkeeper sweeps the dice back into the cup. 'Come back when your purse is heavier.'",
+        "The table goes quiet as you stand. 'Another time.'",
+    ],
+}
+
+_GENERIC_BACK_ROOM_DIALOGUE = {
+    "enter": [
+        "The dealer doesn't ask your name. 'Sit. Keep your hands visible.'",
+        "A door you didn't see closes behind you. The dice are already on the table.",
+    ],
+    "leave": [
+        "The dealer counts the house's cut before you reach the door.",
+        "The back room swallows the lamp light as you leave.",
+    ],
+}
+
+
+def get_city_dialogues(city_id, service):
+    """Return dialogue dictionary for a specific city service."""
+    city_dial = CITY_DIALOGUES.get(city_id, CITY_DIALOGUES.get("solmere", {}))
+    if service in city_dial:
+        return city_dial[service]
+    if service == "games":
+        return _GENERIC_GAMES_DIALOGUE
+    if service == "back_room":
+        return _GENERIC_BACK_ROOM_DIALOGUE
+    return city_dial.get("receptionist", {})
+
+def service_dialogue(city_id, service, context="enter"):
+    """Show random dialogue for a given city service (GUI output panel)."""
+    from pandemonium.core.utils import _tprint
+    dialogues = get_city_dialogues(city_id, service)
+    if context in dialogues:
+        _tprint(random.choice(dialogues[context]))
+    else:
+        fallback = dialogues.get("enter", list(dialogues.values())[0] if dialogues else [])
+        if fallback:
+            _tprint(random.choice(fallback))

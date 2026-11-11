@@ -8,9 +8,9 @@ sys.path.insert(0, "c:/Code/Pandemonium")
 import random
 
 import yaml
-import combat.stats as pstats
-import combat.skills as psk
-import combat.elemental as pel
+import pandemonium.combat.stats as pstats
+import pandemonium.combat.skills as psk
+import pandemonium.combat.elemental as pel
 
 # ── Silence I/O (skill menus / target prompts: "1" = first option) ──
 psk.c_print = lambda *a, **k: ""

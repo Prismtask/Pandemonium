@@ -8,9 +8,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from character import build_character
-from resources.items import build_item
-import combat.weapon.wedding_specials as ws
+from pandemonium.core.character import build_character
+from pandemonium.resources.items import build_item
+import pandemonium.combat.weapon.wedding_specials as ws
 
 ATTRS = {"Strength": 5, "Constitution": 5, "Dexterity": 5,
          "Learning": 5, "Wisdom": 5, "Charisma": 5}

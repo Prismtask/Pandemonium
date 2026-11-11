@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import combat.elemental_traits as et
+import pandemonium.combat.elemental_traits as et
 
 et.c_print = lambda *a, **k: None  # silence the combat log lines
 

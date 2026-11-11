@@ -26,9 +26,9 @@ try:
 except Exception:
     pass
 
-import dungeon as dungeon_mod
-import inventory_ui
-from resources.enemies import ENEMIES
+import pandemonium.world.dungeon as dungeon_mod
+import pandemonium.inventory.inventory_ui as inventory_ui
+from pandemonium.resources.enemies import ENEMIES
 
 # ── Stub I/O so the loop runs headless ──────────────────────────────────────
 builtins.input = lambda *a, **k: ""              # answer every _tpause()
@@ -253,7 +253,7 @@ def test_crumble_mid_run():
     _attach(player, dungeon)
     snap = _protection_snapshot(player)
 
-    from wild_dungeons import expire_dungeons
+    from pandemonium.world.wild_dungeons import expire_dungeons
 
     calls = {"n": 0}
 

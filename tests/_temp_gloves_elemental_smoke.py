@@ -2,8 +2,8 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.stats as stats
-import combat.weapon.black_silence_gloves as g
+import pandemonium.combat.stats as stats
+import pandemonium.combat.weapon.black_silence_gloves as g
 
 
 # ── 1. Unit: _deal_workshop_hit pipeline (crit + elemental) ──

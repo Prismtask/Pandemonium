@@ -19,10 +19,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from character import ensure_player_fields
-from combat.combat_io import BaseCombatIO, set_io
-from combat.dummy import create_dummy_enemy, _run_dummy_combat
-from save_load import load_game
+from pandemonium.core.character import ensure_player_fields
+from pandemonium.combat.combat_io import BaseCombatIO, set_io
+from pandemonium.combat.dummy import create_dummy_enemy, _run_dummy_combat
+from pandemonium.core.save_load import load_game
 
 DUMMY_CFG = {
     "hp": 999999,
@@ -111,7 +111,7 @@ def main():
     io = ScriptIO(player)
     set_io(io)
 
-    import combat.combat_engine as ce
+    import pandemonium.combat.combat_engine as ce
     orig_roll = ce.roll_initiative
     rounds = {"n": 0}
 

@@ -2,7 +2,7 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-from combat.combat_engine import roll_initiative
+from pandemonium.combat.combat_engine import roll_initiative
 
 ATTRS = ("Strength", "Constitution", "Dexterity", "Wisdom", "Learning", "Charisma")
 player = {

@@ -18,12 +18,12 @@ except Exception:
     pass
 
 # Headless runs must never open the level-up UI.
-import leveling
+import pandemonium.progression.leveling as leveling
 leveling.gain_exp = lambda player, amount: print(f"    [stub] gain_exp({amount})")
 
-from character import build_character
-import quests
-import wonderland_guests
+from pandemonium.core.character import build_character
+import pandemonium.progression.quests as quests
+import pandemonium.world.wonderland_guests as wonderland_guests
 
 ATTRS = {"Strength": 5, "Constitution": 5, "Dexterity": 5,
          "Learning": 5, "Wisdom": 5, "Charisma": 5}
@@ -86,7 +86,7 @@ print("  gold:", player["gold"],
 
 # ── Phase 2: tutorial allowance, story delivery, Star Tower ──────────────────
 print("\n== Phase 2: tutorial field allowance ==")
-from facilities.tutorial import _grant_field_allowance
+from pandemonium.facilities.tutorial import _grant_field_allowance
 p_tutorial = build_character("1", "1", ATTRS, "Diag2", 2)
 _grant_field_allowance(p_tutorial)
 assert p_tutorial["gold"] == 300, p_tutorial["gold"]
@@ -94,11 +94,11 @@ _grant_field_allowance(p_tutorial)          # idempotent
 assert p_tutorial["gold"] == 300
 
 # Never write a real savefile during the smoke test.
-import save_load
+import pandemonium.core.save_load as save_load
 save_load.save_game = lambda *args, **kwargs: print("    [stub] save_game")
 
 print("== Phase 2: archivist intro (story screen body) ==")
-from facilities.archivist_intro import archivist_intro
+from pandemonium.facilities.archivist_intro import archivist_intro
 p_story = build_character("1", "1", ATTRS, "Diag3", 3)
 archivist_intro(p_story)
 assert p_story["quests"]["flags"].get("intro_seen")
@@ -106,7 +106,7 @@ assert quests.quest_state(p_story, "mq_archivist_01") == "active"
 
 print("== Phase 2: star tower audience ==")
 p_story["location"] = "skylume"
-from facilities.star_tower import star_tower_service
+from pandemonium.facilities.star_tower import star_tower_service
 star_tower_service(p_story, "skylume")
 assert quests.quest_state(p_story, "mq_archivist_01") == "completed"
 assert p_story["quests"]["flags"].get("met_voss")
@@ -116,7 +116,7 @@ assert kit is not None, "audience should grant the Stellar Field Kit"
 assert kit.get("capture_net") and kit.get("guaranteed_capture")
 assert kit.get("capture_level_cap") == 8
 assert quests.quest_state(p_story, "mq_archivist_02") == "active"
-from facilities.star_tower import _field_kit_retired
+from pandemonium.facilities.star_tower import _field_kit_retired
 assert not _field_kit_retired(p_story), "MQ2 is still active — kit is still issued"
 
 orb = next((i for i in p_story["inventory"] if i.get("id") == "resonance_orb"), None)
@@ -139,7 +139,7 @@ assert "Grade: Pitch" in orb["description"], orb["description"]
 print("   sync messages:", "; ".join(msgs) if msgs else "(none)")
 
 print("== Phase 2: field kit retired after Study One ==")
-from facilities.star_tower import _give_field_kit
+from pandemonium.facilities.star_tower import _give_field_kit
 assert _field_kit_retired(p_story), "MQ2 completed — kit must be retired"
 inventory_before = len(p_story["inventory"])
 refusal = _give_field_kit(p_story)
@@ -153,7 +153,7 @@ print("   ...menu path ok")
 
 # ── Phase 3: Command Resonance caps + roster backfill ────────────────────────
 print("\n== Phase 3: party capacity by grade ==")
-import combat.ally as ca
+import pandemonium.combat.ally as ca
 caps = [ca.get_party_capacity({"quests": {"resonance_tier": t}}) for t in range(6)]
 print("   caps by tier (front allies, bench):", caps)
 assert caps == [(1, 0), (2, 0), (2, 1), (2, 2), (3, 2), (3, 4)]
@@ -175,7 +175,7 @@ assert len(ca.get_reserve_allies(p_slice)) == 2  # only 5 allies owned
 print("   slicing ok")
 
 print("== Phase 3: roster backfill ==")
-from resources.enemies import ENEMIES
+from pandemonium.resources.enemies import ENEMIES
 mg_keys = [k for k, v in ENEMIES.items()
            if v.get("monster_girl") and v.get("race") and not v.get("_heroine")]
 by_race = {}
@@ -252,14 +252,14 @@ print("   cascade ok —", "; ".join(msgs[:4]), "...")
 
 # ── Key item naming: no rarity prefixes (2026-09-28) ─────────────────────────
 print("\n== Key item naming (no rarity prefixes) ==")
-from resources.items import build_item as _build_item
+from pandemonium.resources.items import build_item as _build_item
 assert _build_item("glass_anchor")["name"] == "Glass Anchor", _build_item("glass_anchor")["name"]
 assert _build_item("wolfs_tooth")["name"] == "Wolf's Tooth"
 p_norm = build_character("1", "1", ATTRS, "Diag7", 2)
 legacy_anchor = {"id": "glass_anchor", "name": "Legendary Glass Anchor",
                  "type": "key_item", "rarity": "legendary", "count": 1}
 p_norm["inventory"].append(legacy_anchor)
-from character import ensure_player_fields
+from pandemonium.core.character import ensure_player_fields
 ensure_player_fields(p_norm)
 assert legacy_anchor["name"] == "Glass Anchor", legacy_anchor["name"]
 _orb = next((i for i in p_norm["inventory"] if i.get("id") == "resonance_orb"), None)

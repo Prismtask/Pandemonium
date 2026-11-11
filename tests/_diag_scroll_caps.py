@@ -8,8 +8,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import build_item, cap_rarity_for_item
-from inventory import apply_scroll_to_item
+from pandemonium.resources.items import build_item, cap_rarity_for_item
+from pandemonium.inventory.inventory import apply_scroll_to_item
 
 failures = []
 

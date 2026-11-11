@@ -23,19 +23,19 @@ try:
 except Exception:
     pass
 
-import leveling
+import pandemonium.progression.leveling as leveling
 leveling.gain_exp = lambda player, amount: None
 leveling.gain_exp_ally = lambda ally, amount: None
-import save_load
+import pandemonium.core.save_load as save_load
 save_load.save_game = lambda player: None
 
-import time_blocks as tb
-from character import build_character, ensure_player_fields
-import combat.party_stress as ps
-from combat.ally import (get_active_allies, get_reserve_allies,
+import pandemonium.core.time_blocks as tb
+from pandemonium.core.character import build_character, ensure_player_fields
+import pandemonium.combat.party_stress as ps
+from pandemonium.combat.ally import (get_active_allies, get_reserve_allies,
                          get_alive_allies, get_all_active_allies_including_defeated,
                          get_ally_effective_attribute)
-from combat.combat_ui import _get_entity_buff_tags
+from pandemonium.combat.combat_ui import _get_entity_buff_tags
 
 CHECKS = []
 
@@ -174,7 +174,7 @@ check("refused allies leave the party display",
       burned not in get_all_active_allies_including_defeated(player))
 
 # Template override support
-from resources.enemies import ENEMIES
+from pandemonium.resources.enemies import ENEMIES
 tmpl = ENEMIES.get("harpy_scout")
 if isinstance(tmpl, dict):
     tmpl.setdefault("dialogue", {})["stress_refusal"] = "TEMPLATE {name}"
@@ -253,11 +253,11 @@ for flag, label in (("_eh_in_run", "Event Horizon"),
 
 # ── 10. Wiring guards ────────────────────────────────────────────────────
 import inspect
-import combat.combat_engine as ce
+import pandemonium.combat.combat_engine as ce
 check("the standard engine begins and settles encounters",
       "begin_encounter" in inspect.getsource(ce.combat)
       and "settle_pending_falls" in inspect.getsource(ce._end_combat_with_result))
-import combat.superboss_common as sc
+import pandemonium.combat.superboss_common as sc
 check("superboss fights begin encounters",
       "begin_encounter" in inspect.getsource(sc.superboss_combat_loop))
 

@@ -17,7 +17,7 @@ import tkinter as tk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gui.widgets.event_dialog import _EventNoticeDialog
+from pandemonium.gui.widgets.event_dialog import _EventNoticeDialog
 
 
 SPAWN_DESC = (

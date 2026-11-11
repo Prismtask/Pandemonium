@@ -15,10 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from combat.combat_io import (          # noqa: E402
+from pandemonium.combat.combat_io import (          # noqa: E402
     BaseCombatIO, get_io, reset_io, set_io, TerminalIO, c_renders_menus,
 )
-from combat.player_actions import handle_player_turn   # noqa: E402
+from pandemonium.combat.player_actions import handle_player_turn   # noqa: E402
 
 
 class FakeIO(BaseCombatIO):
@@ -84,7 +84,7 @@ def main():
     # 1. Flag plumbing: terminal bridge keeps the menus, GUI bridge drops them.
     assert c_renders_menus() is False, "terminal IO must render legacy menus"
     assert getattr(TerminalIO, "renders_menus", False) is False
-    from gui.screens.combat_screen import GUICombatIO
+    from pandemonium.gui.screens.combat_screen import GUICombatIO
     assert GUICombatIO.renders_menus is True, "GUI bridge must claim menus"
     print("OK — renders_menus flag: terminal False, GUI True")
 

@@ -38,9 +38,9 @@ print(f"Backup written: {BACKUP}")
 with open(PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
 
-from resources.items import build_item
-from combat.ally import equip_ally_item
-from combat.ally_skills import (
+from pandemonium.resources.items import build_item
+from pandemonium.combat.ally import equip_ally_item
+from pandemonium.combat.ally_skills import (
     swap_redhood_to_vorpal_skills, grant_redhood_upgrade_skill,
     swap_dorothy_to_vorpal_skills, grant_dorothy_upgrade_skill,
 )

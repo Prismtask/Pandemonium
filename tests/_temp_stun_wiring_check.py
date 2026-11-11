@@ -5,11 +5,11 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.player_actions as pact
-import combat.ally as amod
-import combat.combat_ui as cui
-import combat.status_effects as se
-import combat.combat_engine as eng
+import pandemonium.combat.player_actions as pact
+import pandemonium.combat.ally as amod
+import pandemonium.combat.combat_ui as cui
+import pandemonium.combat.status_effects as se
+import pandemonium.combat.combat_engine as eng
 
 pact.c_print = lambda *a, **k: ""
 amod.c_print = lambda *a, **k: ""

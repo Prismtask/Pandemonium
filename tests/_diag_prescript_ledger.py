@@ -7,11 +7,11 @@ import sys
 
 sys.path.insert(0, ".")
 
-import combat.weapon.prescript_ledger as pl
-import inventory
-import facilities.guild as guild
-from resources.items import build_item
-from combat.combat_ui import _get_entity_buff_tags
+import pandemonium.combat.weapon.prescript_ledger as pl
+import pandemonium.inventory.inventory as inventory
+import pandemonium.facilities.guild as guild
+from pandemonium.resources.items import build_item
+from pandemonium.combat.combat_ui import _get_entity_buff_tags
 
 failures = []
 

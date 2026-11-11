@@ -6,7 +6,7 @@ errors = []
 
 # Test character.py refactor
 try:
-    from character import build_character, create_character, allocate_points, player_max_hp
+    from pandemonium.core.character import build_character, create_character, allocate_points, player_max_hp
     # Test build_character pure function
     attrs = {"Strength": 5, "Constitution": 5, "Dexterity": 5, "Wisdom": 5, "Learning": 5, "Charisma": 5}
     p = build_character("1", "1", attrs, "Test", 99)
@@ -25,16 +25,16 @@ try:
     root = tk.Tk()
     root.withdraw()
 
-    from gui.screens.main_menu_screen import MainMenuScreen
+    from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
     print("[OK] gui.screens.main_menu_screen")
 
-    from gui.screens.char_create_screen import CharCreateScreen
+    from pandemonium.gui.screens.char_create_screen import CharCreateScreen
     print("[OK] gui.screens.char_create_screen")
 
-    from gui.screens.city_screen import CityScreen
+    from pandemonium.gui.screens.city_screen import CityScreen
     print("[OK] gui.screens.city_screen")
 
-    from gui.app import PandemoniumApp, run_gui
+    from pandemonium.gui.app import PandemoniumApp, run_gui
     print("[OK] gui.app")
 
     root.destroy()

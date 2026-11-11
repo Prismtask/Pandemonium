@@ -20,9 +20,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import combat.enemy_ai as ea
-import combat.enemy_skills as es
-from combat.stats import enemy_stats
+import pandemonium.combat.enemy_ai as ea
+import pandemonium.combat.enemy_skills as es
+from pandemonium.combat.stats import enemy_stats
 
 captured = []
 
@@ -133,7 +133,7 @@ check("YAML abilities list replaces the race kit",
       f"keys={sorted(override_kit.keys())}")
 
 # Verify enemy_stats actually passes template abilities through to the AI.
-from resources.enemies import ENEMIES
+from pandemonium.resources.enemies import ENEMIES
 ENEMIES["_temp_ability_probe"] = {
     "name": "Ability Probe", "race": "Human", "level": 5, "base_hp": 20,
     "mods": {},

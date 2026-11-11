@@ -8,8 +8,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import build_item
-from combat.form_perks import (
+from pandemonium.resources.items import build_item
+from pandemonium.combat.form_perks import (
     FORM_PERKS, get_form_perk_bonus, get_form_crit_chance_bonus,
     get_form_crit_damage_bonus, get_form_damage_reduction, get_form_evasion,
     get_form_initiative, get_form_healing_bonus, get_form_res_rating_bonus,
@@ -87,7 +87,7 @@ print("=== Facing no equipment ===")
 check("enemy has no perk", get_form_perk_bonus({"name": "goblin"}, "damage_dealt"), 0.0)
 
 print("=== Hook: crit chance & crit damage ===")
-from combat.stats import get_raw_critical_chance, resolve_critical_chance
+from pandemonium.combat.stats import get_raw_critical_chance, resolve_critical_chance
 bare = {"attributes": {}, "equipped": {}, "active_buffs": [], "active_debuffs": []}
 keen = actor(accessory1=build_item("ember_ring", "rare"))
 base_crit = get_raw_critical_chance(bare, "player", dex=10, lrn=10)
@@ -98,7 +98,7 @@ _, band_bonus = resolve_critical_chance(actor(accessory1=build_item("blaze_band"
 near("crit damage +0.06", band_bonus - base_dmg_bonus, 0.06)
 
 print("=== Hook: dodge & damage reduction ===")
-from combat.stats import get_dodge_chance
+from pandemonium.combat.stats import get_dodge_chance
 defender = {"attributes": {"Dexterity": 20, "Wisdom": 10}, "equipped": {}, "active_buffs": []}
 attacker = {"attributes": {"Dexterity": 10, "Wisdom": 10}, "active_buffs": []}
 base_dodge = get_dodge_chance(defender, attacker)
@@ -109,7 +109,7 @@ check("boots Swift", get_form_initiative(actor(accessory1=build_item("gale_boots
 check("earring Swift", get_form_initiative(actor(accessory2=build_item("arcane_earring", "rare"))), 1.0)
 
 print("=== Hook: resistance (Steadfast) ===")
-from combat.elemental import calculate_elemental_damage
+from pandemonium.combat.elemental import calculate_elemental_damage
 target = {"elemental_res": {"fire": 1.0}, "equipped": {}, "active_buffs": [], "active_debuffs": []}
 atk = {"elemental_dmg": {"fire": 1.0}, "active_buffs": []}
 check("neutral fire damage", calculate_elemental_damage(100, atk, target, "fire"), 100)
@@ -121,7 +121,7 @@ target["equipped"] = {"accessory1": build_item("magma_locket", "rare")}
 check("steadfast other element unaffected", calculate_elemental_damage(100, atk, target, "water"), 100)
 
 print("=== Hook: healing (Mending) ===")
-from combat.status_effects import apply_healing
+from pandemonium.combat.status_effects import apply_healing
 heal_target = {"current_hp": 10, "max_hp": 100}
 check("plain heal", apply_healing(heal_target, 25), 25)
 heal_target = {"current_hp": 10, "max_hp": 100}

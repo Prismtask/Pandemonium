@@ -15,12 +15,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from resources.items import ITEMS, build_item
-from resources.item_generation import (
+from pandemonium.resources.items import ITEMS, build_item
+from pandemonium.resources.item_generation import (
     BASE_FORM_IDS, apply_infusion, infusion_flowers_invested,
     strip_infusion_slot,
 )
-from facilities.blacksmith import STRIP_REFUND_RATIO, _infusable
+from pandemonium.facilities.blacksmith import STRIP_REFUND_RATIO, _infusable
 
 
 def main():

@@ -1,12 +1,11 @@
 # pyproject.toml — lives at the PROJECT ROOT, next to launcher.py
 #
-# Tooling config only (no [project]/[build-system] yet). That keeps `python
-# launcher.py` and the PyInstaller build byte-for-byte unchanged while giving
-# pytest a rootdir, which is what removes the sys.path hacks from tests/.
+# Tooling config only. `[project]` metadata is intentionally deferred: the game
+# ships as a PyInstaller bundle (`Pandemonium.spec` / `make_exe.py`), not as an
+# installable package. Add it only if that changes.
 #
-# A [project] table (name/version/dependencies) is added later, in the same
-# commit that creates the `pandemonium/` package — a flat layout with 27
-# top-level modules has nothing sane for setuptools to auto-discover today.
+# pytest runs from the repo root; `pythonpath = ["."]` is what lets tests use
+# `import pandemonium...` (or the older flat names) without sys.path hacks.
 
 [tool.pytest.ini_options]
 minversion = "7.0"

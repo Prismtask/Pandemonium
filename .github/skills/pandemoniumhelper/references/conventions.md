@@ -6,7 +6,7 @@
 1. Player & ally displays must match identically (headers, stats, rarity).
 2. Combat HUD: Fixed 68-char ASCII box. Party left (31 chars), enemies right (33 chars). 2 rows/entity: row1=name/HP/♀, row2=buff/debuff tags.
 3. Stat Display: `Attribute: base + N(eq) + N(buff) = total`
-4. Monster Girls: ♀ symbol. Captured via nets → `./facilities/house/` package. Recruited when affection ≥ threshold. Allies via `create_ally_from_girl()`. Heroine quests live in `./heroine_quests/`.
+4. Monster Girls: ♀ symbol. Captured via nets → `./pandemonium/facilities/house/` package. Recruited when affection ≥ threshold. Allies via `create_ally_from_girl()`. Heroine quests live in `./pandemonium/heroine_quests/`.
 
 ### Combat Scale
 5. Max 1 player + 3 allies vs 5 enemies. Player controls all ally actions.
@@ -57,7 +57,7 @@
 ## Common Pitfalls
 
 - **HP calc:** Player uses `player_max_hp(player)`, allies use `ally["max_hp"]`. Mixed lists must branch.
-- **Debuff display:** Bug usually in `./combat/combat_ui.py` `_get_entity_buff_tags`, not effect application.
+- **Debuff display:** Bug usually in `./pandemonium/combat/combat_ui.py` `_get_entity_buff_tags`, not effect application.
 - **Enemy data:** YAML only via `enemy_loader.py`. `minion_only: true` prevents superboss summons in random rooms.
 - **Superboss hooks:** Signature `enemy_turn_hook(enemy, ctx, pl, p_con, defending)` must match across all modules. Extra state → `ctx`.
 - **Ally defending:** Reset `defending_this_turn = False` at start of every ally turn.
@@ -77,13 +77,13 @@
 - **Save compatibility:** New fields MUST use `.setdefault()` in `ensure_player_fields()`. Test with old save files.
 
 ## Adding a Superboss (checklist)
-1. Create `./combat/<name>.py` with `enemy_turn_hook(enemy, ctx, pl, p_con, defending)`
-2. Add YAML entry in `./resources/enemies/`
-3. Import in `./dungeon.py`
-4. Add to tier pool in `./dungeon.py`
-5. Use `./combat/superboss_common.py` for shared combat loop logic
+1. Create `./pandemonium/combat/<name>.py` with `enemy_turn_hook(enemy, ctx, pl, p_con, defending)`
+2. Add YAML entry in `./pandemonium/resources/enemies/`
+3. Import in `./pandemonium/world/dungeon.py`
+4. Add to tier pool in `./pandemonium/world/dungeon.py`
+5. Use `./pandemonium/combat/superboss_common.py` for shared combat loop logic
 
 ## Adding a Persistent Field (checklist)
-1. Add `.setdefault("field_name", default_value)` in `./character.py` `ensure_player_fields()`
+1. Add `.setdefault("field_name", default_value)` in `./pandemonium/core/character.py` `ensure_player_fields()`
 2. Update any code that reads the field to handle the default gracefully
 3. Test with both new and existing save files

@@ -11,8 +11,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import karma
-from character import build_character, ensure_player_fields
+import pandemonium.progression.karma as karma
+from pandemonium.core.character import build_character, ensure_player_fields
 
 
 def make_player(charisma=8, karma_value=0, enabled=True):
@@ -123,8 +123,8 @@ assert old["karma"] == 0          # no player-facing enable/seed
 print("[OK] ensure_player_fields defaults pre-Karma saves to OFF")
 
 # 6. Shop formula --------------------------------------------------------
-from facilities.shop import get_discounted_price
-from resources.cities import CITIES
+from pandemonium.facilities.shop import get_discounted_price
+from pandemonium.resources.cities import CITIES
 assert "guild" in CITIES["solmere"]["services"]
 assert "guild" not in CITIES["stormhold"]["services"]
 
@@ -166,7 +166,7 @@ assert karma.get_bills_mult(p) == 1.0
 print("[OK] bills multiplier")
 
 # 8. Black Market inverse pricing ---------------------------------------
-from facilities.black_market import _karma_price
+from pandemonium.facilities.black_market import _karma_price
 p = make_player(karma_value=-100)
 assert _karma_price(p, 1000) == 800
 p = make_player(karma_value=100)
@@ -211,7 +211,7 @@ assert p_off["difficulty"] == "hard"
 print("[OK] build_character Game Rules plumbing")
 
 # 11. Event choice labels include Karma once -----------------------------
-import dungeon_rooms
+import pandemonium.world.dungeon_rooms as dungeon_rooms
 
 captured = {}
 

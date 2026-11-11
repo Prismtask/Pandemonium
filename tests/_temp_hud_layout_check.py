@@ -9,7 +9,7 @@ import tkinter as tk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gui.combat.combat_renderer import CombatRenderer
+from pandemonium.gui.combat.combat_renderer import CombatRenderer
 
 root = tk.Tk()
 root.withdraw()

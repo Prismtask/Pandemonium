@@ -153,7 +153,7 @@ def main():
 
     # Re-refresh the kept orb so name/rarity/meter match story tier
     try:
-        import quests as quests_mod
+        import pandemonium.progression.quests as quests_mod
         if quests_mod._find_resonance_orb(data) is not None:
             quests_mod._refresh_resonance_orb(data)
             print("Re-refreshed kept resonance orb.")

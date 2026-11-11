@@ -2,13 +2,13 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.palette_chromatic_artisan as pca
-from resources.enemies import ENEMIES
-from combat.stats import enemy_stats
-from resources.items import build_item
-from combat.ally import _HEROINE_TEMPLATE_KEYS, _HEROINE_PERMANENT_FLAGS
-import resources.skill_loader as sl
-from combat.ally_skills import HEROINE_PASSIVES
+import pandemonium.combat.palette_chromatic_artisan as pca
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.resources.items import build_item
+from pandemonium.combat.ally import _HEROINE_TEMPLATE_KEYS, _HEROINE_PERMANENT_FLAGS
+import pandemonium.resources.skill_loader as sl
+from pandemonium.combat.ally_skills import HEROINE_PASSIVES
 
 # 1. YAML entries load
 assert "chromatic_artisan" in ENEMIES, "superbosses.yaml entry missing"
@@ -72,7 +72,7 @@ assert "living_pigment" in HEROINE_PASSIVES
 assert sl.RACE_PASSIVES.get("Elemental") is not None
 
 # 8. Dungeon registration
-import dungeon  # noqa: E402
+import pandemonium.world.dungeon as dungeon # noqa: E402
 
 # 9. In-process combat simulation — every stance, action, passive, transition
 pl = {"name": "Hero", "current_hp": 200, "max_hp": 200,

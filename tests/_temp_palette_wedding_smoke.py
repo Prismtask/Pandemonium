@@ -2,9 +2,9 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.weapon.palette_brush as pb
-import combat.weapon.wedding_specials as wed
-from resources.items import build_item, ITEMS
+import pandemonium.combat.weapon.palette_brush as pb
+import pandemonium.combat.weapon.wedding_specials as wed
+from pandemonium.resources.items import build_item, ITEMS
 
 pb.c_print = lambda *a, **k: None
 pb.c_input = lambda prompt="": "0"

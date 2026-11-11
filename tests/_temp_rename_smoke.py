@@ -11,9 +11,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils import display_name, display_name_with_species
-from resources.enemies import ENEMIES
-from combat.ally import create_ally_from_girl, _return_ally_to_house, recruit_ally_from_house
+from pandemonium.core.utils import display_name, display_name_with_species
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.ally import create_ally_from_girl, _return_ally_to_house, recruit_ally_from_house
 
 KEY = "goblin_girl"
 TEMPLATE = ENEMIES[KEY]

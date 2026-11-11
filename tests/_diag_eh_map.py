@@ -24,8 +24,8 @@ try:
 except Exception:
     pass
 
-import event_horizon as eh
-import wild_dungeons as wd
+import pandemonium.world.event_horizon as eh
+import pandemonium.world.wild_dungeons as wd
 
 _results = []
 
@@ -233,7 +233,7 @@ check("EH joker hand model", "EH_JOKER_HAND_CAP" in _read("event_horizon.py")
       and "discard_joker" in _read("event_horizon.py"))
 
 print("── 7. Vesper greeting smoke ───────────────────────────────")
-from facilities.event_horizon_intro import plan_vesper_greeting
+from pandemonium.facilities.event_horizon_intro import plan_vesper_greeting
 
 vp = _fresh_player(25)
 vstate = eh.ensure_eh_state(vp)
@@ -249,7 +249,7 @@ check("milestone not repeated", "Twenty-five" not in again)
 later = "\n".join(plan_vesper_greeting(vp, vstate, 25, True))
 check("idle lines vary", later != again)
 
-import dungeon_rooms as dr
+import pandemonium.world.dungeon_rooms as dr
 status = dr.render_event_horizon_status(vp)
 check("rift status renders", "E V E N T   H O R I Z O N" in status
       and "Room" in status and "Entropy" in status)

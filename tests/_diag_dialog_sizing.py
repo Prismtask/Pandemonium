@@ -19,7 +19,7 @@ import tkinter as tk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gui.widgets.confirm_dialog import ok_dialog, _estimate_dialog_size
+from pandemonium.gui.widgets.confirm_dialog import ok_dialog, _estimate_dialog_size
 
 ANCHOR_MSG = ("Glass Anchor  (Legendary)\n\n"
               "A crystalline shard attuned to the Isle of Glass, torn from the "

@@ -8,8 +8,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import ITEMS, build_item
-from resources.item_generation import (
+from pandemonium.resources.items import ITEMS, build_item
+from pandemonium.resources.item_generation import (
     WEAPON_FORMS, ARMOR_FORMS, ACCESSORY_FORMS,
     UNIQUE_FORM_TAGS, UNMAPPED_UNIQUE_FORMS, LEGACY_ITEMS,
 )

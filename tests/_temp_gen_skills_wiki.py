@@ -16,7 +16,7 @@ import yaml
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from combat.ally import get_growth_label  # noqa: E402  (single source of truth)
+from pandemonium.combat.ally import get_growth_label  # noqa: E402  (single source of truth)
 
 
 def load(rel_path):

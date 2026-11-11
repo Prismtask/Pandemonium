@@ -20,8 +20,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import gui.screens.dungeon_screen as ds
-import gui.screens.combat_screen as cs
+import pandemonium.gui.screens.dungeon_screen as ds
+import pandemonium.gui.screens.combat_screen as cs
 
 
 # ── Stand-ins ─────────────────────────────────────────────────────────────

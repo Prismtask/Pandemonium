@@ -1,0 +1,458 @@
+import random
+from pandemonium.resources.constants import EXP_COEFF_A, EXP_COEFF_B, EXP_POWER
+from pandemonium.resources.cities import CITIES
+from pandemonium.core.character import player_max_hp
+from pandemonium.combat.skills import unlock_skills_for_level
+from pandemonium.core.utils import _tprint, _tpause, _tmenu, display_name
+from pandemonium.core.events import get_daily_bonus_multiplier
+
+# ── GUI level-up dialog (safe import) ──────────────────────────────────
+try:
+    from pandemonium.gui.widgets.level_up_dialog import (
+        choose_level_up_attribute as _gui_choose_attr,
+        show_level_up_results as _gui_show_results,
+    )
+except ImportError:
+    _gui_choose_attr = None
+    _gui_show_results = None
+
+
+# ── Level-up I/O helpers (GUI-first, terminal fallback) ──────────────
+
+def _choose_level_attr(entity_name, level, attributes, note=None):
+    """
+    Ask the user to pick an attribute to increase.
+
+    `note` replaces the default "LEVEL UP!" banner — used for the
+    late-bloomer bonus point granted during an ally level-up.
+
+    Tries the GUI dialog first. If unavailable or cancelled, falls back
+    to the terminal menu. Returns (attr_key, used_gui) where used_gui
+    indicates whether the GUI was used for the pick (and thus whether
+    results should also be shown via GUI).
+    """
+    # Try GUI dialog first
+    if _gui_choose_attr is not None:
+        try:
+            chosen = _gui_choose_attr(entity_name, level, attributes, note=note)
+            if chosen is not None:
+                return chosen, True
+            # GUI existed but returned no choice (dialog closed / timed out).
+            # Fall back to the terminal menu, but tell the player why.
+            _tprint("\n(Level-up popup was closed without a choice — "
+                    "using the text menu instead.)")
+        except Exception as exc:
+            # The GUI dialog failed to build/show (e.g. thread/race issue).
+            # Report the reason visibly instead of failing silently.
+            _tprint(f"\n(Level-up popup could not be shown: {exc})")
+
+    # Terminal fallback
+    if note:
+        _tprint(f"\n*** {note} ***")
+    else:
+        _tprint(f"\n*** LEVEL UP! {entity_name} is now level {level} ***")
+    _tprint("Choose an attribute to increase by 1:")
+    attrs = ["Strength", "Constitution", "Dexterity", "Wisdom", "Learning", "Charisma"]
+    attr_options = [f"{a} (current: {attributes[a]})" for a in attrs]
+    choice_idx = _tmenu(attr_options, prompt="Choose attribute:")
+    if 0 <= choice_idx < len(attrs):
+        return attrs[choice_idx], False
+    else:
+        chosen = random.choice(attrs)
+        _tprint(f"Invalid choice, {chosen} was chosen.")
+        return chosen, False
+
+
+def _show_level_results(entity_name, level, chosen_attr, new_value,
+                        hp_increase, new_max_hp, new_skills, milestones,
+                        used_gui):
+    """
+    Display level-up results.
+
+    If the attribute was chosen via GUI dialog, shows results in a
+    matching GUI dialog. Otherwise prints to the terminal.
+    """
+    if used_gui and _gui_show_results is not None:
+        try:
+            _gui_show_results(
+                entity_name=entity_name,
+                level=level,
+                chosen_attr=chosen_attr,
+                new_value=new_value,
+                hp_increase=hp_increase,
+                new_max_hp=new_max_hp,
+                new_skills=new_skills if new_skills else None,
+                milestones=milestones if milestones else None,
+            )
+            return
+        except Exception as exc:
+            _tprint(f"(Level-up results popup could not be shown: {exc})")
+            # Fall through to terminal
+
+    # Terminal fallback
+    _tprint(f"{chosen_attr} increased to {new_value}.")
+    if hp_increase > 0:
+        _tprint(f"Maximum HP increased by {hp_increase}. New max: {new_max_hp}")
+    if new_skills:
+        _tprint(f"\n*** NEW SKILL(S) UNLOCKED: {', '.join(new_skills)} ***")
+    for msg in (milestones or []):
+        _tprint(msg)
+
+def exp_needed_for_next_level(level):
+    return int(EXP_COEFF_A * (level ** EXP_POWER) + EXP_COEFF_B * level)
+
+def get_city_dungeon_progress(player, city_id):
+    """Return list of (dungeon_name, max_floor) for all dungeons in a city.
+    Future-proof: if multiple dungeons per city are added, extend this."""
+    city_prog = player.get("city_floors", {}).get(city_id, {})
+    # Main dungeon (currently one per city; extend here for multiple)
+    progress = [("Main Dungeon", city_prog.get("max_floor", 1))]
+    return progress
+
+
+# ── Shared dungeon depth per biome (2026-11-04) ──────────────────────────────
+# Cities of the same biome are entrances into ONE dungeon: they share
+# ``max_floor`` (the unlocked depth) while each keeps its own ``floor``
+# cursor (the entrance the player last used). Dungeon content is already
+# biome-keyed (enemies/loot), so this removes redundant ladders such as
+# Thornwall/Solmere/Greyharbor all starting at Floor 1.
+
+def cities_in_biome(city_id):
+    """City ids sharing ``city_id``'s biome (the shared-depth dungeon group)."""
+    biome = CITIES.get(city_id, {}).get("biome", "temperate")
+    return [cid for cid, data in CITIES.items()
+            if data.get("biome", "temperate") == biome]
+
+
+def _safe_floor(value, default=1):
+    try:
+        return max(1, int(value or default))
+    except (TypeError, ValueError):
+        return default
+
+
+def get_shared_biome_max_floor(player, city_id):
+    """Highest unlocked floor among existing records in this city's biome."""
+    floors = player.get("city_floors") or {}
+    best = 1
+    for cid in cities_in_biome(city_id):
+        prog = floors.get(cid)
+        if isinstance(prog, dict):
+            best = max(best, _safe_floor(prog.get("max_floor", 1)))
+    return best
+
+
+def sync_biome_dungeon_depth(player):
+    """Make every existing city record share its biome's deepest floor.
+
+    Only existing city records are touched: unvisited cities are seeded on
+    first entry by ``dungeon._ensure_city_floors`` so they never look
+    "visited" to other systems before the player actually arrives. The
+    operation is monotonic and idempotent — safe on every load.
+    """
+    floors = player.get("city_floors")
+    if not isinstance(floors, dict) or not floors:
+        return
+    groups = {}
+    for cid, prog in floors.items():
+        if isinstance(prog, dict):
+            # Unknown city ids get their own group rather than falling into
+            # the temperate bucket and borrowing its depth.
+            biome = (CITIES.get(cid, {}).get("biome", "temperate")
+                     if cid in CITIES else f"unknown:{cid}")
+            groups.setdefault(biome, []).append(prog)
+    for entries in groups.values():
+        best = max((_safe_floor(p.get("max_floor", 1)) for p in entries), default=1)
+        for prog in entries:
+            if _safe_floor(prog.get("max_floor", 1)) < best:
+                prog["max_floor"] = best
+    # Keep the legacy global field monotonic as well.
+    best_global = max((_safe_floor(p.get("max_floor", 1))
+                       for p in floors.values() if isinstance(p, dict)), default=1)
+    player["max_floor"] = max(_safe_floor(player.get("max_floor", 1)), best_global)
+
+
+def _get_unique_biomes():
+    """Return the set of all unique biome names across all cities.
+    Wonderland is excluded — it is a hidden realm that does not count toward ascension."""
+    return {CITIES[c].get("biome", "temperate") for c in CITIES
+            if CITIES[c].get("biome", "") != "wonderland"}
+
+
+def get_biomes_cleared_to_cap(player, cap):
+    """Return set of unique biomes with at least one city dungeon cleared to `cap`.
+    Wonderland is excluded — it does not count toward ascension requirements."""
+    cleared = set()
+    for city_id in CITIES:
+        biome = CITIES[city_id].get("biome", "temperate")
+        if biome == "wonderland":
+            continue
+        city_prog = player.get("city_floors", {}).get(city_id, {})
+        if city_prog.get("max_floor", 1) >= cap:
+            cleared.add(biome)
+    return cleared
+
+
+def get_required_biomes_for_cap(current_cap):
+    """How many biomes must be cleared to unlock the next cap."""
+    total_biomes = len(_get_unique_biomes())
+    # 1 biome at 10→20, 2 at 20→30, 3 at 30→40, 4 at 40→50, 5 at 50→60
+    required = current_cap // 10
+    return min(required, total_biomes)
+
+
+def can_ascend_level_cap(player):
+    """Check if enough unique biomes have been cleared to the current level cap."""
+    current_cap = player.get("level_cap", 10)
+    cleared = get_biomes_cleared_to_cap(player, current_cap)
+    required = get_required_biomes_for_cap(current_cap)
+    return len(cleared) >= required
+
+
+def get_incomplete_biomes(player):
+    """Return list of (biome_name, example_city, max_floor, required) for uncleared biomes."""
+    current_cap = player.get("level_cap", 10)
+    cleared_biomes = get_biomes_cleared_to_cap(player, current_cap)
+
+    # Group cities by biome (exclude Wonderland)
+    biome_cities = {}
+    for city_id, data in CITIES.items():
+        biome = data.get("biome", "temperate")
+        if biome == "wonderland":
+            continue
+        biome_cities.setdefault(biome, []).append((city_id, data["name"]))
+
+    incomplete = []
+    for biome in sorted(biome_cities.keys()):
+        if biome not in cleared_biomes:
+            # Find the city with the highest progress in this biome
+            best_city = None
+            best_floor = 0
+            for city_id, city_name in biome_cities[biome]:
+                city_data = CITIES.get(city_id, {})
+                start_floor = max(1, int(city_data.get("dungeon_start_floor", 1) or 1))
+                city_prog = player.get("city_floors", {}).get(city_id, {})
+                max_floor = city_prog.get("max_floor", start_floor)
+                if max_floor > best_floor:
+                    best_floor = max_floor
+                    best_city = city_name
+            if best_city:
+                incomplete.append((biome.title(), best_city, best_floor, current_cap))
+    return incomplete
+
+
+def get_next_level_cap(current_cap):
+    return ((current_cap // 10) + 1) * 10
+
+
+def is_pandemonium_unlocked(player):
+    """Check if the player has cleared Floor 40 in at least 4 unique biomes.
+    Wonderland is excluded — it does not count toward pandemonium unlock."""
+    required_floors = 40
+    required_biomes = 4
+    cleared_biomes = set()
+    for city_id in CITIES:
+        biome = CITIES[city_id].get("biome", "temperate")
+        if biome == "wonderland":
+            continue
+        city_prog = player.get("city_floors", {}).get(city_id, {})
+        if city_prog.get("max_floor", 1) >= required_floors:
+            cleared_biomes.add(biome)
+    return len(cleared_biomes) >= required_biomes
+
+
+def get_current_city_id(player):
+    loc = player.get("location", "solmere")
+    if loc == "dungeon":
+        return player.get("origin_city", "solmere")
+    return loc
+
+def check_level_cap_milestone(player, city_id):
+    """Check if enough unique biomes have been cleared to the current cap.
+    Prints a message when the global milestone is newly reached."""
+    # Floor progression is the main deed trigger for dungeon titles.
+    from pandemonium.progression.titles import check_unlock as _check_title_unlock
+    _check_title_unlock(player)
+    current_cap = player.get("level_cap", 10)
+    required = get_required_biomes_for_cap(current_cap)
+    
+    notified = player.setdefault("ascension_notified", {})
+    global_key = f"global_{current_cap}"
+    
+    if notified.get(global_key):
+        return  # Already notified for this milestone
+    
+    if can_ascend_level_cap(player):
+        cleared = len(get_biomes_cleared_to_cap(player, current_cap))
+        city_name = CITIES.get(city_id, {}).get("name", city_id)
+        _tprint(f"\n{'='*50}")
+        _tprint(f"  A surge of primal energy flows through you!")
+        _tprint(f"  {cleared} biomes have been conquered to Floor {current_cap}.")
+        _tprint(f"  You feel ready to become stronger.")
+        _tprint(f"  Visit any Guild to Ascend!")
+        _tprint(f"{'='*50}")
+        notified[global_key] = True
+
+def gain_exp(player, amount):
+    from pandemonium.combat.stat_milestones import get_learning_bonus, check_milestone_notification
+
+    # Event Horizon: character XP is frozen inside the run (docs §10.1)
+    if player.get("_eh_in_run"):
+        return False
+    
+    # If already at the level cap, silently discard XP (don't accumulate)
+    if player["level"] >= player.get("level_cap", 10):
+        return False
+    
+    amount = int(amount * get_learning_bonus(player))
+    # Daily events: Scholar's Day (+25% XP)
+    amount = int(amount * get_daily_bonus_multiplier(player, "xp_bonus"))
+    # Deed titles: small player-only XP bonus.
+    from pandemonium.progression.titles import mod as _title_mod
+    _title_xp = _title_mod(player, "xp_pct")
+    if _title_xp > 0:
+        amount = int(amount * (1.0 + _title_xp))
+    old_attributes = player["attributes"].copy()
+    player["exp"] = player.get("exp", 0) + amount
+    leveled = False
+    while player["exp"] >= exp_needed_for_next_level(player["level"]):
+        # Level cap check
+        if player["level"] >= player.get("level_cap", 10):
+            current_cap = player.get("level_cap", 10)
+            required = get_required_biomes_for_cap(current_cap)
+            cleared = len(get_biomes_cleared_to_cap(player, current_cap))
+            if can_ascend_level_cap(player):
+                _tprint(f"\n*** LEVEL CAP REACHED: Level {player['level_cap']} ***")
+                _tprint("You have conquered enough biomes — but your potential remains sealed.")
+                _tprint("Visit any Guild to Ascend and break through!")
+            else:
+                _tprint(f"\n*** LEVEL CAP REACHED: Level {player['level_cap']} ***")
+                _tprint(f"Biomes conquered to Floor {current_cap}: {cleared}/{required}")
+                _tprint(f"Clear dungeons in {required - cleared} more biome(s) to grow stronger.")
+            break
+        
+        player["exp"] -= exp_needed_for_next_level(player["level"])
+        player["level"] += 1
+        leveled = True
+        
+        old_max = player_max_hp(player)
+        
+        # Choose attribute (GUI dialog or terminal menu)
+        chosen, used_gui = _choose_level_attr(
+            player.get("name", "You"), player["level"], player["attributes"]
+        )
+        
+        player["attributes"][chosen] += 1
+        new_val = player["attributes"][chosen]
+        
+        # HP Rewards
+        player["level_hp_bonus"] = player.get("level_hp_bonus", 0) + 4   # ← HP BUFF
+        
+        new_max = player_max_hp(player)
+        hp_increase = new_max - old_max
+        player["current_hp"] += hp_increase
+        
+        # Check for new skill unlocks
+        new_skills = unlock_skills_for_level(player)
+        
+        # Check for stat milestone notifications
+        milestones = check_milestone_notification(player, old_attributes)
+        
+        # Show results (GUI dialog or terminal)
+        _show_level_results(
+            entity_name=player.get("name", "You"),
+            level=player["level"],
+            chosen_attr=chosen,
+            new_value=new_val,
+            hp_increase=hp_increase,
+            new_max_hp=new_max,
+            new_skills=new_skills if new_skills else None,
+            milestones=milestones if milestones else None,
+            used_gui=used_gui,
+        )
+    
+    return leveled
+
+def gain_exp_ally(ally, amount):
+    """Award XP to an ally and handle level-ups using the same HUD as player."""
+    from pandemonium.combat.ally import ally_max_hp, apply_ally_growth
+    from pandemonium.combat.ally_skills import gain_skill_learning_exp
+    from pandemonium.combat.stat_milestones import get_learning_bonus, check_milestone_notification
+
+    # ── Skill learning always progresses regardless of level cap ──
+    learned_skill = gain_skill_learning_exp(ally, amount)
+    if learned_skill:
+        from pandemonium.combat.ally_skills import get_learnable_skill_def
+        skill_def = get_learnable_skill_def(learned_skill)
+        skill_name = skill_def.get("name", learned_skill) if skill_def else learned_skill
+        _tprint(f"*** {display_name(ally)} has mastered {skill_name}! ***")
+
+    # ── Level XP is blocked at level cap ──
+    if ally["level"] >= ally.get("level_cap", 10):
+        return False
+
+    # Apply Learning milestone bonus (same as player)
+    amount = int(amount * get_learning_bonus(ally))
+    old_attributes = ally.get("attributes", {}).copy()
+
+    ally["exp"] = ally.get("exp", 0) + amount
+    leveled = False
+    while ally["exp"] >= exp_needed_for_next_level(ally["level"]):
+        # Level cap check
+        if ally["level"] >= ally.get("level_cap", 10):
+            _tprint(f"\n*** LEVEL CAP REACHED: {display_name(ally)} is at Level {ally['level_cap']} ***")
+            _tprint("An Ascension Stone is needed to break through their limit.")
+            break
+
+        ally["exp"] -= exp_needed_for_next_level(ally["level"])
+        ally["level"] += 1
+        leveled = True
+
+        old_max = ally_max_hp(ally)
+
+        # Choose attribute (GUI dialog or terminal menu)
+        chosen, used_gui = _choose_level_attr(
+            display_name(ally), ally["level"], ally.get("attributes", {})
+        )
+
+        ally["attributes"][chosen] += 1
+        new_val = ally["attributes"][chosen]
+
+        # Late-bloomer growth (docs/awakening_design.md Part A) — low-base
+        # girls gain bonus points as they level in the party. Each point is
+        # a level-up pick, just like the manual point above.
+        growth_msgs = apply_ally_growth(
+            ally,
+            choose_attr=lambda attrs: _choose_level_attr(
+                display_name(ally), ally["level"], attrs,
+                note="Late Bloomer bonus",
+            )[0],
+        )
+
+        # Check for stat milestone notifications (growth gains included)
+        milestones = (check_milestone_notification(ally, old_attributes) or []) + growth_msgs
+        old_attributes = ally["attributes"].copy()
+
+        # HP Rewards
+        ally["level_hp_bonus"] = ally.get("level_hp_bonus", 0) + 4
+
+        new_max = ally_max_hp(ally)
+        hp_increase = new_max - old_max
+        ally["max_hp"] = new_max
+        ally["current_hp"] += hp_increase
+
+        # Show results (GUI dialog or terminal)
+        _show_level_results(
+            entity_name=display_name(ally),
+            level=ally["level"],
+            chosen_attr=chosen,
+            new_value=new_val,
+            hp_increase=hp_increase,
+            new_max_hp=new_max,
+            new_skills=None,
+            milestones=milestones if milestones else None,
+            used_gui=used_gui,
+        )
+
+
+    return leveled

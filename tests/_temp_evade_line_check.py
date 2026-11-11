@@ -1,7 +1,7 @@
 # Temp check (2026-10-08): evasion lines classified correctly for ticker persistence.
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
-from gui.screens.combat_screen import CombatScreen
+from pandemonium.gui.screens.combat_screen import CombatScreen
 
 tests = [
     "The Wolf dodges your attack!",

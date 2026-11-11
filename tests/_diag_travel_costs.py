@@ -22,8 +22,8 @@ try:  # piped consoles on Windows may default to a legacy codepage (cp932)
 except (AttributeError, OSError):
     pass
 
-import time_blocks as tb
-from resources.cities import CITIES
+import pandemonium.core.time_blocks as tb
+from pandemonium.resources.cities import CITIES
 
 
 def cname(cid):

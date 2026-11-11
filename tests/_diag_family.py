@@ -12,19 +12,19 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import facilities.house  # noqa: F401  (circular-import smoke test)
-import facilities.dispatch as D
-import family as F
-import quests
-from combat.ally import (_ally_to_house_record, recruit_ally_from_house,
+import pandemonium.facilities.house as house # noqa: F401  (circular-import smoke test)
+import pandemonium.facilities.dispatch as D
+import pandemonium.progression.family as F
+import pandemonium.progression.quests as quests
+from pandemonium.combat.ally import (_ally_to_house_record, recruit_ally_from_house,
                          ally_max_hp, create_ally_from_girl)
-from combat.elemental import compute_ally_elemental
-from combat.stats import get_dodge_chance, get_raw_critical_chance
-from combat.status_effects import tick_player_buffs
-from combat.combat_ui import _get_entity_buff_tags
-from facilities.sleep_sharing import apply_action, new_state
-from resources.enemies import ENEMIES, ENEMY_RACES
-from resources.family_scenes import (ACTION_LINES, ACTION_PROMPTS,
+from pandemonium.combat.elemental import compute_ally_elemental
+from pandemonium.combat.stats import get_dodge_chance, get_raw_critical_chance
+from pandemonium.combat.status_effects import tick_player_buffs
+from pandemonium.combat.combat_ui import _get_entity_buff_tags
+from pandemonium.facilities.sleep_sharing import apply_action, new_state
+from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
+from pandemonium.resources.family_scenes import (ACTION_LINES, ACTION_PROMPTS,
                                      ENDING_LINES, GIRL_ACTION_LINES,
                                      CHILD_RACE_GIFT, CHILD_RACE_TALK,
                                      WRITTEN_ACTION_LINES, WRITTEN_ENDING_LINES,
@@ -365,8 +365,8 @@ check("beloved multiplier expires", F.beloved_multiplier(
     make_girl("Beloved2", beloved_until_day=11), 12) == 1.0)
 
 # Room-based sleep buffs: stat application + combat-round immunity.
-from combat.stats import get_effective_attribute
-from combat.ally import get_ally_effective_attribute
+from pandemonium.combat.stats import get_effective_attribute
+from pandemonium.combat.ally import get_ally_effective_attribute
 
 p = make_player()
 p["attributes"] = {a: 10 for a in F.ATTRIBUTES}
@@ -544,7 +544,7 @@ awaken_child = make_girl("AwakenChild", key="trueborn_goblin_girl_4",
                          level_cap=40, affection=200)
 ok, reason = facilities.house.can_awaken_girl(awaken_child, 10)
 check("true-born can awaken via mother", ok)
-from combat.ally_skills import apply_awakening_skills
+from pandemonium.combat.ally_skills import apply_awakening_skills
 apply_awakening_skills(awaken_child, "goblin_girl")
 awaken_child["awakened"] = True
 awakened_ally = create_ally_from_girl(awaken_child)
@@ -647,7 +647,7 @@ check("wide written endings", all(len(pool) >= 4
                                    for pool in WRITTEN_ENDING_LINES.values()))
 
 # Voss & Lumen epilogue trigger + scene
-from facilities.story_beats import ensure_city_story_triggers, get_story_beat
+from pandemonium.facilities.story_beats import ensure_city_story_triggers, get_story_beat
 
 p = make_player(day=100)
 quests.ensure_quest_state(p)["completed"].append("mq_archivist_06")
@@ -658,12 +658,12 @@ ensure_city_story_triggers(p, "skylume")
 check("epilogue queued in Skylume", quests.has_pending_story(p))
 check("epilogue registered", get_story_beat("voss_epilogue") is not None)
 
-from facilities import star_tower
+from pandemonium.facilities import star_tower
 p = make_player(day=100)
 fake = FakeTerm()
 old_term = star_tower.term
 star_tower.term = fake
-import save_load
+import pandemonium.core.save_load as save_load
 old_save = save_load.save_game
 save_load.save_game = lambda *_args, **_kwargs: None
 try:
@@ -694,8 +694,8 @@ class SeqTerm(FakeTerm):
         return self.picks.pop(0) if self.picks else -1
 
 
-from facilities.family_ui import process_pending_births
-from facilities.sleep_sharing_ui import run_sleep_sharing
+from pandemonium.facilities.family_ui import process_pending_births
+from pandemonium.facilities.sleep_sharing_ui import run_sleep_sharing
 
 p = make_player(day=10)
 p["family_enabled"] = True

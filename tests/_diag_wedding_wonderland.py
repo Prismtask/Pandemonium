@@ -26,8 +26,8 @@ try:
 except Exception:
     pass
 
-from character import build_character, player_max_hp
-from resources.items import build_item, ITEMS
+from pandemonium.core.character import build_character, player_max_hp
+from pandemonium.resources.items import build_item, ITEMS
 
 ATTRS = {"Strength": 5, "Constitution": 5, "Dexterity": 5,
          "Learning": 5, "Wisdom": 5, "Charisma": 5}
@@ -44,7 +44,7 @@ def make_player(accessory=None, bonded_girl_key=None):
 
 
 def main():
-    from combat.weapon import wedding_specials as ws
+    from pandemonium.combat.weapon import wedding_specials as ws
 
     # 1. Items exist + are describable.
     for iid in ("wedding_wonderland_dorothy", "wedding_wonderland_alice",
@@ -87,7 +87,7 @@ def main():
     assert ws.apply_wedding_initiative_bonus(p) == 2
     p_b = make_player("wedding_wonderland_alice", "wonderland_alice")
     assert ws.apply_wedding_initiative_bonus(p_b) == 3
-    from combat.combat_engine import roll_initiative
+    from pandemonium.combat.combat_engine import roll_initiative
     order = roll_initiative(p, [{"name": "Wolf", "key": "wolf", "hp": 10, "max_hp": 10,
                                  "dex_mod": 5, "active_buffs": [], "active_debuffs": [],
                                  "elemental_res": {}}])
@@ -103,8 +103,8 @@ def main():
     print("OK — huntsman_oath boosts the first attack only (+30%/+45% bonded)")
 
     # 5. Engagement-ring transfer.
-    from facilities.house import _apply_ring_bonus_to_girl
-    from combat.ally import compute_girl_attributes
+    from pandemonium.facilities.house import _apply_ring_bonus_to_girl
+    from pandemonium.combat.ally import compute_girl_attributes
     ring = build_item("ruby_engagement_ring")
     ring_mods = dict(ring.get("mods") or {})
     assert ring_mods, "built ring has no mods"
@@ -123,7 +123,7 @@ def main():
     print("OK — ring bonus applies to stored and computed girls")
 
     # 6. Round-trip persistence.
-    from combat.ally import _ally_to_house_record
+    from pandemonium.combat.ally import _ally_to_house_record
     rec = _ally_to_house_record({"key": "x", "name": "X", "level": 1,
                                  "attributes": {}, "ring_stat_bonus": {"Charisma": 9}}, {})
     assert rec.get("ring_stat_bonus") == {"Charisma": 9}, "ring bonus lost on return home"

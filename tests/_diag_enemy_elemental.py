@@ -14,8 +14,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.enemies import ENEMIES, ENEMY_RACES
-from combat.elemental import (
+from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
+from pandemonium.combat.elemental import (
     DEFAULT_ATTACK_MULTIPLIER,
     ELEMENTS,
     _get_keyword_elemental,
@@ -24,8 +24,8 @@ from combat.elemental import (
     merge_profiles,
     neutral_profile,
 )
-from combat.elemental_debuffs import ELEMENT_DEBUFF_MAP, get_elemental_debuff
-from event_horizon import scale_enemy_elemental
+from pandemonium.combat.elemental_debuffs import ELEMENT_DEBUFF_MAP, get_elemental_debuff
+from pandemonium.world.event_horizon import scale_enemy_elemental
 
 failures = []
 

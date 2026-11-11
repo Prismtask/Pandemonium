@@ -30,8 +30,8 @@ print(f"Backup written: {BACKUP}")
 with open(PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
 
-from resources.items import build_item
-from inventory import add_item_to_inventory
+from pandemonium.resources.items import build_item
+from pandemonium.inventory.inventory import add_item_to_inventory
 
 inv = data.setdefault("inventory", [])
 existing = [i for i in inv if i.get("id") == "fractured_hourglass"]

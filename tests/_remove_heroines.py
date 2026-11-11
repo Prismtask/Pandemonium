@@ -22,7 +22,7 @@ print(f"Backup written: {BACKUP}")
 with open(PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
 
-from combat.ally import _return_ally_to_house
+from pandemonium.combat.ally import _return_ally_to_house
 
 houses = data.get("houses", {})
 house_city, house = next(iter(houses.items()))

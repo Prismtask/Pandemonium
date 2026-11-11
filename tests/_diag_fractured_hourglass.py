@@ -12,12 +12,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from resources.items import build_item
-from combat.fractured_hourglass import (
+from pandemonium.resources.items import build_item
+from pandemonium.combat.fractured_hourglass import (
     is_fractured_hourglass, use_fractured_hourglass, get_hourglass_cooldown,
     tick_hourglass_cooldown, HOURGLASS_COOLDOWN_TURNS,
 )
-from inventory import is_combat_only_item, use_consumable
+from pandemonium.inventory.inventory import is_combat_only_item, use_consumable
 
 failures = []
 
@@ -84,7 +84,7 @@ check("no hourglass cooldown started on refusal", get_hourglass_cooldown(p2) == 
 
 # ── 2. Player combat path ────────────────────────────────────────────────
 print("\n── Player combat path ──")
-import combat.player_actions as pa
+import pandemonium.combat.player_actions as pa
 
 
 def _mock_input(inputs):
@@ -118,8 +118,8 @@ check("player: hourglass cooldown set", get_hourglass_cooldown(p3) == HOURGLASS_
 
 # ── 3. Ally combat path ──────────────────────────────────────────────────
 print("\n── Ally combat path ──")
-import combat.ally as ca
-import combat.combat_ui as cui
+import pandemonium.combat.ally as ca
+import pandemonium.combat.combat_ui as cui
 
 cui.print_combat_hud = lambda *a, **k: None
 

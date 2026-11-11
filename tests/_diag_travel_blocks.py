@@ -23,7 +23,7 @@ try:  # piped consoles on Windows may default to a legacy codepage
 except (AttributeError, OSError):
     pass
 
-import time_blocks as tb
+import pandemonium.core.time_blocks as tb
 
 
 def _player(**kw):

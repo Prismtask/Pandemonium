@@ -15,7 +15,7 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.weapon.tarnished_jade as tj
+import pandemonium.combat.weapon.tarnished_jade as tj
 
 # Silence the flavor text (Divine Lament / Wedge Backlash banners).
 tj.c_print = lambda *a, **k: None

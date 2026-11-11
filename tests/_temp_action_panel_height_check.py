@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
 import tkinter as tk
-from gui.combat import action_panel as ap
+from pandemonium.gui.combat import action_panel as ap
 
 FAILS = []
 

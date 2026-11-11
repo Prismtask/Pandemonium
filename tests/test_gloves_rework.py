@@ -12,8 +12,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import combat.stats as stats
-import combat.weapon.black_silence_gloves as g
+import pandemonium.combat.stats as stats
+import pandemonium.combat.weapon.black_silence_gloves as g
 
 _orig_roll_crit = stats.roll_critical_hit
 _orig_roll_base = g._roll_base_damage
@@ -156,20 +156,20 @@ class TestAttackBuffs(unittest.TestCase):
 
 class TestHudTags(unittest.TestCase):
     def test_wedge_backlash_tag(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         tags = _get_entity_buff_tags({"active_buffs": [], "active_debuffs": [],
                                       "tarnished_jade_weakened": True})
         self.assertIn("WEDGE \u221250%", tags)
 
     def test_wedge_tag_absent_without_flag(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         tags = _get_entity_buff_tags({"active_buffs": [], "active_debuffs": []})
         self.assertNotIn("WEDGE", tags)
 
 
 class TestBattleStateScrub(unittest.TestCase):
     def test_clear_battle_scoped_state(self):
-        from combat.combat_engine import clear_battle_scoped_state
+        from pandemonium.combat.combat_engine import clear_battle_scoped_state
         player = {
             "active_buffs": [
                 {"type": "evasion", "source": "crystal_atelier",

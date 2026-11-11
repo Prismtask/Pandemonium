@@ -19,10 +19,10 @@ description: 'Iterative development helper for the Pandemonium Python text-based
 ## Core Workflow
 1. **Jump to known file paths** — use the [architecture reference](./references/architecture.md) instead of re-exploring.
 2. **Read player + ally files** if touching UI or stats display.
-3. **New persistent fields** → patch `./character.py` `ensure_player_fields()` with `.setdefault()`.
+3. **New persistent fields** → patch `./pandemonium/core/character.py` `ensure_player_fields()` with `.setdefault()`.
 4. **Verify** with `./.venv` interpreter.
 5. **Allies can** use unique equipment — all effects are actor-based: Abyss Fang, Captain's Cutlass, Black Silence Gloves, Tarnished Jade, Author's Pen, Vileheart Pendant, Chronoweave Mantle. **Allies can't** use capture, player class skills, or wedding accessories (player-only, soulbound).
-6. **New superboss** → `./combat/<name>.py` + YAML entry + import in `./dungeon.py` + tier pool.
+6. **New superboss** → `./pandemonium/combat/<name>.py` + YAML entry + import in `./pandemonium/world/dungeon.py` + tier pool.
 7. **End-of-combat**: `end_of_combat_cleanup()` must run on victory/flee/death to tick cooldowns, decrement buffs, clear weapon states. Must also call `clear_abyss_fang_state()` and `clear_captain_cutlass_state()`.
 
 ## Key Conventions (compact)
@@ -34,7 +34,7 @@ description: 'Iterative development helper for the Pandemonium Python text-based
 - Player & ally displays must match identically (headers, stats, rarity).
 - Combat HUD: fixed 68-char ASCII box. Party left (31 chars), enemies right (33 chars). 2 rows/entity.
 - Stat display: `Attribute: base + N(eq) + N(buff) = total`
-- Monster girls: ♀ symbol. Captured via nets → `./facilities/house/` package. Heroine quests live in `./heroine_quests/`.
+- Monster girls: ♀ symbol. Captured via nets → `./pandemonium/facilities/house/` package. Heroine quests live in `./pandemonium/heroine_quests/`.
 
 ### Combat
 - Max 1 player + 3 allies vs 5 enemies. Player controls all ally actions.
@@ -48,10 +48,10 @@ description: 'Iterative development helper for the Pandemonium Python text-based
 ### Elemental System
 - 7 elements: Fire, Water, Thunder, Wind, Earth, Light, Dark + physical/magical damage axes (`combat/elemental.py` `ELEMENTS`).
 - Frost/ice keywords map to Water; "frozen" is a status effect, not an element.
-- `./combat/elemental.py` — damage/resist calculation.
-- `./combat/elemental_debuffs.py` — `try_apply_elemental_debuff()` procs on hit; chance scales with attack stat.
-- `./combat/elemental_traits.py` — weapon primary element, trait application, on-kill procs.
-- `./combat/vileheart_venom.py` — Vileheart Venom pendant proc system.
+- `./pandemonium/combat/elemental.py` — damage/resist calculation.
+- `./pandemonium/combat/elemental_debuffs.py` — `try_apply_elemental_debuff()` procs on hit; chance scales with attack stat.
+- `./pandemonium/combat/elemental_traits.py` — weapon primary element, trait application, on-kill procs.
+- `./pandemonium/combat/vileheart_venom.py` — Vileheart Venom pendant proc system.
 
 ### Superboss State Management
 - **Abyss Fang:** Abyssal Tempo stacks tick at round start (`tick_abyssal_tempo()`). State cleared via `clear_abyss_fang_state()`.
@@ -60,7 +60,7 @@ description: 'Iterative development helper for the Pandemonium Python text-based
 
 ### Unique Equipment (actor-based convention — applies to ALL future uniques)
 Every unique item effect must work for the player AND allies unless it's a wedding accessory:
-- Implement in `./combat/weapon/<name>.py` with `_actor_has_<id>(actor)` + `is_player` flags; never hardcode the player dict.
+- Implement in `./pandemonium/combat/weapon/<name>.py` with `_actor_has_<id>(actor)` + `is_player` flags; never hardcode the player dict.
 - Wire into BOTH `combat/player_actions.py` and `combat/ally.py` (`handle_ally_turn`, `_ally_action_menu`, ally basic-attack path).
 - Lifecycle: tick/clear per-ally state in `combat/combat_engine.py` (`_tick_all_state`, `_combat_inner`, `_end_combat_with_result`) AND `combat/superboss_common.py` (superboss rounds have their own loop).
 - Mirror player context onto allies at combat start (`ally["floor"]`, `ally["dungeon_region"]`) for floor/region-gated effects.
@@ -76,15 +76,15 @@ Every unique item effect must work for the player AND allies unless it's a weddi
 - **Elemental profiles:** `player["elemental_res"]` / `player["elemental_dmg"]` — per-element dicts.
 - **Party order:** `player["party_order"]` — front/back row positioning.
 
-### GUI Screens (14 screens in `./gui/screens/`)
+### GUI Screens (14 screens in `./pandemonium/gui/screens/`)
 `base_screen`, `changelog_screen`, `char_create_screen`, `city_screen`, `combat_screen`, `death_screen`, `dungeon_screen`, `facility_screen`, `inventory_screen`, `main_menu_screen`, `post_floor_screen`, `settings_screen`, `splash_screen`, `world_map_screen`
 
-### GUI Widgets (7 widgets in `./gui/widgets/`)
+### GUI Widgets (7 widgets in `./pandemonium/gui/widgets/`)
 `city_map`, `confirm_dialog`, `hp_bar`, `item_card`, `log_window`, `notification_toast`, `stat_display`
 
 ### Thread Safety (GUI)
 - GUI runs facilities/combat in background threads.
-- Use `_tprint`/`_tpause`/`_tinput` (from `./utils.py`) or `c_print`/`c_input` (from `./combat/combat_io.py`).
+- Use `_tprint`/`_tpause`/`_tinput` (from `./pandemonium/core/utils.py`) or `c_print`/`c_input` (from `./pandemonium/combat/combat_io.py`).
 - **Never** raw `print()`/`input()`. **Never** tkinter from background thread → use `after()` or I/O queues.
 
 ### Tests

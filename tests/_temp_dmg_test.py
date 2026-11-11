@@ -1,4 +1,4 @@
-from resources.items import build_item
+from pandemonium.resources.items import build_item
 
 items = ['fire_bomb','ice_bomb','holy_water','thunder_bomb','acid_flask','poison_flask','stun_bomb','throwing_knife']
 print(f"{'Item':15s} | Base | 10DEX| 20DEX| 30DEX| 40DEX")

@@ -14,8 +14,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gui.screens.combat_screen import CombatScreen
-from gui.theme import Theme
+from pandemonium.gui.screens.combat_screen import CombatScreen
+from pandemonium.gui.theme import Theme
 
 
 class FakeSM:

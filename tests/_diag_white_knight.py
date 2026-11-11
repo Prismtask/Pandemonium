@@ -7,15 +7,15 @@ import sys
 
 sys.path.insert(0, ".")
 
-from resources.enemies import ENEMIES
-from combat.stats import (
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.stats import (
     enemy_stats, get_dodge_chance, roll_dodge,
     roll_skill_dodge, roll_accuracy_penalty,
 )
-from combat.white_knight import (
+from pandemonium.combat.white_knight import (
     _armor_mult_for, _set_dodge, combat_white_knight, BOSS_KEY,
 )
-from combat.weapon.last_oath import _actor_has_last_oath, try_last_oath_expose
+from pandemonium.combat.weapon.last_oath import _actor_has_last_oath, try_last_oath_expose
 
 failures = []
 
@@ -109,14 +109,14 @@ non = {"equipped": {"weapon": {"special": "captain_cutlass"}}}
 check(try_last_oath_expose(non, target) is None, "non-wielder: no proc")
 
 print("== 7. Entry point + item registration ==")
-from resources.items import build_item
+from pandemonium.resources.items import build_item
 check(callable(combat_white_knight), "combat_white_knight callable")
 item = build_item("last_oath", "unique")
 check(item is not None and item.get("name") == "Last Oath", "Last Oath item builds")
 check(item.get("drop_source") == "white_knight", "drop_source registered")
 
 print("== 8. Phase floors (anti-skip / anti-one-shot) ==")
-from combat.white_knight import _PhaseLockedKnight
+from pandemonium.combat.white_knight import _PhaseLockedKnight
 k = _PhaseLockedKnight({"max_hp": 1500, "hp": 1500, "_wk_phase": 1, "_wk_round": 1})
 k["hp"] = k["hp"] - 9999
 check(k["hp"] == 975, "P1 floor: lethal burst clamps at 65% (975/1500)")
@@ -136,8 +136,8 @@ check(k3["hp"] == 975, "P1: cannot dip below floor even by a small hit")
 print("== 9. Shared-list contract (GUI HUD sees live damage) ==")
 import random as _rnd
 
-from combat.combat_io import set_io, reset_io
-from resources.skill_loader import CLASS_SKILLS
+from pandemonium.combat.combat_io import set_io, reset_io
+from pandemonium.resources.skill_loader import CLASS_SKILLS
 
 _ATTRS = ("Strength", "Constitution", "Dexterity", "Wisdom", "Learning", "Charisma")
 
@@ -192,7 +192,7 @@ check(bool(_shared) and _shared[0]["hp"] < 4000,
       "fight damage lands on the shared list (GUI HP bar moves)")
 
 print("== 10. Ally skill vs skill dodge: (dmg, did_crit) tuple contract ==")
-import combat.ally_skills as _ask
+import pandemonium.combat.ally_skills as _ask
 
 _skill = None
 for _key, _ids in _ask.INNATE_SKILLS_MAP.items():

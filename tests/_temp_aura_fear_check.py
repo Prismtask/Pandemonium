@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.status_effects import (
+from pandemonium.combat.status_effects import (
     apply_damage_taken_up, get_damage_taken_multiplier, has_fear_immunity,
     tick_enemy_debuffs,
 )
@@ -45,7 +45,7 @@ assert not has_fear_immunity(p)
 p["active_buffs"].append({"type": "fear_immunity", "remaining": 2})
 assert has_fear_immunity(p)
 
-from combat.wl_floor_bosses import _apply_fear
+from pandemonium.combat.wl_floor_bosses import _apply_fear
 immune = {"name": "You", "current_hp": 50,
           "active_buffs": [{"type": "fear_immunity", "remaining": 2}],
           "active_debuffs": []}
@@ -57,7 +57,7 @@ assert open_target["active_debuffs"][0]["type"] == "fear"
 print("OK: floor-boss fear blocked by immunity, applied without it")
 
 # ── read sites: all four attack paths + witch immunity wiring ──
-from combat import player_actions, skills, ally, ally_skills, wicked_witch
+from pandemonium.combat import player_actions, skills, ally, ally_skills, wicked_witch
 for mod in (player_actions, skills, ally, ally_skills):
     assert "get_damage_taken_multiplier" in inspect.getsource(mod), mod.__name__
 assert "has_fear_immunity" in inspect.getsource(wicked_witch)

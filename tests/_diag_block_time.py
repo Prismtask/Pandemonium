@@ -14,12 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import events
-import facilities.dispatch as dispatch_mod
-import facilities.guild as guild_mod
-import facilities.monthly_billing as billing_mod
-import time_blocks as tb
-from resources.cities import CITIES
+import pandemonium.core.events as events
+import pandemonium.facilities.dispatch as dispatch_mod
+import pandemonium.facilities.guild as guild_mod
+import pandemonium.facilities.monthly_billing as billing_mod
+import pandemonium.core.time_blocks as tb
+from pandemonium.resources.cities import CITIES
 
 
 def make_player(**kw):

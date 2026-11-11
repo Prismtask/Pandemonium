@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.ally_skills import (
+from pandemonium.combat.ally_skills import (
     UPGRADE_SKILL_IDS,
     MAX_LEARNED_SKILLS,
     is_upgrade_skill,
@@ -23,9 +23,9 @@ from combat.ally_skills import (
     grant_dorothy_upgrade_skill,
     revert_dorothy_to_normal_skills,
 )
-from combat.ally import _ally_to_house_record
-from character import _reconcile_heroine_vorpal_skills
-import facilities.barracks  # smoke: module imports cleanly with the new filter
+from pandemonium.combat.ally import _ally_to_house_record
+from pandemonium.core.character import _reconcile_heroine_vorpal_skills
+import pandemonium.facilities.barracks as barracks # smoke: module imports cleanly with the new filter
 
 print("=== Heroine upgrade-skill category check ===")
 

@@ -26,10 +26,10 @@ try:  # piped/redirected runs on Windows default to cp932
 except Exception:
     pass
 
-from character import ensure_player_fields
-from leveling import cities_in_biome, get_biomes_cleared_to_cap
-from resources.cities import CITIES
-from save_load import load_game
+from pandemonium.core.character import ensure_player_fields
+from pandemonium.progression.leveling import cities_in_biome, get_biomes_cleared_to_cap
+from pandemonium.resources.cities import CITIES
+from pandemonium.core.save_load import load_game
 
 failures = []
 

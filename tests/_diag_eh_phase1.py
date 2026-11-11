@@ -23,21 +23,21 @@ def check(label, cond, detail=""):
 
 
 # 1. Imports of every touched module (catches cycles / syntax regressions)
-import combat.stats          # noqa: E402
-import combat.skills         # noqa: E402
-import combat.ally           # noqa: E402
-import combat.ally_skills    # noqa: E402
-import combat.enemy_ai       # noqa: E402
-import combat.combat_engine  # noqa: E402
-import character             # noqa: E402
-import utils                 # noqa: E402
-import save_load             # noqa: E402
-import event_horizon as eh   # noqa: E402
+import pandemonium.combat.stats as stats # noqa: E402
+import pandemonium.combat.skills as skills # noqa: E402
+import pandemonium.combat.ally as ally # noqa: E402
+import pandemonium.combat.ally_skills as ally_skills # noqa: E402
+import pandemonium.combat.enemy_ai as enemy_ai # noqa: E402
+import pandemonium.combat.combat_engine as combat_engine # noqa: E402
+import pandemonium.core.character as character # noqa: E402
+import pandemonium.core.utils as utils # noqa: E402
+import pandemonium.core.save_load as save_load # noqa: E402
+import pandemonium.world.event_horizon as eh # noqa: E402
 
 check("module imports", True)
 
 # 2. Every weapon item has a formal weapon_type
-from resources.items import ITEMS, build_item  # noqa: E402
+from pandemonium.resources.items import ITEMS, build_item  # noqa: E402
 
 weapons = {k: v for k, v in ITEMS.items() if v.get("slot") == "weapon"}
 missing = [k for k, v in weapons.items() if not v.get("weapon_type")]
@@ -58,7 +58,7 @@ for item_id in ("chance_and_choice", "old_dopo_robe", "piece_of_relationship"):
 check("POR is player_only", bool(ITEMS["piece_of_relationship"].get("player_only")))
 
 # 4. enemy_stats hook runs both outside and inside a run
-from combat.stats import enemy_stats  # noqa: E402
+from pandemonium.combat.stats import enemy_stats  # noqa: E402
 
 
 def _fake_player(run=False):
@@ -86,7 +86,7 @@ try:
           f"{base['hp']} -> {scaled['hp']}")
 except KeyError:
     print("[skip] 'goblin_scout' not in ENEMIES — trying any enemy")
-    from resources.enemies import ENEMIES  # noqa: E402
+    from pandemonium.resources.enemies import ENEMIES  # noqa: E402
     k = next(kk for kk, vv in ENEMIES.items()
              if not vv.get("super_boss") and not vv.get("minion_only")
              and not vv.get("_heroin") and not vv.get("_heroine"))
@@ -96,7 +96,7 @@ except KeyError:
           f"{base['hp']} -> {scaled['hp']}")
 
 # 5. Entropy read in effective attribute
-from combat.stats import get_effective_attribute  # noqa: E402
+from pandemonium.combat.stats import get_effective_attribute  # noqa: E402
 
 p = _fake_player(True)
 eh.ensure_eh_state(p)["room"] = 60

@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.status_effects import tick_player_buffs, tick_enemy_debuffs
+from pandemonium.combat.status_effects import tick_player_buffs, tick_enemy_debuffs
 
 
 def make_player():
@@ -60,7 +60,7 @@ print("OK: superboss buffs left to module post_round hooks (template lookup)")
 
 # --- Hookup: percentage damage buffs are read in all three attack modules ---
 # (centralised in status_effects.get_damage_buff_multiplier; sources stack additively)
-from combat import player_actions, skills, enemy_ai
+from pandemonium.combat import player_actions, skills, enemy_ai
 for mod in (player_actions, skills, enemy_ai):
     src = inspect.getsource(mod)
     assert "get_damage_buff_multiplier" in src, f"no damage-buff read in {mod.__name__}"

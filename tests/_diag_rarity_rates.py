@@ -12,10 +12,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import dungeon
-from facilities.shop import _gate_legendary, SHOP_LEGENDARY_MIN_GRADE
-from resources.item_generation import dungeon_biome
-from facilities import travel_events
+import pandemonium.world.dungeon as dungeon
+from pandemonium.facilities.shop import _gate_legendary, SHOP_LEGENDARY_MIN_GRADE
+from pandemonium.resources.item_generation import dungeon_biome
+from pandemonium.facilities import travel_events
 
 failures = []
 
@@ -69,7 +69,7 @@ for label, level, pande, expected in CASES:
     near(label, legendaries / samples, expected)
 
 print("=== Base forms pass rarity through (no grade softening) ===")
-from resources.items import soften_rarity
+from pandemonium.resources.items import soften_rarity
 check("soften is identity for base forms", soften_rarity("greatsword", "legendary"), "legendary")
 check("soften is identity for epic base forms", soften_rarity("greatsword", "epic"), "epic")
 

@@ -9,7 +9,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from character import ensure_player_fields
+from pandemonium.core.character import ensure_player_fields
 
 PATH = os.path.join(ROOT, "savefile", "savegame_1.json")
 with open(PATH, encoding="utf-8") as f:

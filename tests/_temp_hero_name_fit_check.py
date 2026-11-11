@@ -13,10 +13,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gui.screens.city_screen import (
+from pandemonium.gui.screens.city_screen import (
     CityScreen, HERO_CARD_MAX_SLOTS, HERO_ROW_EXTRAS_MAX, _fit_text_to_width,
 )
-from gui.theme import Theme
+from pandemonium.gui.theme import Theme
 
 
 class DummyScreen:
@@ -49,7 +49,7 @@ def main():
     print("OK — _fit_text_to_width respects the pixel budget")
 
     # 2. Fixed 8-actor slots, even with only 2 members, at the min window.
-    from gui.widgets.hp_bar import HPBar
+    from pandemonium.gui.widgets.hp_bar import HPBar
 
     frame = tk.Frame(root)
     frame.pack()

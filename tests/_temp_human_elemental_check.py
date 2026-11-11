@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from combat.elemental import compute_enemy_elemental, DEFAULT_ATTACK_MULTIPLIER
-from combat.combat_ui import _get_entity_elem_tags
+from pandemonium.combat.elemental import compute_enemy_elemental, DEFAULT_ATTACK_MULTIPLIER
+from pandemonium.combat.combat_ui import _get_entity_elem_tags
 
 
 def profile(key):

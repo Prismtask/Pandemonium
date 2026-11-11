@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.ally import (
+from pandemonium.combat.ally import (
     ALLY_LEVEL_STAT_BONUS,
     GROWTH_TARGET_SUM,
     _ally_to_house_record,
@@ -15,7 +15,7 @@ from combat.ally import (
     get_growth_label,
     get_growth_rate,
 )
-from resources.enemies import ENEMIES
+from pandemonium.resources.enemies import ENEMIES
 
 print("=== Growth system check (docs/awakening_design.md Part A) ===")
 
@@ -125,7 +125,7 @@ assert msgs, "expected a catch-up grant"
 print(f"9. legacy save: first application grants floor((L-1)×rate) = +{expected} once  [ok]")
 
 # ── 10. gain_exp_ally integration (monkeypatched UI) ─────────────────────
-import leveling
+import pandemonium.progression.leveling as leveling
 
 leveling._choose_level_attr = lambda name, level, attrs: ("Strength", False)
 shown = []

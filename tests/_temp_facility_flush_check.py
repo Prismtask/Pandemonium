@@ -7,7 +7,7 @@ import queue
 import tkinter as tk
 
 sys.path.insert(0, "c:/Code/Pandemonium")
-from gui.screens.facility_screen import FacilityScreen
+from pandemonium.gui.screens.facility_screen import FacilityScreen
 
 root = tk.Tk()
 root.withdraw()

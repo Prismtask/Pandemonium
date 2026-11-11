@@ -20,11 +20,11 @@ try:
 except Exception:
     pass
 
-from combat.combat_io import BaseCombatIO, set_io
-from combat.ally import (get_all_active_allies_including_defeated,
+from pandemonium.combat.combat_io import BaseCombatIO, set_io
+from pandemonium.combat.ally import (get_all_active_allies_including_defeated,
                          get_all_reserve_allies_including_defeated)
-from resources.races_classes import ATTRIBUTES
-import combat.combat_engine as ce
+from pandemonium.resources.races_classes import ATTRIBUTES
+import pandemonium.combat.combat_engine as ce
 
 
 def make_ally(name, hp=30, max_hp=30):

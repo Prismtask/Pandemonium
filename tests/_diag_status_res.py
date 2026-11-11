@@ -8,9 +8,9 @@ import random
 
 sys.path.insert(0, ".")
 
-from resources.enemies import ENEMIES
-from combat.stats import enemy_stats
-from combat.status_effects import (
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.status_effects import (
     get_status_res,
     check_status_resisted,
     apply_bleed,

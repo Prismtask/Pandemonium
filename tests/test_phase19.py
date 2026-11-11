@@ -27,7 +27,7 @@ class TestPhase19Imports(unittest.TestCase):
     """Verify all Phase 19 modules import cleanly."""
 
     def test_wl_floor_bosses_imports(self):
-        from combat.wl_floor_bosses import (
+        from pandemonium.combat.wl_floor_bosses import (
             WL_FLOOR_BOSS_MAP, get_wl_floor_boss, is_wl_boss_floor,
             white_rabbit_ai, cheshire_cat_ai, card_knight_ai,
             dormouse_captain_ai, peter_pan_ai, ticktock_croc_ai,
@@ -45,7 +45,7 @@ class TestPhase19Imports(unittest.TestCase):
 
     def test_enemy_ai_storybook(self):
         """Storybook race AI is available in get_race_extra_logic."""
-        from combat.enemy_ai import get_race_extra_logic
+        from pandemonium.combat.enemy_ai import get_race_extra_logic
         # Build a mock storybook enemy
         enemy = {"key": "wl_card_soldier_2", "hp": 20, "max_hp": 20,
                  "str_mod": 2, "name": "Card Soldier", "active_debuffs": [],
@@ -60,7 +60,7 @@ class TestPhase19Imports(unittest.TestCase):
 
     def test_storybook_race_ai_functional(self):
         """Directly test the Storybook race AI via a mock enemy."""
-        from combat.enemy_ai import get_race_extra_logic
+        from pandemonium.combat.enemy_ai import get_race_extra_logic
         # Jabberwock has primary race: Storybook
         enemy = {"key": "wl_jabberwock", "hp": 100, "max_hp": 200,
                  "str_mod": 5, "name": "Jabberwock", "active_debuffs": [],
@@ -82,25 +82,25 @@ class TestPhase19BossMap(unittest.TestCase):
                             42, 44, 46, 48]
 
     def test_all_20_bosses_registered(self):
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         self.assertEqual(len(WL_FLOOR_BOSS_MAP), 20,
                          f"Expected 20 floor bosses, got {len(WL_FLOOR_BOSS_MAP)}")
 
     def test_all_expected_floors_present(self):
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         for floor in self.EXPECTED_BOSS_FLOORS:
             self.assertIn(floor, WL_FLOOR_BOSS_MAP,
                           f"Floor {floor} missing from boss map")
 
     def test_no_extra_floors(self):
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         for floor in WL_FLOOR_BOSS_MAP:
             self.assertIn(floor, self.EXPECTED_BOSS_FLOORS,
                           f"Unexpected floor {floor} in boss map")
 
     def test_all_bosses_have_valid_keys(self):
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
-        from resources.enemies import ENEMIES
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.resources.enemies import ENEMIES
         for floor, (name, key, ai_fn) in WL_FLOOR_BOSS_MAP.items():
             self.assertIn(key, ENEMIES,
                           f"Boss key '{key}' (floor {floor}) not in ENEMIES")
@@ -165,13 +165,13 @@ class TestPhase19BossAI(unittest.TestCase):
         self.assertTrue(result is None or isinstance(result, str))
 
     def test_all_boss_ai_functions(self):
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         for floor, (name, key, ai_fn) in WL_FLOOR_BOSS_MAP.items():
             with self.subTest(floor=floor, boss=name):
                 self._test_ai_function(ai_fn, key)
 
     def test_white_rabbit_flees(self):
-        from combat.wl_floor_bosses import white_rabbit_ai
+        from pandemonium.combat.wl_floor_bosses import white_rabbit_ai
         enemy = dict(self.enemy)
         enemy["key"] = "wl_white_rabbit"
         enemy["hp"] = 2  # Very low HP
@@ -190,7 +190,7 @@ class TestPhase19BossAI(unittest.TestCase):
         self.assertTrue(fled, "White Rabbit should have fled in 20 attempts at low HP")
 
     def test_hyde_transforms(self):
-        from combat.wl_floor_bosses import mr_hyde_ai
+        from pandemonium.combat.wl_floor_bosses import mr_hyde_ai
         enemy = dict(self.enemy)
         enemy["key"] = "wl_hyde_boss"
         enemy["hp"] = 20  # Below 50%
@@ -202,7 +202,7 @@ class TestPhase19BossAI(unittest.TestCase):
                         "Hyde should have transformed below 50% HP")
 
     def test_scarecrow_learns(self):
-        from combat.wl_floor_bosses import scarecrow_king_ai
+        from pandemonium.combat.wl_floor_bosses import scarecrow_king_ai
         enemy = dict(self.enemy)
         enemy["key"] = "wl_scarecrow_king"
         enemy["hp"] = enemy["max_hp"]
@@ -215,14 +215,14 @@ class TestPhase19BossAI(unittest.TestCase):
 
     def test_snow_queen_freeze_shatter(self):
         from unittest import mock
-        from combat.wl_floor_bosses import snow_queen_ai
+        from pandemonium.combat.wl_floor_bosses import snow_queen_ai
         enemy = dict(self.enemy)
         enemy["key"] = "wl_snow_queen"
         enemy["hp"] = enemy["max_hp"]
         player = dict(self.player)
         # Advance to freeze timer trigger with the 40% freeze roll always
         # failing (deterministic — the raw roll is flaky by design)
-        with mock.patch("combat.wl_floor_bosses.random.random", return_value=0.99):
+        with mock.patch("pandemonium.combat.wl_floor_bosses.random.random", return_value=0.99):
             for _ in range(3):
                 snow_queen_ai(enemy, player, 0)
         # After 3 turns, freeze_timer >= 3
@@ -231,7 +231,7 @@ class TestPhase19BossAI(unittest.TestCase):
 
         # A successful roll freezes, resets the timer, and primes the
         # shatter combo
-        with mock.patch("combat.wl_floor_bosses.random.random", return_value=0.0):
+        with mock.patch("pandemonium.combat.wl_floor_bosses.random.random", return_value=0.0):
             snow_queen_ai(enemy, player, 0)
         self.assertEqual(enemy.get("_wl_freeze_timer"), 0,
                          "Timer should reset after a successful freeze")
@@ -243,7 +243,7 @@ class TestPhase19Dungeon(unittest.TestCase):
     """Verify dungeon floor generation works for wonderland."""
 
     def test_wonderland_boss_floor_detection(self):
-        from combat.wl_floor_bosses import is_wl_boss_floor
+        from pandemonium.combat.wl_floor_bosses import is_wl_boss_floor
         # Boss floors
         for f in [2, 4, 6, 8, 12, 14, 16, 18, 22, 24, 26, 28,
                    32, 34, 36, 38, 42, 44, 46, 48]:
@@ -257,8 +257,8 @@ class TestPhase19Dungeon(unittest.TestCase):
 
     def test_wonderland_floor_generation(self):
         """generate_floor with wonderland region uses correct boss keys."""
-        from dungeon import generate_floor
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.world.dungeon import generate_floor
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
 
         for floor in [2, 6, 12, 22, 32, 42]:
             rooms = generate_floor(floor, region="wonderland")
@@ -276,7 +276,7 @@ class TestPhase19Dungeon(unittest.TestCase):
 
     def test_non_wonderland_unchanged(self):
         """Non-wonderland floor generation is unaffected."""
-        from dungeon import generate_floor
+        from pandemonium.world.dungeon import generate_floor
         rooms = generate_floor(5, region="temperate")
         self.assertEqual(len(rooms), 10)
         self.assertTrue(rooms[9].get("is_boss"))
@@ -297,7 +297,7 @@ class TestPhase19EdgeCases(unittest.TestCase):
 
     def test_ai_with_zero_hp_enemy(self):
         """AI functions should handle dead enemy gracefully."""
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         for floor, (name, key, ai_fn) in WL_FLOOR_BOSS_MAP.items():
             with self.subTest(floor=floor, boss=name):
                 enemy = {
@@ -318,7 +318,7 @@ class TestPhase19EdgeCases(unittest.TestCase):
 
     def test_ai_with_nonexistent_key(self):
         """get_race_extra_logic handles unknown keys gracefully."""
-        from combat.enemy_ai import get_race_extra_logic
+        from pandemonium.combat.enemy_ai import get_race_extra_logic
         enemy = {"key": "nonexistent_enemy_key_12345", "hp": 10, "max_hp": 10}
         result = get_race_extra_logic(enemy)
         self.assertIsNone(result)
@@ -375,9 +375,9 @@ class TestPhase20Integration(unittest.TestCase):
 
     def test_full_boss_map_integration(self):
         """All 20 floor bosses are discoverable and combat-ready."""
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
-        from resources.enemies import ENEMIES
-        from combat.enemy_ai import get_race_extra_logic
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.resources.enemies import ENEMIES
+        from pandemonium.combat.enemy_ai import get_race_extra_logic
 
         for floor, (boss_name, boss_key, ai_fn) in WL_FLOOR_BOSS_MAP.items():
             with self.subTest(floor=floor, boss=boss_name):
@@ -404,7 +404,7 @@ class TestPhase20Integration(unittest.TestCase):
                                 f"No extra_logic for boss {boss_key}")
 
                 # 5. Dungeon floor generation works
-                from dungeon import generate_floor
+                from pandemonium.world.dungeon import generate_floor
                 rooms = generate_floor(floor, region="wonderland")
                 self.assertTrue(rooms[9].get("is_boss"))
                 self.assertEqual(rooms[9]["enemies"][0], boss_key)
@@ -423,7 +423,7 @@ class TestPhase20Integration(unittest.TestCase):
         self.assertGreaterEqual(player["day"], 60)
 
         # Condition 3: Looking Glass Shard in inventory
-        from resources.items import ITEMS
+        from pandemonium.resources.items import ITEMS
         self.assertIn("looking_glass_shard", ITEMS,
                       "looking_glass_shard should be defined in items")
         player["inventory"].append({
@@ -445,7 +445,7 @@ class TestPhase20Integration(unittest.TestCase):
 
     def test_wonderland_superboss_dispatch_exists(self):
         """Wonderland superboss dispatch handles all 5 superbosses."""
-        from dungeon import _WL_SUPERBOSS_MAP
+        from pandemonium.world.dungeon import _WL_SUPERBOSS_MAP
         expected = [10, 30, 40, 50]  # 20 (Big Bad Wolf) not yet in map
         for floor in expected:
             self.assertIn(floor, _WL_SUPERBOSS_MAP,
@@ -453,8 +453,8 @@ class TestPhase20Integration(unittest.TestCase):
 
     def test_dungeon_combat_with_wl_floor_boss(self):
         """Combat engine handles wonderland floor boss enemies."""
-        from combat.combat_engine import _combat_inner
-        from combat.combat_io import set_io, reset_io
+        from pandemonium.combat.combat_engine import _combat_inner
+        from pandemonium.combat.combat_io import set_io, reset_io
 
         class MockIO:
             def __init__(self, inputs):
@@ -494,7 +494,7 @@ class TestPhase20Integration(unittest.TestCase):
 
     def test_wl_floor_bosses_no_duplicate_keys(self):
         """Ensure no two floors share the same boss key."""
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         seen_keys = set()
         for floor, (name, key, _) in WL_FLOOR_BOSS_MAP.items():
             self.assertNotIn(key, seen_keys,
@@ -503,7 +503,7 @@ class TestPhase20Integration(unittest.TestCase):
 
     def test_wl_floor_bosses_sorted(self):
         """Ensure floor boss map is in ascending floor order."""
-        from combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         floors = list(WL_FLOOR_BOSS_MAP.keys())
         self.assertEqual(floors, sorted(floors),
                          "Floor boss map should be in ascending order")

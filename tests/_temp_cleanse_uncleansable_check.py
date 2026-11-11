@@ -7,7 +7,7 @@ WOUND = {"type": "bleed", "damage": 10, "remaining": 4, "source": "vorpal_wound"
 POISON = {"type": "poison", "damage": 3, "remaining": 2}
 
 # ── 1. Palette Alabaster self-cleanse (brush passive) ────────────────────────
-from combat.weapon.palette_brush import tick_palette_brush_passives
+from pandemonium.combat.weapon.palette_brush import tick_palette_brush_passives
 actor = {
     "name": "Palette", "_heroine_key": "palette", "brush_stance": "light",
     "equipped": {"weapon": {"id": "palette_brush"}},
@@ -18,7 +18,7 @@ assert len(actor["active_debuffs"]) == 1, actor["active_debuffs"]
 assert actor["active_debuffs"][0]["_uncleansable"] is True
 
 # ── 2. Ally skill cleanse paths (cleanse_all_debuffs / cleanse_one_debuff) ───
-from combat.ally_skills import execute_ally_skill
+from pandemonium.combat.ally_skills import execute_ally_skill
 
 
 def make_ally(debuffs):

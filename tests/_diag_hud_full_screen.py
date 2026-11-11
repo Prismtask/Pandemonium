@@ -12,8 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gui.screens.combat_screen import CombatScreen
-from gui.theme import Theme, WINDOW_DEFAULT_SIZE
+from pandemonium.gui.screens.combat_screen import CombatScreen
+from pandemonium.gui.theme import Theme, WINDOW_DEFAULT_SIZE
 
 
 class FakeSM:
@@ -117,7 +117,7 @@ def main():
     root = tk.Tk()
     root.title("HUD5")
     # Mirror the user's saved settings: 1536x793, font size 10
-    from gui.theme import set_font_size
+    from pandemonium.gui.theme import set_font_size
     set_font_size(10)
     root.geometry("1536x793")
     root.configure(bg=Theme.BG_DARK)
@@ -144,7 +144,7 @@ def main():
     # Populate action panel like the player's turn
     screen.action_panel.set_actions(player, screen.enemies)
 
-    from combat.stats import enemy_stats
+    from pandemonium.combat.stats import enemy_stats
     # Render a full wave first, then settle on the requested count — the
     # box heights must stay identical between the two states.
     for count in dict.fromkeys((5, n)):

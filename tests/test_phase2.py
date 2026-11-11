@@ -19,10 +19,10 @@ sys.path.insert(0, ".")
 
 from _tk_test_utils import shared_tk_root
 
-import combat.combat_io as combat_io
-from combat.combat_ui import format_combat_hud_data
-from combat.combat_engine import _combat_inner
-from combat.combat_io import TerminalIO, get_io, set_io, reset_io
+import pandemonium.combat.combat_io as combat_io
+from pandemonium.combat.combat_ui import format_combat_hud_data
+from pandemonium.combat.combat_engine import _combat_inner
+from pandemonium.combat.combat_io import TerminalIO, get_io, set_io, reset_io
 
 
 # ── Dummy data helpers ────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ def test_combat_engine_with_mock_io():
 
 def test_gui_combat_io_bridge():
     """GUICombatIO should bridge input/output via queues."""
-    from gui.screens.combat_screen import GUICombatIO
+    from pandemonium.gui.screens.combat_screen import GUICombatIO
 
     io = GUICombatIO()
     io.print("Hello combat")
@@ -221,7 +221,7 @@ def test_gui_combat_io_bridge():
 
 def test_combat_renderer_instantiation():
     """CombatRenderer should create without errors in a tk root."""
-    from gui.combat.combat_renderer import CombatRenderer
+    from pandemonium.gui.combat.combat_renderer import CombatRenderer
 
     root = shared_tk_root()
     renderer = CombatRenderer(root)
@@ -237,7 +237,7 @@ def test_combat_renderer_instantiation():
 
 def test_action_panel_instantiation():
     """ActionPanel should create buttons from action menu."""
-    from gui.combat.action_panel import ActionPanel
+    from pandemonium.gui.combat.action_panel import ActionPanel
 
     root = shared_tk_root()
     panel = ActionPanel(root, on_action=lambda k: None)
@@ -257,7 +257,7 @@ def test_action_panel_instantiation():
 def test_dungeon_combat_override():
     """dungeon.explore_dungeon should accept combat_override parameter."""
     import inspect
-    from dungeon import explore_dungeon
+    from pandemonium.world.dungeon import explore_dungeon
     sig = inspect.signature(explore_dungeon)
     assert "combat_override" in sig.parameters, "explore_dungeon must accept combat_override"
     print("PASS: test_dungeon_combat_override")

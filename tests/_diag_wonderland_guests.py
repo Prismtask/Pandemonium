@@ -17,12 +17,12 @@ try:
 except Exception:
     pass
 
-import leveling
+import pandemonium.progression.leveling as leveling
 leveling.gain_exp = lambda player, amount: None
 
-from character import build_character
-import wonderland_guests as wg
-from combat.ally import create_heroine_ally
+from pandemonium.core.character import build_character
+import pandemonium.world.wonderland_guests as wg
+from pandemonium.combat.ally import create_heroine_ally
 
 ATTRS = {"Strength": 5, "Constitution": 5, "Dexterity": 5,
          "Learning": 5, "Wisdom": 5, "Charisma": 5}

@@ -18,7 +18,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from facilities.house import get_house_data, save_house_data  # noqa: E402
+from pandemonium.facilities.house import get_house_data, save_house_data  # noqa: E402
 
 
 def make_player(origin_city="irondeep"):

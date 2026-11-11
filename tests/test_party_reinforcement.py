@@ -11,9 +11,9 @@ Run: c:/Code/Pandemonium/.venv/Scripts/python.exe -m pytest tests/test_party_rei
 
 import unittest
 
-from combat.ally import (ensure_party_order, get_active_limit,
+from pandemonium.combat.ally import (ensure_party_order, get_active_limit,
                          get_bench_limit, reinforce_fallen_allies)
-from resources.races_classes import ATTRIBUTES
+from pandemonium.resources.races_classes import ATTRIBUTES
 
 
 def make_ally(name, hp=50, max_hp=50, defeated=False):

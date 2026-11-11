@@ -2,9 +2,9 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-from combat.weapon import sky_piercer as sp
-import combat.skills as skills_mod
-import combat.ally_skills as ask
+from pandemonium.combat.weapon import sky_piercer as sp
+import pandemonium.combat.skills as skills_mod
+import pandemonium.combat.ally_skills as ask
 
 # Silence I/O
 def _quiet(*a, **k):

@@ -12,8 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gui.combat.combat_renderer import CombatRenderer, ENEMY_SLOTS
-from gui.theme import Theme
+from pandemonium.gui.combat.combat_renderer import CombatRenderer, ENEMY_SLOTS
+from pandemonium.gui.theme import Theme
 
 root = tk.Tk()
 root.title("enemy-slots-check")

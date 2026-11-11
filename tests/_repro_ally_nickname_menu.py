@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gui.screens.combat_screen import CombatScreen
+from pandemonium.gui.screens.combat_screen import CombatScreen
 
 
 class FakeSM:

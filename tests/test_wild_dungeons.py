@@ -17,7 +17,7 @@ Covers:
 import random
 import unittest
 
-from wild_dungeons import (
+from pandemonium.world.wild_dungeons import (
     ensure_wild_dungeon_state,
     get_active_dungeons,
     get_wild_dungeon,
@@ -39,9 +39,9 @@ from wild_dungeons import (
     WILD_OFFROAD_MIN_MINUTES,
     WILD_OFFROAD_MAX_MINUTES,
 )
-from resources.items import ITEMS
-from resources.cities import CITIES
-from resources.world_layout import map_bounds, city_node_centers
+from pandemonium.resources.items import ITEMS
+from pandemonium.resources.cities import CITIES
+from pandemonium.resources.world_layout import map_bounds, city_node_centers
 
 
 def make_player(day=1, max_floor=5):
@@ -457,7 +457,7 @@ class TestJourneyConstruction(WildDungeonTestCase):
 
     def test_terminal_journey_entry_fields(self):
         """_set_wild_entry sets the three routing fields used by exits."""
-        from facilities.travel import _set_wild_entry
+        from pandemonium.facilities.travel import _set_wild_entry
         player = make_player(day=10, max_floor=10)
         player["location"] = "solmere"
         _set_wild_entry(player, self._dungeon())
@@ -475,7 +475,7 @@ class TestDayRolloverHook(WildDungeonTestCase):
 
     def test_week_rollover_triggers_spawn_event(self):
         random.seed(51)
-        from events import process_day_rollover
+        from pandemonium.core.events import process_day_rollover
         player = make_player(day=1, max_floor=10)
         player["day"] = 8  # advance_time sets day before calling rollover
         events = process_day_rollover(player, days_passed=7, old_day=1)
@@ -486,7 +486,7 @@ class TestDayRolloverHook(WildDungeonTestCase):
 
     def test_short_advance_no_spawn(self):
         random.seed(52)
-        from events import process_day_rollover
+        from pandemonium.core.events import process_day_rollover
         player = make_player(day=1, max_floor=10)
         player["day"] = 2
         events = process_day_rollover(player, days_passed=1, old_day=1)

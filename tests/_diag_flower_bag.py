@@ -13,9 +13,9 @@ import tkinter as tk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from character import ensure_player_fields
-from resources.items import build_item
-from inventory import add_item_to_inventory, get_flower_items
+from pandemonium.core.character import ensure_player_fields
+from pandemonium.resources.items import build_item
+from pandemonium.inventory.inventory import add_item_to_inventory, get_flower_items
 
 _results = []
 
@@ -85,7 +85,7 @@ check("flower helper finds stacks", [i["id"] for i in get_flower_items(p)],
 root = tk.Tk()
 root.withdraw()
 
-from gui.screens.inventory_screen import InventoryScreen  # noqa: E402
+from pandemonium.gui.screens.inventory_screen import InventoryScreen  # noqa: E402
 
 scr = InventoryScreen(root, _StubSM(p))
 scr.update_idletasks()

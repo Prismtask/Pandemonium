@@ -3,9 +3,9 @@ import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
 import random
-import combat.weapon.palette_brush as pb
-import combat.weapon.blank_canvas_shawl as sh
-from combat.elemental import get_attack_element, calculate_elemental_damage
+import pandemonium.combat.weapon.palette_brush as pb
+import pandemonium.combat.weapon.blank_canvas_shawl as sh
+from pandemonium.combat.elemental import get_attack_element, calculate_elemental_damage
 
 # Silence output for deterministic test runs
 def _quiet(*a, **k):
@@ -192,7 +192,7 @@ assert s["blank_canvas_used"] is True
 assert s["afterimage_turns"] == 2 and s["afterimage_charges"] == 2
 
 # Afterimage blocks 2 debuffs
-from combat.status_effects import apply_poison, apply_bleed, apply_slow_to_player
+from pandemonium.combat.status_effects import apply_poison, apply_bleed, apply_slow_to_player
 assert apply_poison(s, 3, 2) is None
 assert apply_bleed(s, 4, 2) is None
 assert s.get("afterimage_charges", 0) == 0  # charges spent
@@ -222,7 +222,7 @@ fake_player["attributes"] = {"Constitution": 5, "Strength": 5, "Dexterity": 5,
                             "Wisdom": 5, "Learning": 5, "Charisma": 5}
 fake_player["active_debuffs"] = [{"type": "burn", "damage": 4, "remaining": 2}]
 fake_player["allies"] = [ally_member]
-import combat.ally
+import pandemonium.combat.ally as ally
 combat.ally.get_active_allies = lambda p: p.get("allies", [])
 msgs = sh.use_blank_canvas(palette_ally, False, fake_player)
 assert fake_player["active_debuffs"] == [], fake_player["active_debuffs"]
@@ -232,7 +232,7 @@ assert ally_member["current_hp"] == 40
 assert palette_ally["afterimage_turns"] == 2
 
 # ── 9. Paint gate respects Afterimage (boss module) ──
-import combat.palette_chromatic_artisan as pca
+import pandemonium.combat.palette_chromatic_artisan as pca
 pca.c_print = _quiet
 ctx = {"phase": 1, "current_color": "crimson", "fixative_turns": 0, "player_survived_burst": False}
 boss = {"name": "Palette", "level": 35}

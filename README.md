@@ -1142,19 +1142,24 @@ s     Swap party member (when an ally has fallen)
 - **Language:** Python 3 (developed on 3.14). One runtime dependency: **PyYAML**; the GUI uses tkinter, which is bundled with Python.
 - **Entry Point:** `launcher.py` (GUI; the PyInstaller target). Build to `.exe` with `make_exe.py`.
 - **Saves:** Stored in the `savefile/` folder as JSON. Multiple save slots supported; delete option available from main menu.
-- **Data:** Enemy and skill data are loaded from YAML files in `resources/` for easy modding. Family scene dialogue lives in `resources/family_scenes.yaml`.
+- **Data:** Enemy and skill data are loaded from YAML files in `pandemonium/resources/` for easy modding. Family scene dialogue lives in `pandemonium/resources/family_scenes.yaml`.
 - **Modular Design:** Easy to extend with new cities, enemies, items, superbosses, skills, or facilities.
 - **Save Compatibility:** New fields are automatically added to old save files when loaded with `character.py` migration.
 - **Tests:** `tests/` holds the pytest suite plus manual `_diag_*` / `_smoke_*` scripts — naming rules in `tests/README.md`.
 - **Project Structure:**
-  - `combat/` — Combat engine, AI, player actions, UI, stats, allies, superbosses (15 total), unique weapons
-  - `facilities/` — All city services (shop, inn, guild, blacksmith, temple, Godmother, etc.)
-  - `gui/` — tkinter GUI with screens (15), widgets (8), theme, terminal emulation
-  - `resources/` — Game data (enemies, items, skills, cities, dialogues)
+  - `pandemonium/` — the game package:
+    - `core/` — character state/migration, save/load, utilities, block time, date events, version
+    - `world/` — cities, dialogue, dungeons, rooms, Event Horizon, wild dungeons, Pandemonium/Wonderland curses
+    - `progression/` — leveling, quests, karma, family, dreams, titles, bestiary
+    - `inventory/` — inventory state and item-acquisition bridge
+    - `combat/` — Combat engine, AI, player actions, UI, stats, allies, superbosses (15 total), unique weapons
+    - `facilities/` — All city services (shop, inn, guild, blacksmith, temple, Godmother, etc.) and casino rules
+    - `gui/` — tkinter GUI with screens (15), widgets (8), theme, terminal emulation
+    - `resources/` — Game data (enemies, items, skills, cities, dialogues)
+  - `launcher.py` — GUI entry point (the PyInstaller target)
   - `tests/` — pytest suite and manual diagnostic scripts (see `tests/README.md`)
   - `scripts/` — dev tooling (`clean_pycache.ps1`)
-  - `wonderland_curses.py` — Wonderland quirk & shadow system
-  - `savefile/` — JSON save files (multiple slots)
+  - `savefile/` — JSON save files and GUI settings (multiple slots; not in git)
 
 ---
 

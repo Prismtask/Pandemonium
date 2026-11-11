@@ -26,11 +26,11 @@
 ## Wonderland Boss Schedule
 | Floor | Boss | File |
 |---|---|---|
-| F10 | Queen of Hearts | `./combat/queen_of_hearts.py` |
-| F20 | Wolf | `./combat/wl_floor_bosses.py` |
-| F30 | Wicked Witch | `./combat/wicked_witch.py` |
-| F40 | Jabberwock | `./combat/jabberwock.py` |
-| F50 | Mary Sue | `./combat/mary_sue.py` |
+| F10 | Queen of Hearts | `./pandemonium/combat/queen_of_hearts.py` |
+| F20 | Wolf | `./pandemonium/combat/wl_floor_bosses.py` |
+| F30 | Wicked Witch | `./pandemonium/combat/wicked_witch.py` |
+| F40 | Jabberwock | `./pandemonium/combat/jabberwock.py` |
+| F50 | Mary Sue | `./pandemonium/combat/mary_sue.py` |
 
 ## Dungeon Rooms
 - 10 rooms/floor, 10% non-combat chance.
@@ -44,7 +44,7 @@
 - **Architecture:** Screen-based (`BaseScreen` → subclasses), `ScreenManager` with back-stack.
 - **Theme:** Dark theme (`#1a1a2e` bg, `#e94560` accent), monospace font mandatory.
 - **Save Format:** JSON save files in `./savefile/`.
-- **Facility I/O:** Via `./gui/terminal.py` bridge.
-- **Widgets:** Under `./gui/widgets/` — `city_map`, `confirm_dialog`, `hp_bar`, `item_card`, `log_window`, `notification_toast`, `stat_display`.
-- **Combat Rendering:** ASCII combat HUD in tkinter text widget via `./gui/combat/combat_renderer.py`. Action buttons via `./gui/combat/action_panel.py`.
+- **Facility I/O:** Via `./pandemonium/gui/terminal.py` bridge.
+- **Widgets:** Under `./pandemonium/gui/widgets/` — `city_map`, `confirm_dialog`, `hp_bar`, `item_card`, `log_window`, `notification_toast`, `stat_display`.
+- **Combat Rendering:** ASCII combat HUD in tkinter text widget via `./pandemonium/gui/combat/combat_renderer.py`. Action buttons via `./pandemonium/gui/combat/action_panel.py`.
 - **Launcher:** `./launcher.py` is the PyInstaller entry point; sets up thread exception hooks, calls `gui.app.run_gui()`.

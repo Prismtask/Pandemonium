@@ -11,8 +11,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from combat.elemental import calculate_elemental_damage, resistance_multiplier
-from combat.dummy import create_dummy_enemy
+from pandemonium.combat.elemental import calculate_elemental_damage, resistance_multiplier
+from pandemonium.combat.dummy import create_dummy_enemy
 
 
 def dmg(res_rating, debuffs=None, buffs=None):

@@ -19,12 +19,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import events
-import gui.screens.city_screen as city_mod
-import gui.widgets.event_dialog as evdlg
-import time_blocks as tb
-from gui.screen_manager import ScreenManager
-from utils import advance_time
+import pandemonium.core.events as events
+import pandemonium.gui.screens.city_screen as city_mod
+import pandemonium.gui.widgets.event_dialog as evdlg
+import pandemonium.core.time_blocks as tb
+from pandemonium.gui.screen_manager import ScreenManager
+from pandemonium.core.utils import advance_time
 
 
 TEST_EVENT = {"name": "Test Omen", "desc": "The moons align.", "fixed": True}

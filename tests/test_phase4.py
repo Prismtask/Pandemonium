@@ -22,15 +22,15 @@ class TestPhase4Settings(unittest.TestCase):
     """Verify settings persistence."""
 
     def test_load_defaults(self):
-        from gui.settings import load_settings, DEFAULT_SETTINGS
+        from pandemonium.gui.settings import load_settings, DEFAULT_SETTINGS
         s = load_settings()
         self.assertIn("font_size", s)
         self.assertIn("window_size", s)
         self.assertEqual(s["font_size"], DEFAULT_SETTINGS["font_size"])
 
     def test_save_and_reload(self):
-        from gui.settings import load_settings, save_settings, DEFAULT_SETTINGS
-        import gui.settings as gs
+        from pandemonium.gui.settings import load_settings, save_settings, DEFAULT_SETTINGS
+        import pandemonium.gui.settings as gs
         # Use a temp file
         orig = gs.SETTINGS_FILE
         try:
@@ -51,7 +51,7 @@ class TestPhase4DeathPenalty(unittest.TestCase):
     """Verify apply_death_penalty works correctly."""
 
     def test_penalty_applied(self):
-        from utils import apply_death_penalty
+        from pandemonium.core.utils import apply_death_penalty
         # Use a mock player to avoid save side-effects
         save_file = os.path.join("savefile", "savegame_99.json")
         player = {
@@ -90,31 +90,31 @@ class TestPhase4Imports(unittest.TestCase):
     """Verify all Phase 4 modules import cleanly."""
 
     def test_settings_screen_import(self):
-        from gui.screens.settings_screen import SettingsScreen
+        from pandemonium.gui.screens.settings_screen import SettingsScreen
         self.assertTrue(callable(SettingsScreen))
 
     def test_death_screen_import(self):
-        from gui.screens.death_screen import DeathScreen
+        from pandemonium.gui.screens.death_screen import DeathScreen
         self.assertTrue(callable(DeathScreen))
 
     def test_post_floor_screen_import(self):
-        from gui.screens.post_floor_screen import PostFloorScreen
+        from pandemonium.gui.screens.post_floor_screen import PostFloorScreen
         self.assertTrue(callable(PostFloorScreen))
 
     def test_splash_screen_import(self):
-        from gui.screens.splash_screen import SplashScreen
+        from pandemonium.gui.screens.splash_screen import SplashScreen
         self.assertTrue(callable(SplashScreen))
 
     def test_notification_toast_import(self):
-        from gui.widgets.notification_toast import NotificationToast
+        from pandemonium.gui.widgets.notification_toast import NotificationToast
         self.assertTrue(callable(NotificationToast))
 
     def test_log_window_import(self):
-        from gui.widgets.log_window import LogWindow
+        from pandemonium.gui.widgets.log_window import LogWindow
         self.assertTrue(callable(LogWindow))
 
     def test_settings_module_import(self):
-        from gui import settings
+        from pandemonium.gui import settings
         self.assertTrue(callable(settings.load_settings))
         self.assertTrue(callable(settings.save_settings))
 
@@ -125,29 +125,29 @@ class TestPhase4Screens(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.root = shared_tk_root()
-        from gui.screen_manager import ScreenManager
+        from pandemonium.gui.screen_manager import ScreenManager
         cls.sm = ScreenManager(cls.root, player={"name": "Test", "gold": 100, "location": "solmere"})
 
     def test_settings_screen_instantiation(self):
-        from gui.screens.settings_screen import SettingsScreen
+        from pandemonium.gui.screens.settings_screen import SettingsScreen
         s = SettingsScreen(self.root, self.sm)
         self.assertIsNotNone(s)
         s.destroy()
 
     def test_death_screen_instantiation(self):
-        from gui.screens.death_screen import DeathScreen
+        from pandemonium.gui.screens.death_screen import DeathScreen
         s = DeathScreen(self.root, self.sm, floor=7, city_id="solmere")
         self.assertIsNotNone(s)
         s.destroy()
 
     def test_post_floor_screen_instantiation(self):
-        from gui.screens.post_floor_screen import PostFloorScreen
+        from pandemonium.gui.screens.post_floor_screen import PostFloorScreen
         s = PostFloorScreen(self.root, self.sm, floor=7, loot=["Sword"], xp=500, gold=200)
         self.assertIsNotNone(s)
         s.destroy()
 
     def test_splash_screen_instantiation(self):
-        from gui.screens.splash_screen import SplashScreen
+        from pandemonium.gui.screens.splash_screen import SplashScreen
         s = SplashScreen(self.root, self.sm)
         self.assertIsNotNone(s)
         s.destroy()
@@ -159,44 +159,44 @@ class TestPhase4KeyboardSupport(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.root = shared_tk_root()
-        from gui.screen_manager import ScreenManager
+        from pandemonium.gui.screen_manager import ScreenManager
         cls.sm = ScreenManager(cls.root)
 
     def test_base_screen_has_handle_escape(self):
-        from gui.screens.base_screen import BaseScreen
+        from pandemonium.gui.screens.base_screen import BaseScreen
         self.assertTrue(hasattr(BaseScreen, "handle_escape"))
 
     def test_combat_screen_has_handle_escape(self):
-        from gui.screens.combat_screen import CombatScreen
+        from pandemonium.gui.screens.combat_screen import CombatScreen
         self.assertTrue(hasattr(CombatScreen, "handle_escape"))
 
     def test_city_screen_has_handle_escape(self):
-        from gui.screens.city_screen import CityScreen
+        from pandemonium.gui.screens.city_screen import CityScreen
         self.assertTrue(hasattr(CityScreen, "handle_escape"))
 
     def test_inventory_screen_has_handle_escape(self):
-        from gui.screens.inventory_screen import InventoryScreen
+        from pandemonium.gui.screens.inventory_screen import InventoryScreen
         self.assertTrue(hasattr(InventoryScreen, "handle_escape"))
 
     def test_facility_screen_has_handle_escape(self):
-        from gui.screens.facility_screen import FacilityScreen
+        from pandemonium.gui.screens.facility_screen import FacilityScreen
         self.assertTrue(hasattr(FacilityScreen, "handle_escape"))
 
     def test_char_create_screen_has_handle_escape(self):
-        from gui.screens.char_create_screen import CharCreateScreen
+        from pandemonium.gui.screens.char_create_screen import CharCreateScreen
         self.assertTrue(hasattr(CharCreateScreen, "handle_escape"))
 
     def test_dungeon_screen_has_handle_escape(self):
-        from gui.screens.dungeon_screen import DungeonScreen
+        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
         self.assertTrue(hasattr(DungeonScreen, "handle_escape"))
 
     def test_combat_screen_has_key_binds(self):
-        from gui.screens.combat_screen import CombatScreen
+        from pandemonium.gui.screens.combat_screen import CombatScreen
         self.assertTrue(hasattr(CombatScreen, "_setup_key_binds"))
         self.assertTrue(hasattr(CombatScreen, "_on_key"))
 
     def test_app_has_global_bindings(self):
-        from gui.app import PandemoniumApp
+        from pandemonium.gui.app import PandemoniumApp
         self.assertTrue(hasattr(PandemoniumApp, "_setup_global_bindings"))
         self.assertTrue(hasattr(PandemoniumApp, "_on_global_escape"))
         self.assertTrue(hasattr(PandemoniumApp, "_on_inventory_key"))
@@ -206,15 +206,15 @@ class TestPhase4Utils(unittest.TestCase):
     """Verify utils changes."""
 
     def test_apply_death_penalty_exists(self):
-        from utils import apply_death_penalty
+        from pandemonium.core.utils import apply_death_penalty
         self.assertTrue(callable(apply_death_penalty))
 
     def test_set_font_size_exists(self):
-        from gui.theme import set_font_size
+        from pandemonium.gui.theme import set_font_size
         self.assertTrue(callable(set_font_size))
 
     def test_screen_manager_has_new_methods(self):
-        from gui.screen_manager import ScreenManager
+        from pandemonium.gui.screen_manager import ScreenManager
         self.assertTrue(hasattr(ScreenManager, "refresh_top_bar"))
         self.assertTrue(hasattr(ScreenManager, "show_toast"))
         self.assertTrue(hasattr(ScreenManager, "_open_log_window"))

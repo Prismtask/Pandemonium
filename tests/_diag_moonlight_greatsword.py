@@ -17,9 +17,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import combat.weapon.moonlight_greatsword as moon
-from resources.items import ITEMS, build_item
-from resources.unique_effects import unique_effect_text
+import pandemonium.combat.weapon.moonlight_greatsword as moon
+from pandemonium.resources.items import ITEMS, build_item
+from pandemonium.resources.unique_effects import unique_effect_text
 
 _failures = []
 _logs = []
@@ -138,7 +138,7 @@ check("clear resets all fields",
       actor_to_clear)
 
 # ── 3. Action menu ───────────────────────────────────────────────────────
-from combat.action_menu import get_action_menu
+from pandemonium.combat.action_menu import get_action_menu
 
 player = make_player(item)
 menu, valid, _disabled = get_action_menu(player, enemies)
@@ -182,7 +182,7 @@ check("ally AoE damages all", all(e["hp"] < e["max_hp"] for e in enemies),
       [e["hp"] for e in enemies])
 
 # ── 5. Turn-handler integration (player 'a' action) ──────────────────────
-import combat.player_actions as pa
+import pandemonium.combat.player_actions as pa
 
 pa.c_print = _capture
 pa.c_input = lambda *a, **k: "1"
@@ -199,7 +199,7 @@ check("turn handler damages every enemy",
       all(e["hp"] < e["max_hp"] for e in enemies), [e["hp"] for e in enemies])
 
 # ── 6. Guild Legendary Rewards claim ─────────────────────────────────────
-import facilities.guild as guild_mod
+import pandemonium.facilities.guild as guild_mod
 
 
 class _QuietTerm:

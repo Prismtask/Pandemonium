@@ -8,16 +8,16 @@ consumers that must count unique biomes instead of city records.
 
 import unittest
 
-from leveling import (
+from pandemonium.progression.leveling import (
     cities_in_biome,
     get_shared_biome_max_floor,
     get_biomes_cleared_to_cap,
     is_pandemonium_unlocked,
     sync_biome_dungeon_depth,
 )
-from titles import _floors_cleared
-from events import check_wonderland_unlock_conditions
-from dungeon import _ensure_city_floors, _advance_city_floor
+from pandemonium.progression.titles import _floors_cleared
+from pandemonium.core.events import check_wonderland_unlock_conditions
+from pandemonium.world.dungeon import _ensure_city_floors, _advance_city_floor
 
 
 def make_player(city_floors=None, max_floor=1, **extra):

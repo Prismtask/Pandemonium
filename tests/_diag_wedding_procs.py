@@ -18,8 +18,8 @@ try:
 except Exception:
     pass
 
-from character import build_character
-from resources.items import build_item
+from pandemonium.core.character import build_character
+from pandemonium.resources.items import build_item
 
 ATTRS = {"Strength": 5, "Constitution": 5, "Dexterity": 5,
          "Learning": 5, "Wisdom": 5, "Charisma": 5}
@@ -41,7 +41,7 @@ def has_burn(enemy):
 
 
 def main():
-    from combat.weapon import black_silence_gloves as g
+    from pandemonium.combat.weapon import black_silence_gloves as g
 
     # 1. Workshop hit procs the wedding on-hit (legendary_flame burn).
     player = make_player()
@@ -59,7 +59,7 @@ def main():
     print("OK — Furioso hit procs wedding on-hit (burn)")
 
     # 3. Skill hits proc via execute_skill (skills count as attacks now).
-    from combat.skills import get_available_skills, execute_skill, unlock_skills_for_level
+    from pandemonium.combat.skills import get_available_skills, execute_skill, unlock_skills_for_level
     player3 = make_player()
     player3["level"] = 20                      # fresh characters have no skills yet
     unlock_skills_for_level(player3)
@@ -96,7 +96,7 @@ def main():
     print("OK — bonded Stardust Crown burn procs")
 
     # 6. Blurb table speaks burn-tier names (Burn / Blaze), not pre-rework numbers.
-    from combat.weapon.wedding_specials import wedding_special_blurb
+    from pandemonium.combat.weapon.wedding_specials import wedding_special_blurb
     base_blurb = wedding_special_blurb("legendary_flame")
     bonded_blurb = wedding_special_blurb("legendary_flame", bonded=True)
     assert "Burn" in base_blurb and "6" not in base_blurb, f"stale base blurb: {base_blurb!r}"

@@ -20,19 +20,19 @@ except Exception:
     pass
 
 # Headless runs must never open the level-up UI, and must never write saves.
-import leveling
+import pandemonium.progression.leveling as leveling
 AWARDED = []
 leveling.gain_exp = lambda player, amount: AWARDED.append(int(amount))
 leveling.gain_exp_ally = lambda ally, amount: None
-import save_load
+import pandemonium.core.save_load as save_load
 save_load.save_game = lambda player: None
 
-from character import build_character, ensure_player_fields
-import dreams
-from resources.dreams import DREAMS, get_dream, dream_location_allowed
-import family
-from combat.stats import get_effective_attribute
-from combat.combat_ui import _get_entity_buff_tags
+from pandemonium.core.character import build_character, ensure_player_fields
+import pandemonium.progression.dreams as dreams
+from pandemonium.resources.dreams import DREAMS, get_dream, dream_location_allowed
+import pandemonium.progression.family as family
+from pandemonium.combat.stats import get_effective_attribute
+from pandemonium.combat.combat_ui import _get_entity_buff_tags
 
 ATTRS = {"Strength": 5, "Constitution": 5, "Dexterity": 5,
          "Learning": 5, "Wisdom": 5, "Charisma": 5}
@@ -471,7 +471,7 @@ check("story trigger is idempotent",
       dreams.check_story_triggers(player) == []
       and player["dreams"]["queue"].count("dream_first_shared_night") == 1)
 
-import family as family_mod
+import pandemonium.progression.family as family_mod
 _real_content = family_mod.get_content_level
 try:
     family_mod.get_content_level = lambda settings=None: "off"

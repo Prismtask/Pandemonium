@@ -15,7 +15,7 @@ inventory overlay can no longer dismiss a live combat overlay.
 
 import tkinter as tk
 
-from gui.screen_manager import ScreenManager
+from pandemonium.gui.screen_manager import ScreenManager
 
 
 class DummyCity(tk.Frame):
@@ -70,14 +70,14 @@ def main():
     print("current screen:", type(sm.current_screen).__name__ if sm.current_screen else None)
 
     # Also verify the real WorldMapScreen now overrides the destructive default
-    from gui.screens.world_map_screen import WorldMapScreen
-    from gui.screens.base_screen import BaseScreen
+    from pandemonium.gui.screens.world_map_screen import WorldMapScreen
+    from pandemonium.gui.screens.base_screen import BaseScreen
     print("WorldMapScreen.handle_escape overridden:",
           WorldMapScreen.handle_escape is not BaseScreen.handle_escape)
 
     # ── Global 'I' key routing (gui/app.py::_on_inventory_key) ──────────
-    from gui.app import PandemoniumApp
-    from gui.screens.dungeon_screen import DungeonScreen
+    from pandemonium.gui.app import PandemoniumApp
+    from pandemonium.gui.screens.dungeon_screen import DungeonScreen
 
     class FakeApp:
         def __init__(self, screen_manager):

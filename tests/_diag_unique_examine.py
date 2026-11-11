@@ -20,10 +20,10 @@ import tkinter as tk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import event_horizon as eh
-from character import ensure_player_fields
-from resources.items import ITEMS, build_item
-from resources.unique_effects import UNIQUE_EFFECTS, unique_effect_text
+import pandemonium.world.event_horizon as eh
+from pandemonium.core.character import ensure_player_fields
+from pandemonium.resources.items import ITEMS, build_item
+from pandemonium.resources.unique_effects import UNIQUE_EFFECTS, unique_effect_text
 
 _results = []
 
@@ -90,7 +90,7 @@ def _walk(w):
 
 
 # ── 1. Registry coverage ────────────────────────────────────────────────────
-from combat.weapon.wedding_specials import wedding_special_blurb  # noqa: E402
+from pandemonium.combat.weapon.wedding_specials import wedding_special_blurb  # noqa: E402
 
 missing = []
 for item_id, base in ITEMS.items():
@@ -111,8 +111,8 @@ check("no orphan UNIQUE_EFFECTS keys", not typos, ", ".join(typos))
 root = tk.Tk()
 root.withdraw()
 
-import gui.widgets.confirm_dialog as confirm_mod  # noqa: E402
-from gui.screens.inventory_screen import InventoryScreen  # noqa: E402
+import pandemonium.gui.widgets.confirm_dialog as confirm_mod # noqa: E402
+from pandemonium.gui.screens.inventory_screen import InventoryScreen  # noqa: E402
 
 captured = {}
 

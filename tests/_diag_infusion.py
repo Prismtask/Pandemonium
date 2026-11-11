@@ -8,13 +8,13 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import ITEMS, build_item, intrinsic_value
-from resources.item_generation import (
+from pandemonium.resources.items import ITEMS, build_item, intrinsic_value
+from pandemonium.resources.item_generation import (
     BASE_FORM_IDS, WEAPON_SLOT_CAPS, apply_infusion,
     pick_weapon_id, pick_family_id, pick_equipment_id,
 )
-from combat.elemental_traits import get_trait_for_weapon
-from character import (
+from pandemonium.combat.elemental_traits import get_trait_for_weapon
+from pandemonium.core.character import (
     _migrate_item_instance_v4, _refresh_base_form_name, _refresh_unique_instance,
 )
 
@@ -125,7 +125,7 @@ check("slot 2 keeps the first element as primary",
 
 # The wearer's merged profile now resists both elements — the old water
 # drawback is covered, which is the endgame defence fix.
-from combat.elemental import compute_player_elemental
+from pandemonium.combat.elemental import compute_player_elemental
 wearer_res, _ = compute_player_elemental(
     {"race": "Human", "class": "Warrior",
      "equipped": {"armor": multi_plate}})

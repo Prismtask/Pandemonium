@@ -18,15 +18,15 @@ except Exception:
     pass
 
 # Headless runs must never open the level-up UI, and must never write saves.
-import leveling
+import pandemonium.progression.leveling as leveling
 leveling.gain_exp = lambda player, amount: None
-import save_load
+import pandemonium.core.save_load as save_load
 save_load.save_game = lambda player: None
 
-from character import build_character
-from resources.house_stories import HOUSE_STORIES, ensure_state, get_part
-import facilities.house_stories as hs
-import quests
+from pandemonium.core.character import build_character
+from pandemonium.resources.house_stories import HOUSE_STORIES, ensure_state, get_part
+import pandemonium.facilities.house_stories as hs
+import pandemonium.progression.quests as quests
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────

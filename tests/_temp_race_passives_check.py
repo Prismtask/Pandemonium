@@ -6,8 +6,8 @@ import random
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.ally import get_ally_effective_attribute
-from combat.ally_skills import (
+from pandemonium.combat.ally import get_ally_effective_attribute
+from pandemonium.combat.ally_skills import (
     RACE_PASSIVES,
     get_race_damage_multiplier,
     get_race_damage_reduction,
@@ -19,8 +19,8 @@ from combat.ally_skills import (
     is_heal_blocked,
     maybe_stun_on_basic,
 )
-from combat.status_effects import apply_bleed, apply_healing, apply_poison
-from resources.enemies import ENEMY_RACES
+from pandemonium.combat.status_effects import apply_bleed, apply_healing, apply_poison
+from pandemonium.resources.enemies import ENEMY_RACES
 
 ATTRS = ("Strength", "Constitution", "Dexterity", "Wisdom", "Learning", "Charisma")
 
@@ -79,7 +79,7 @@ assert get_race_evasion({"race": "Human"}) == 0.0
 print("3. typed helpers: lifesteal / DR / regen / evasion  [ok]")
 
 # ── 4. Dodge integration (race evasion reaches get_dodge_chance) ─────────
-from combat.stats import get_dodge_chance
+from pandemonium.combat.stats import get_dodge_chance
 
 attacker = {"dex_mod": 10, "active_buffs": [], "active_debuffs": []}
 fey = make_ally("Fey")
@@ -91,7 +91,7 @@ assert get_dodge_chance(shadow, attacker) - base_dodge >= 0.1499
 print("4. dodge: Goblin +20% / Shadow +15% applied  [ok]")
 
 # ── 5. Elemental profiles ────────────────────────────────────────────────
-from combat.elemental import compute_ally_elemental
+from pandemonium.combat.elemental import compute_ally_elemental
 
 def elemental(key, race):
     return compute_ally_elemental({"key": key, "race": race,

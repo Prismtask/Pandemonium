@@ -24,17 +24,17 @@ except Exception:
     pass
 
 # Headless: no level-up UI, no saves.
-import leveling
+import pandemonium.progression.leveling as leveling
 leveling.gain_exp = lambda player, amount: None
 leveling.gain_exp_ally = lambda ally, amount: None
-import save_load
+import pandemonium.core.save_load as save_load
 save_load.save_game = lambda player: None
 
-import time_blocks as tb
-from character import build_character, ensure_player_fields
-import dreams
-from resources.dreams import get_dream
-import combat.hallucination as hal
+import pandemonium.core.time_blocks as tb
+from pandemonium.core.character import build_character, ensure_player_fields
+import pandemonium.progression.dreams as dreams
+from pandemonium.resources.dreams import get_dream
+import pandemonium.combat.hallucination as hal
 
 CHECKS = []
 
@@ -110,7 +110,7 @@ check("sleep clears both stress and fatigue",
 player = new_player()
 player["stress"] = 84
 player["fatigue_stacks"] = 1
-from utils import advance_time as _advance_time  # noqa: E402  (delegates to blocks)
+from pandemonium.core.utils import advance_time as _advance_time  # noqa: E402  (delegates to blocks)
 _advance_time(player, 60)
 check("a normal block spend does not touch stress", player["stress"] == 84)
 

@@ -27,8 +27,8 @@ try:  # piped consoles on Windows may default to a legacy codepage
 except (AttributeError, OSError):
     pass
 
-import combat.weapon.chance_and_choice as cac
-from resources.items import build_item
+import pandemonium.combat.weapon.chance_and_choice as cac
+from pandemonium.resources.items import build_item
 
 
 class _FakeRandom:
@@ -89,7 +89,7 @@ def main():
     print("PASS 4: no coin equipped → damage untouched")
 
     # ── 5. Kit strikes outside the standard paths flip too (rev 3.5) ─────
-    import combat.stats as stats_mod
+    import pandemonium.combat.stats as stats_mod
 
     orig_gea = stats_mod.get_effective_attribute
     stats_mod.get_effective_attribute = lambda a, s: 20
@@ -97,7 +97,7 @@ def main():
     cac.random = _FakeRandom(0.9)
     try:
         # Cutlass riposte (the wearer's own strike — one flip)
-        import combat.weapon.captain_cutlass as cc
+        import pandemonium.combat.weapon.captain_cutlass as cc
         actor = _coin_player()
         actor["equipped"]["weapon"] = build_item("cutlass_of_the_captain")
         enemy = {"name": "Mob", "hp": 500}
@@ -111,7 +111,7 @@ def main():
         print("PASS 5: cutlass riposte rides the coin (one flip per riposte)")
 
         # Tarnished Jade discharge (own burst — one flip)
-        import combat.weapon.tarnished_jade as tj
+        import pandemonium.combat.weapon.tarnished_jade as tj
         orig_pmh = tj.player_max_hp
         tj.player_max_hp = lambda a: 100
         try:
@@ -132,8 +132,8 @@ def main():
             tj.player_max_hp = orig_pmh
 
         # Black Silence workshop volley (ONE flip across all hits)
-        import combat.weapon.black_silence_gloves as bsg
-        import combat.elemental as elem
+        import pandemonium.combat.weapon.black_silence_gloves as bsg
+        import pandemonium.combat.elemental as elem
         orig_calc = elem.calculate_elemental_damage
         orig_roll = stats_mod.roll_critical_hit
         elem.calculate_elemental_damage = lambda d, a, t, el="magical": d
@@ -157,8 +157,8 @@ def main():
             stats_mod.roll_critical_hit = orig_roll
 
         # Palette Spectrum (3 hits — ONE shared flip)
-        import combat.palette_ally as pa
-        import combat.ally as ally_mod
+        import pandemonium.combat.palette_ally as pa
+        import pandemonium.combat.ally as ally_mod
         orig_pick = pa._pick_enemy
         orig_acs = ally_mod.compute_ally_stats
         orig_pa_calc = pa.calculate_elemental_damage

@@ -10,8 +10,8 @@ from collections import Counter
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import ITEMS, build_item, cap_rarity_for_item, soften_rarity, intrinsic_value, ITEM_RARITY
-from resources.item_generation import (
+from pandemonium.resources.items import ITEMS, build_item, cap_rarity_for_item, soften_rarity, intrinsic_value, ITEM_RARITY
+from pandemonium.resources.item_generation import (
     ARMOR_FORMS, ACCESSORY_FORMS, ELEMENTS, ELEMENT_PREFIXES, BASE_FORM_IDS,
     ARMOR_ELEMENT_TRIANGLE, ACCESSORY_AFFINITY, apply_infusion,
     _ARMOR_POOLS, _ACCESSORY_POOLS,

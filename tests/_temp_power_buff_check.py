@@ -5,12 +5,12 @@ import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 import random
 
-import combat.stats as pstats
-import combat.skills as psk
-import combat.player_actions as pact
-import combat.ally as amod
-import combat.ally_skills as ask
-import combat.combat_ui as cui
+import pandemonium.combat.stats as pstats
+import pandemonium.combat.skills as psk
+import pandemonium.combat.player_actions as pact
+import pandemonium.combat.ally as amod
+import pandemonium.combat.ally_skills as ask
+import pandemonium.combat.combat_ui as cui
 
 # ── Silence I/O / HUD (menus: "a" = attack; numbered prompts: "1") ──
 for mod in (psk, pact, amod, ask):

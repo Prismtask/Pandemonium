@@ -9,12 +9,12 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import ITEMS, build_item, intrinsic_value, item_value
-from resources.item_generation import (
+from pandemonium.resources.items import ITEMS, build_item, intrinsic_value, item_value
+from pandemonium.resources.item_generation import (
     LEGACY_ITEMS, RETIRED_GENERIC_IDS, FLOWER_ITEMS, ELEMENT_PREFIXES, _FORM_KEYS_BY_SLOT,
     flower_for_element, pick_flower_id, _WEAPON_POOLS, _ARMOR_POOLS, _ACCESSORY_POOLS,
 )
-from facilities.blacksmith import COMMISSION, TRANSMUTE_RATIO, transmute_flower
+from pandemonium.facilities.blacksmith import COMMISSION, TRANSMUTE_RATIO, transmute_flower
 
 failures = []
 
@@ -49,7 +49,7 @@ check("legacy instance value", item_value({"id": "magma_locket", "rarity": "rare
                                            "mods": {"Constitution": 4, "Strength": 1}}), 11)
 
 print("=== v4 migration: grid -> base form + infusion ===")
-from character import _migrate_item_economy
+from pandemonium.core.character import _migrate_item_economy
 old = {"id": "steel_sword", "name": "Steel Sword", "type": "equipment", "slot": "weapon",
        "rarity": "common", "enhance": 0, "mods": {"Strength": 3}}
 player = {"equipped": {"weapon": old}, "inventory": [], "allies": [],
@@ -85,18 +85,18 @@ random.seed(21)
 neutral = [pick_flower_id("tundra", enemy_element=None) for _ in range(4000)]
 neutral_fire = sum(1 for i in neutral if i == "emberbloom") / len(neutral)
 check("neutral enemy stays biome-weighted (~8%)", 0.05 <= neutral_fire <= 0.13, True)
-import dungeon
+import pandemonium.world.dungeon as dungeon
 check("enemy element helper", dungeon._enemy_attack_element("beast_thunder_bird"), "thunder")
 check("neutral enemy falls back to physical", dungeon._enemy_attack_element("human_footpad"), "physical")
 
 # Every flower must have at least one biome where its element is favoured
-from resources.item_generation import ELEMENT_WEIGHTS_BY_BIOME
+from pandemonium.resources.item_generation import ELEMENT_WEIGHTS_BY_BIOME
 no_favoured = [el for el in FLOWER_ITEMS
                if max(w.get(el, 1) for w in ELEMENT_WEIGHTS_BY_BIOME.values()) < 2]
 check("every flower has a favoured biome", no_favoured, [])
 
 print("=== Flower drops ===")
-import dungeon
+import pandemonium.world.dungeon as dungeon
 random.seed(11)
 drops = [dungeon.roll_drop(10, biome="forest") for _ in range(2000)]
 flowers = [d for d in drops if d and d[0] in FLOWER_ITEMS.values()]
@@ -105,7 +105,7 @@ check("flower rarity is common", all(r == "common" for _i, r in flowers), True)
 check("all drops are valid ids", all(d is None or d[0] in ITEMS for d in drops), True)
 
 print("=== Biome craft signature (form bias) ===")
-from resources.item_generation import biome_craft_hint
+from pandemonium.resources.item_generation import biome_craft_hint
 volcanic_hint = biome_craft_hint("volcanic")
 check("volcanic names axe/hammer", ("Axe" in volcanic_hint and "Hammer" in volcanic_hint), True)
 check("mountain names maul", "Maul" in biome_craft_hint("mountain"), True)
@@ -113,7 +113,7 @@ check("unknown biome has no hint", biome_craft_hint("nowhere"), "")
 check("empty biome has no hint", biome_craft_hint(None), "")
 
 print("=== Infusion model (full coverage in _diag_infusion.py) ===")
-from resources.item_generation import apply_infusion, WEAPON_SLOT_LADDERS, TRAIT_THRESHOLDS
+from pandemonium.resources.item_generation import apply_infusion, WEAPON_SLOT_LADDERS, TRAIT_THRESHOLDS
 s = build_item("greatsword", "common")
 check("apply fire infusion", apply_infusion(s, "fire", ITEMS["greatsword"])[0], True)
 check("primary ladder cap", WEAPON_SLOT_LADDERS[0][-1], 1.48)
@@ -134,7 +134,7 @@ for slot, forms in _FORM_KEYS_BY_SLOT.items():
 check("every commission coordinate exists (g1)", missing_commission, [])
 
 print("=== Flower transmutation (3:1) ===")
-from facilities.blacksmith import TRANSMUTE_RATIO, transmute_flower
+from pandemonium.facilities.blacksmith import TRANSMUTE_RATIO, transmute_flower
 check("ratio is 3", TRANSMUTE_RATIO, 3)
 p = {"inventory": [build_item("emberbloom", "common")]}
 p["inventory"][0]["count"] = 3
@@ -150,7 +150,7 @@ check("same element refused", transmute_flower(p, "dark", "dark"), False)
 check("unknown element refused", transmute_flower(p, "fire", "void"), False)
 
 print("=== Flower consumption ===")
-from inventory import consume_stackable_items
+from pandemonium.inventory.inventory import consume_stackable_items
 player = {"inventory": [build_item("emberbloom", "common") for _ in range(2)]}
 player["inventory"][0]["count"] = 2
 player["inventory"][1]["count"] = 2

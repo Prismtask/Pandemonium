@@ -12,12 +12,12 @@ except AttributeError:
 
 sys.path.insert(0, ".")
 
-import karma
-import karma_dialogue
-from combat import hallucination
-import facilities.travel_events as travel_events
-import facilities.black_market as black_market
-import facilities.port as port
+import pandemonium.progression.karma as karma
+import pandemonium.progression.karma_dialogue as karma_dialogue
+from pandemonium.combat import hallucination
+import pandemonium.facilities.travel_events as travel_events
+import pandemonium.facilities.black_market as black_market
+import pandemonium.facilities.port as port
 
 failures = []
 
@@ -84,7 +84,7 @@ p["wonderland_active"] = True
 check(hallucination.should_trigger(p) is False,
       "Wonderland never triggers a hallucination")
 
-import time_blocks as _tb
+import pandemonium.core.time_blocks as _tb
 _orig_stacks = _tb.get_fatigue_stacks
 _orig_phase = _tb.get_day_phase
 _orig_max = hallucination.player_max_hp
@@ -201,8 +201,8 @@ finally:
 print()
 
 print("== 3b. World-map moral dialog ==")
-import gui.screens.world_map_screen as world_map_screen
-import gui.widgets.confirm_dialog as confirm_dialog_mod
+import pandemonium.gui.screens.world_map_screen as world_map_screen
+import pandemonium.gui.widgets.confirm_dialog as confirm_dialog_mod
 
 _orig_choice_dialog = confirm_dialog_mod.choice_dialog
 try:

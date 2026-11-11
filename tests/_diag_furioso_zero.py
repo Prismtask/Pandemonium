@@ -33,8 +33,8 @@ print("afflictions:", eh.get("entropy_afflictions"))
 
 print()
 print("=== PLAYER ===")
-from combat.stats import compute_player_stats, get_effective_attribute
-from inventory import get_total_equipment_mods
+from pandemonium.combat.stats import compute_player_stats, get_effective_attribute
+from pandemonium.inventory.inventory import get_total_equipment_mods
 print("base attributes:", player["attributes"])
 print("equipment mods:", get_total_equipment_mods(player))
 print("weapon:", (player.get("equipped", {}).get("weapon") or {}).get("id"),
@@ -94,7 +94,7 @@ names = ["STR", "CON", "DEX", "LER", "WIS", "CHA"]
 print("effective stats (no entropy entry in save context):", dict(zip(names, p)))
 
 # Now apply entropy the way refresh_entropy_entries() would in-run.
-from event_horizon import sync_entropy, get_entropy_total
+from pandemonium.world.event_horizon import sync_entropy, get_entropy_total
 total = sync_entropy(player)
 print("entropy total after sync:", total)
 p = compute_player_stats(player)
@@ -103,7 +103,7 @@ print("effective stats WITH entropy:", dict(zip(names, p)))
 
 print()
 print("=== ELDER TITAN (as spawned for this room) ===")
-from combat.stats import enemy_stats
+from pandemonium.combat.stats import enemy_stats
 enemy = enemy_stats("elder_titan", player)
 print("hp:", enemy["hp"], "| con_mod:", enemy["con_mod"], "| str:", enemy["str_mod"],
       "| dex:", enemy["dex_mod"], "| elemental_res:", enemy["elemental_res"])
@@ -111,10 +111,10 @@ print("con_mod breakdown: base 15 -> x1.24 (dusk) -> x EH def mod")
 
 print()
 print("=== FURIOSO MATH (10k samples per workshop, reworked pipeline) ===")
-from combat.weapon.black_silence_gloves import (
+from pandemonium.combat.weapon.black_silence_gloves import (
     WORKSHOPS, _workshop_net_damage, get_gloves_power_mult, get_gloves_enhance_level,
 )
-from combat.stat_milestones import get_strength_bonus
+from pandemonium.combat.stat_milestones import get_strength_bonus
 stat_map = {"Strength": p_str, "Dexterity": p_dex, "Constitution": p_con,
             "Wisdom": p_wis, "Learning": p_ler, "Charisma": p_cha}
 con = enemy["con_mod"]
@@ -154,8 +154,8 @@ print(f"basic attack scaling_val ({w.get('scaling_stat')}): {scaling} "
 
 print()
 print("=== ALLIES ===")
-from combat.ally import compute_ally_stats
-from combat.stat_milestones import get_strength_bonus as gsb
+from pandemonium.combat.ally import compute_ally_stats
+from pandemonium.combat.stat_milestones import get_strength_bonus as gsb
 
 # (Run buffs for allies were already re-attached above, before stat math.)
 
@@ -169,7 +169,7 @@ for a in player.get("allies", []):
 
 print()
 print("=== ALLY DAMAGE vs CHITIN-BUFFED ELDER TITAN (con 38) ===")
-from resources.enemies import ENEMIES
+from pandemonium.resources.enemies import ENEMIES
 for a in player.get("allies", []):
     if a.get("current_hp", 0) <= 0:
         continue

@@ -13,8 +13,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 random.seed(42)
 
-import facilities.house  # noqa: F401  (circular-import smoke test)
-from facilities import dispatch as D
+import pandemonium.facilities.house as house # noqa: F401  (circular-import smoke test)
+from pandemonium.facilities import dispatch as D
 
 
 def make_girl(name, level=8, stress=0, hp=None):
@@ -132,7 +132,7 @@ for rep in st["reports"]:
 hp_girl = house["monster_girls"][3]
 hp_girl["current_hp"] = 11
 hp_girl["stress"] = 30
-from combat.ally import create_ally_from_girl, _return_ally_to_house
+from pandemonium.combat.ally import create_ally_from_girl, _return_ally_to_house
 ally = create_ally_from_girl(hp_girl)
 assert ally["current_hp"] == 11, ally["current_hp"]
 assert ally["stress"] == 30
@@ -179,7 +179,7 @@ assert no_inst is None and "burned out" in err
 hurt_girl = make_girl("Bruise")
 hurt_girl["injured_until"] = player["day"] + 1
 house["monster_girls"].append(hurt_girl)
-from combat.ally import recruit_ally_from_house
+from pandemonium.combat.ally import recruit_ally_from_house
 ally_no, msg_no = recruit_ally_from_house(player, hurt_girl, house)
 assert ally_no is None and "injured" in msg_no
 print("[OK] burnout refusal + injured recruit block")
@@ -188,7 +188,7 @@ frost = make_girl("Frost")
 house["monster_girls"].append(frost)
 inst_w, _ = D.create_instance(player, "solmere", house, fresh[0], [frost])
 assert inst_w
-from utils import advance_time
+from pandemonium.core.utils import advance_time
 player["wonderland_active"] = True
 advance_time(player, 3 * 1440)  # three days inside Wonderland
 assert D.get_dispatch_state(player)["active"], "missions must not progress in Wonderland"
@@ -196,13 +196,13 @@ player.pop("wonderland_active", None)
 print("[OK] Wonderland freeze (no dispatch progress)")
 
 # 12. Phase 2: bath salts + Temple respite --------------------------------
-from resources.items import build_item
+from pandemonium.resources.items import build_item
 salts = build_item("herbal_bath_salts")
 assert salts["type"] == "house_item" and salts["stress_relief"] == 20
 assert salts["type"] not in ("consumable", "utility")  # never appears in combat menus
 assert "description" in salts
 
-from facilities.temple import _stressed_companions, _day_of_respite
+from pandemonium.facilities.temple import _stressed_companions, _day_of_respite
 mira["stress"] = 40
 player["gold"] = 1000
 stressed_before = len(_stressed_companions(player))

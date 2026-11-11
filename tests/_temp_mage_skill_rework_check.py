@@ -14,10 +14,10 @@ sys.path.insert(0, "c:/Code/Pandemonium")
 import random
 import yaml
 
-import combat.skills as psk
-import combat.stats as pstats
-import combat.player_actions as pa
-from combat.combat_ui import format_skill_elemental_tag
+import pandemonium.combat.skills as psk
+import pandemonium.combat.stats as pstats
+import pandemonium.combat.player_actions as pa
+from pandemonium.combat.combat_ui import format_skill_elemental_tag
 
 # ── Silence skill IO / force deterministic combat rolls ──
 psk.c_print = lambda *a, **k: ""
@@ -95,7 +95,7 @@ def burns(enemy):
 
 
 # Actual unlock behavior at the swapped levels.
-from combat.skills import unlock_skills_for_level
+from pandemonium.combat.skills import unlock_skills_for_level
 
 p12 = make_player(level=12)
 p12["skills"] = []

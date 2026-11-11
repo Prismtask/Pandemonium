@@ -16,16 +16,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from facilities.house import (
+from pandemonium.facilities.house import (
     HOUSE_LEVELS, MAX_INCOME_DAYS, _daily_income, _house_floor_mult,
     _pending_income,
 )
-from facilities.arcane_tower import _scroll_craft_cost
-from resources.items import (
+from pandemonium.facilities.arcane_tower import _scroll_craft_cost
+from pandemonium.resources.items import (
     ITEMS, build_item, item_value, market_anchor_level, market_index,
     market_value, kill_gold_offset,
 )
-from dungeon import ENEMIES, roll_drop, roll_gold_drop
+from pandemonium.world.dungeon import ENEMIES, roll_drop, roll_gold_drop
 
 
 def sim_loot(level, n=20_000):

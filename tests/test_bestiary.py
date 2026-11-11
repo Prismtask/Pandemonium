@@ -1,6 +1,6 @@
 """Bestiary ledger tests (Guild Hall discovery journal)."""
 
-from bestiary import (
+from pandemonium.progression.bestiary import (
     classify_enemy,
     get_discovered_cards,
     get_enemy_card,

@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.ally_skills import (
+from pandemonium.combat.ally_skills import (
     AWAKENINGS,
     INNATE_SKILL_DEFS,
     INNATE_SKILLS_MAP,
@@ -18,11 +18,11 @@ from combat.ally_skills import (
     initialize_ally_skills,
     execute_ally_skill,
 )
-from combat.ally import create_ally_from_girl, _ally_to_house_record
-from character import _migrate_awakening_rewards
-from facilities.arcane_tower import can_forge_sigil, forge_sigil
-from facilities.house import can_awaken_girl, _fmt_dialogue
-from utils import display_name, display_name_with_species
+from pandemonium.combat.ally import create_ally_from_girl, _ally_to_house_record
+from pandemonium.core.character import _migrate_awakening_rewards
+from pandemonium.facilities.arcane_tower import can_forge_sigil, forge_sigil
+from pandemonium.facilities.house import can_awaken_girl, _fmt_dialogue
+from pandemonium.core.utils import display_name, display_name_with_species
 
 ATTRS = ("Strength", "Constitution", "Dexterity", "Wisdom", "Learning", "Charisma")
 
@@ -117,7 +117,7 @@ assert not forge_sigil(p3) and p3["awakening_shards"] == 4 and p3["gold"] == 249
 print("6. forge: 4 shards + 25,000g → 1 Sigil, exact-boundary cases  [ok]")
 
 # ── 7. Reward grants are idempotent (dungeon helpers) ─────────────────────
-from dungeon import _check_first_superboss_sigil, _grant_awakening_shard, _grant_awakening_sigil
+from pandemonium.world.dungeon import _check_first_superboss_sigil, _grant_awakening_shard, _grant_awakening_sigil
 
 p = {}
 _check_first_superboss_sigil(p)
@@ -232,7 +232,7 @@ assert _fmt_dialogue("No tokens here.") == "No tokens here."
 print("11. _fmt_dialogue token replacement  [ok]")
 
 # ── 12. Perfect Mimicry elemental adaptation feeds the damage calc ────────
-from combat.elemental import calculate_elemental_damage
+from pandemonium.combat.elemental import calculate_elemental_damage
 
 atk = {
     "active_buffs": [{"type": "elemental_adapt_dmg", "element": "fire", "value": 0.25, "remaining": 3}],

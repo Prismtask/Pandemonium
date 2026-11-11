@@ -8,8 +8,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import titles
-from resources.titles import TITLES, TITLES_BY_ID
+import pandemonium.progression.titles as titles
+from pandemonium.resources.titles import TITLES, TITLES_BY_ID
 
 failures = []
 
@@ -141,7 +141,7 @@ check("composite all", titles.condition_met(k, {"type": "all", "all": [
 ]}), True)
 
 print("=== Phase 2 titles ===")
-from resources.enemies import ENEMIES
+from pandemonium.resources.enemies import ENEMIES
 _dragon_keys = [key for key, data in ENEMIES.items()
                 if data.get("race") == "Dragonkin"]
 check("dragonkin pool exists", bool(_dragon_keys), True)
@@ -188,12 +188,12 @@ check("karma titles gated by rule", "honest" in k3["titles_unlocked"], False)
 k4 = make_player("Karma Hook")
 k4["karma_enabled"] = True
 k4["karma"] = 79
-from karma import change_karma
+from pandemonium.progression.karma import change_karma
 change_karma(k4, 1, "diag")
 check("karma change triggers unlock", "honest" in k4["titles_unlocked"], True)
 
 print("=== Phase 3 titles ===")
-from bestiary import get_total_enemy_count, is_bestiary_candidate
+from pandemonium.progression.bestiary import get_total_enemy_count, is_bestiary_candidate
 p3 = make_player("Endgame")
 p3["defeated_superbosses"] = [f"boss_{i}" for i in range(9)]
 p3["event_horizon"] = {"best_room": 50}
@@ -223,7 +223,7 @@ check("worldbreaker effect line", "drawback" in titles.format_effect_line(
 p3["title_active"] = "first_page"
 check("first page rest bonus", round(titles.mod(p3, "rest_heal_pct"), 4), 0.10)
 
-from karma_dialogue import title_line
+from pandemonium.progression.karma_dialogue import title_line
 check("title greeting", bool(title_line(p3, "shop")), True)
 check("collection summary", "Acknowledged 5" in titles.collection_summary(p3), True)
 

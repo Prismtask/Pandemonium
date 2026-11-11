@@ -4,14 +4,14 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.skills as psk
-import combat.player_actions as pact
-import combat.ally as amod
-import combat.ally_skills as ask
-import combat.combat_ui as cui
-import combat.weapon.palette_brush as pb
-import combat.weapon.black_silence_gloves as bsg
-from combat.helpers import ACTION_CANCELLED_MSG
+import pandemonium.combat.skills as psk
+import pandemonium.combat.player_actions as pact
+import pandemonium.combat.ally as amod
+import pandemonium.combat.ally_skills as ask
+import pandemonium.combat.combat_ui as cui
+import pandemonium.combat.weapon.palette_brush as pb
+import pandemonium.combat.weapon.black_silence_gloves as bsg
+from pandemonium.combat.helpers import ACTION_CANCELLED_MSG
 
 # ── Silence console output ──
 for mod in (psk, pact, amod, ask, pb, bsg, cui):
@@ -39,7 +39,7 @@ def make_enemy(name):
 
 
 def make_player(cls):
-    from resources.skill_loader import CLASS_SKILLS
+    from pandemonium.resources.skill_loader import CLASS_SKILLS
     p = {"name": "Hero", "class": cls, "level": 40,
          "current_hp": 500, "passive_unlocked": True,
          "attributes": {a: 10 for a in ATTRS},
@@ -66,7 +66,7 @@ def make_ally():
 
 
 # ── 1. Player skill: cancel target selection → retry, no cooldown ──
-from resources.skill_loader import CLASS_SKILLS
+from pandemonium.resources.skill_loader import CLASS_SKILLS
 found = None
 for cls in CLASS_SKILLS:
     p = make_player(cls)

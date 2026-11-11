@@ -27,9 +27,9 @@ try:
 except Exception:
     pass
 
-import casino
-from city_dialogue import get_city_dialogues
-from facilities import casino_ui
+import pandemonium.facilities.casino as casino
+from pandemonium.world.city_dialogue import get_city_dialogues
+from pandemonium.facilities import casino_ui
 
 failures = []
 
@@ -406,8 +406,8 @@ print(f"  INFO blackjack back-room RTP: {back_rtp:.4f} (target 0.94-0.97)")
 check("blackjack back-room band", 0.94 <= back_rtp <= 0.97, True)
 
 print("\n=== CASINO TITLES (PHASE 3) ===")
-import titles
-from resources.titles import TITLES_BY_ID
+import pandemonium.progression.titles as titles
+from pandemonium.resources.titles import TITLES_BY_ID
 
 # Old-save backfill: lifetime casino stats -> title_stats -> unlocks.
 old = make_player(level=10, gold=10_000, day=1)
@@ -463,7 +463,7 @@ check("marked shop drawback",
 check("marked effect line",
       "drawback" in titles.format_effect_line(TITLES_BY_ID["marked"]), True)
 
-from facilities.black_market import _karma_price
+from pandemonium.facilities.black_market import _karma_price
 sleight = make_player(level=10, gold=10_000, day=1, karma_enabled=False)
 sleight["titles_unlocked"] = {"sleight_hand": {"day": 1, "seen": True}}
 sleight["title_active"] = "sleight_hand"

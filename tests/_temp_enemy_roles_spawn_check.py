@@ -9,10 +9,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-import combat.enemy_skills as es
-from combat.stats import enemy_stats
-from resources.enemies import ENEMIES
-import dungeon
+import pandemonium.combat.enemy_skills as es
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.resources.enemies import ENEMIES
+import pandemonium.world.dungeon as dungeon
 
 failures = []
 
@@ -105,7 +105,7 @@ check("Attacker pool only returns attackers",
       f"roles={set(attackers)}")
 
 print("=== Group composition ===")
-from dungeon import build_enemy_group
+from pandemonium.world.dungeon import build_enemy_group
 
 random.seed(11)
 low_counts = [count_supporters(build_enemy_group(2, 4)) for _ in range(400)]

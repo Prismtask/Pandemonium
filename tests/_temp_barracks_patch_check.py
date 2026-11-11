@@ -3,7 +3,7 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.ally_skills as ask
+import pandemonium.combat.ally_skills as ask
 
 # Silence I/O
 ask.c_print = lambda *a, **k: ""
@@ -162,7 +162,7 @@ ok30["level_cap"] = 30
 assert ask.teach_ally_skill(ok30, "annihilate") is True
 
 # ── 13. Revive clears the defeated flag (bug fix) ──
-from combat.ally import get_alive_allies
+from pandemonium.combat.ally import get_alive_allies
 player = make_player()
 caster = make_ally(level=35)
 fallen = make_ally(level=35, max_hp=200)
@@ -189,7 +189,7 @@ msg, _ = ask.execute_ally_skill(caster, player, "raise_dead", skill, [], [fallen
 assert fallen["current_hp"] == 100, (msg, fallen["current_hp"])
 
 # ── 14. Aegis Shell sizes its barrier from the caster's max HP ──
-from combat.status_effects import try_consume_death_ward
+from pandemonium.combat.status_effects import try_consume_death_ward
 player = make_player()
 caster = make_ally(level=35, max_hp=300)
 skill = ask.get_learnable_skill_def("aegis_shell")
@@ -248,7 +248,7 @@ assert find_buff(caster, type="death_ward") is None
 assert try_consume_death_ward(caster) is False
 
 # ── 17. Mastery extension: thresholds, bonus table, labels, and ally hooks ──
-from combat.skills import (
+from pandemonium.combat.skills import (
     MASTERY_THRESHOLDS, get_mastery_bonuses, get_skill_mastery_level,
     format_mastery_label,
 )
@@ -309,7 +309,7 @@ msg, _ = ask.execute_ally_skill(ally, player, "benediction", skill, [], [])
 assert ally["skill_cooldowns"]["benediction"] == 3, (msg, ally["skill_cooldowns"])
 
 # ── 18. Player-side mastery hooks: duration_bonus (✦) and status_mult (✦✦) ──
-import combat.skills as psk
+import pandemonium.combat.skills as psk
 psk.c_print = lambda *a, **k: ""
 psk.c_input = lambda prompt="": "1"
 
@@ -361,7 +361,7 @@ poison = next(d for d in e1["active_debuffs"] if d["type"] == "poison")
 assert poison["damage"] == 10, (msg, e1["active_debuffs"])
 
 # Soul Fire ✦✦: base 6 (Burn, tier 2) upgraded +2 tiers → Inferno (tier 4)
-from combat.status_effects import damage_to_burn_tier
+from pandemonium.combat.status_effects import damage_to_burn_tier
 p = make_skill_player("Warlock")
 p["skill_mastery"]["lck_soul_fire"] = 150
 e1 = make_enemy("Goblin")

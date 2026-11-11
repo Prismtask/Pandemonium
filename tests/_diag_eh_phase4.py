@@ -15,9 +15,9 @@ import tkinter as tk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import event_horizon as eh
-from character import ensure_player_fields
-from resources.items import build_item
+import pandemonium.world.event_horizon as eh
+from pandemonium.core.character import ensure_player_fields
+from pandemonium.resources.items import build_item
 
 _results = []
 
@@ -93,7 +93,7 @@ def _walk(w):
 root = tk.Tk()
 root.withdraw()
 
-from gui.screens.inventory_screen import InventoryScreen  # noqa: E402
+from pandemonium.gui.screens.inventory_screen import InventoryScreen  # noqa: E402
 
 # ── 1. Active run (inside) → tab exists with content ────────────────────────
 p = _fake_player(True)

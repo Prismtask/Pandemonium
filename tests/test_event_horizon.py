@@ -7,8 +7,8 @@ Run: c:/Code/Pandemonium/.venv/Scripts/python.exe -m pytest tests/test_event_hor
 import random
 import unittest
 
-import event_horizon as eh
-from resources.races_classes import ATTRIBUTES
+import pandemonium.world.event_horizon as eh
+from pandemonium.resources.races_classes import ATTRIBUTES
 
 
 def make_player(**over):
@@ -270,8 +270,8 @@ class TestEnemyScaling(unittest.TestCase):
         self.assertEqual((level, band_lo), (56, 30))
 
     def test_picker_honors_band_override(self):
-        import dungeon
-        from resources.enemies import ENEMIES
+        import pandemonium.world.dungeon as dungeon
+        from pandemonium.resources.enemies import ENEMIES
         p = make_player()
         picked = {dungeon.get_random_enemy_key(56, boss=False, region=None,
                                                player=p, band_lo=30)
@@ -281,7 +281,7 @@ class TestEnemyScaling(unittest.TestCase):
             self.assertLessEqual(ENEMIES[key]["level"], 59)
 
     def test_enemy_difficulty_frozen_in_run(self):
-        from combat.stats import enemy_stats
+        from pandemonium.combat.stats import enemy_stats
         p = make_player()
         p["day_blocks"] = 0            # Morning → ×1.0 outside runs (§7)
         p["time_minutes"] = 6 * 60
@@ -425,7 +425,7 @@ class TestBattleStart(unittest.TestCase):
 
 class TestTrophies(unittest.TestCase):
     def test_dopo_robe_multipliers(self):
-        from combat.weapon import dopo_robe
+        from pandemonium.combat.weapon import dopo_robe
         p = make_player()
         p["equipped"] = {
             "weapon": {"id": "x", "name": "X", "weapon_type": "blade"},
@@ -442,7 +442,7 @@ class TestTrophies(unittest.TestCase):
         self.assertEqual(dopo_robe.get_robe_multiplier(p, p), 1.0)
 
     def test_dopo_robe_ally_wearer_counts_player(self):
-        from combat.weapon import dopo_robe
+        from pandemonium.combat.weapon import dopo_robe
         p = make_player()
         p["equipped"] = {
             "weapon": {"id": "hero_blade", "name": "Hero Blade", "weapon_type": "blade"},
@@ -468,7 +468,7 @@ class TestTrophies(unittest.TestCase):
         self.assertEqual(dopo_robe.get_robe_multiplier(p, p), 1.0)
 
     def test_chance_and_choice(self):
-        from combat.weapon import chance_and_choice as cac
+        from pandemonium.combat.weapon import chance_and_choice as cac
         random.seed(11)
         p = make_player()
         p["equipped"] = {"accessory1": cac_item()}
@@ -482,7 +482,7 @@ class TestTrophies(unittest.TestCase):
         self.assertEqual(cac.apply_chance_and_choice(q, 100), 100)
 
     def test_piece_of_relationship_tiers(self):
-        from combat.weapon import piece_of_relationship as por
+        from pandemonium.combat.weapon import piece_of_relationship as por
         p = make_player()
         p["equipped"] = {"accessory1": por_item()}
         bonded = [make_ally(f"B{i}", affection=200) for i in range(7)]
@@ -509,7 +509,7 @@ class TestTrophies(unittest.TestCase):
             self.assertFalse(any(b.get("source") == por.SOURCE for b in actor["active_buffs"]))
 
     def test_por_low_count_no_effect(self):
-        from combat.weapon import piece_of_relationship as por
+        from pandemonium.combat.weapon import piece_of_relationship as por
         p = make_player(allies=[make_ally("Solo", affection=200)])
         p["equipped"] = {"accessory1": por_item()}
         self.assertEqual(por.apply_battle_start(p), 0)
@@ -692,7 +692,7 @@ class TestEffectDetachRestore(unittest.TestCase):
 
 class TestBeatingRoot(unittest.TestCase):
     def _root_item(self):
-        from resources.items import build_item
+        from pandemonium.resources.items import build_item
         return build_item("beating_root")
 
     def test_consume_unlocks_and_consumes(self):
@@ -728,7 +728,7 @@ class TestBeatingRoot(unittest.TestCase):
         self.assertEqual(len(p["inventory"]), 1)
 
     def test_equip_auto_picks_slot3_when_unlocked(self):
-        from inventory import equip_item
+        from pandemonium.inventory.inventory import equip_item
         p = make_player()
         p["equipped"] = {"weapon": None, "armor": None,
                          "accessory1": None, "accessory2": None}
@@ -741,7 +741,7 @@ class TestBeatingRoot(unittest.TestCase):
     def test_equip_slot3_locked_falls_back_to_default(self):
         # The third slot stays invisible until unlocked — a locked request
         # falls back to the normal accessory auto-pick chain, no message.
-        from inventory import equip_item
+        from pandemonium.inventory.inventory import equip_item
         p = make_player()
         p["equipped"] = {"weapon": None, "armor": None,
                          "accessory1": None, "accessory2": None}
@@ -751,7 +751,7 @@ class TestBeatingRoot(unittest.TestCase):
         self.assertNotIn("accessory3", p["equipped"])
 
     def test_equipment_mods_include_slot3(self):
-        from inventory import get_total_equipment_mods
+        from pandemonium.inventory.inventory import get_total_equipment_mods
         p = make_player()
         p["equipped"] = {"accessory3": {
             "id": "x", "name": "X", "slot": "accessory",
@@ -759,7 +759,7 @@ class TestBeatingRoot(unittest.TestCase):
         self.assertEqual(get_total_equipment_mods(p).get("Strength"), 7)
 
     def test_house_round_trip_keeps_unlock(self):
-        from combat.ally import _ally_to_house_record, create_ally_from_girl
+        from pandemonium.combat.ally import _ally_to_house_record, create_ally_from_girl
         ally = make_ally("Mira")
         ally["acc3_unlocked"] = True
         ally["equipped"]["accessory3"] = None
@@ -770,7 +770,7 @@ class TestBeatingRoot(unittest.TestCase):
         self.assertIn("accessory3", rebuilt["equipped"])
 
     def test_house_record_without_unlock(self):
-        from combat.ally import _ally_to_house_record
+        from pandemonium.combat.ally import _ally_to_house_record
         ally = make_ally("Mira")
         rec = _ally_to_house_record(ally, {})
         self.assertFalse(rec.get("acc3_unlocked"))
@@ -778,7 +778,7 @@ class TestBeatingRoot(unittest.TestCase):
 
 class TestHudTags(unittest.TestCase):
     def test_entropy_tag(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         ent = {"type": "eh_entropy", "stacks": 12, "value": 0.12,
                "source": "event_horizon"}
         tags = _get_entity_buff_tags({"active_debuffs": [ent],
@@ -788,7 +788,7 @@ class TestHudTags(unittest.TestCase):
         self.assertIn("\u221212% attrs", tags)
 
     def test_elemental_flask_tag(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         buff = {"type": "eh_ele_dmg", "value": 0.06,
                 "source": "event_horizon", "permanent": True}
         tags = _get_entity_buff_tags({"active_buffs": [buff],
@@ -796,13 +796,13 @@ class TestHudTags(unittest.TestCase):
         self.assertIn("ELM+6%", tags)
 
     def test_trial_burden_tag(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         tags = _get_entity_buff_tags({"active_buffs": [], "active_debuffs": [],
                                       "_eh_trial_count": 3})
         self.assertIn("TRL×3", tags)
 
     def test_trial_burden_effect_tags(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         tags = _get_entity_buff_tags({
             "active_buffs": [], "active_debuffs": [],
             "_eh_trial_count": 3, "_eh_trial_tags": ["HP+20%", "DMG+9%"],
@@ -810,7 +810,7 @@ class TestHudTags(unittest.TestCase):
         self.assertIn("TRL×3: HP+20% DMG+9%", tags)
 
     def test_flask_tags_stack(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         buffs = [
             {"type": "damage_boost", "value": 0.04,
              "source": "event_horizon", "permanent": True},
@@ -832,7 +832,7 @@ class TestHudTags(unittest.TestCase):
         self.assertNotIn("ELM+8%", tags)
 
     def test_regen_flask_stacks(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         buffs = [
             {"type": "regen", "value": 4,
              "source": "event_horizon", "permanent": True},
@@ -844,7 +844,7 @@ class TestHudTags(unittest.TestCase):
         self.assertIn("REG+10", tags)
 
     def test_ally_skill_tags_stay_individual(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         buffs = [
             {"type": "damage_boost", "value": 0.04,
              "source": "event_horizon", "permanent": True},
@@ -860,7 +860,7 @@ class TestHudTags(unittest.TestCase):
         self.assertIn("DMG+15%", tags)    # ally skill — kept individual
 
     def test_stat_bonus_totals(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         buffs = [{"type": "stat", "stat": "all", "value": 1,
                   "source": "event_horizon", "permanent": True}] * 3
         buffs.append({"type": "stat", "stat": "Strength", "value": 2,
@@ -871,7 +871,7 @@ class TestHudTags(unittest.TestCase):
         self.assertIn("STR+2", tags)
 
     def test_no_eh_tags_without_effects(self):
-        from combat.combat_ui import _get_entity_buff_tags
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         tags = _get_entity_buff_tags({"active_buffs": [],
                                       "active_debuffs": []})
         self.assertNotIn("ENT", tags)
@@ -879,7 +879,7 @@ class TestHudTags(unittest.TestCase):
         self.assertNotIn("TRL", tags)
 
     def test_flask_hint_tally(self):
-        import event_horizon_rooms as ehr
+        import pandemonium.world.event_horizon_rooms as ehr
         p = make_player(allies=[make_ally("Mira")])
         f1 = eh.roll_flask(12, tier=2)
         eh.apply_flask(p, p, f1)
@@ -936,7 +936,7 @@ class TestTuneUpStacking(unittest.TestCase):
     """Motes-merchant Tune-Up: +1 all attributes each — and it stacks."""
 
     def test_tuneups_stack_in_effective_attribute(self):
-        from combat.stats import get_effective_attribute
+        from pandemonium.combat.stats import get_effective_attribute
         p = make_player()
         base = get_effective_attribute(p, "Strength")
         for _ in range(3):
@@ -1039,7 +1039,7 @@ class TestCardDeck(unittest.TestCase):
         self.assertEqual(tiers, [2, 3])
 
     def test_positive_trial_every_fifteen(self):
-        import event_horizon_rooms as ehr
+        import pandemonium.world.event_horizon_rooms as ehr
         p = make_player()
         state = eh.ensure_eh_state(p)
         for room, expected in ((10, "trial_neg"), (15, "trial_pos"),
@@ -1235,7 +1235,7 @@ class TestJoker(unittest.TestCase):
         self.assertGreaterEqual(len(labelled), 2)
 
     def test_devil_shop_and_economy_multipliers(self):
-        from event_horizon_rooms import _shop_flask_price
+        from pandemonium.world.event_horizon_rooms import _shop_flask_price
         p = make_player()
         eh.ensure_eh_state(p)
         self.assertEqual(eh.joker_shop_multiplier(p), 1.0)
@@ -1250,7 +1250,7 @@ class TestJoker(unittest.TestCase):
         self.assertEqual(eh.apply_mote_multiplier(p, 40), 15)
 
     def test_emperor_save_once_per_battle(self):
-        from combat.status_effects import try_consume_death_ward
+        from pandemonium.combat.status_effects import try_consume_death_ward
         p = make_player()
         state = eh.ensure_eh_state(p)
         p["_eh_in_run"] = True
@@ -1323,15 +1323,15 @@ class TestJoker(unittest.TestCase):
         eh.apply_joker(p, self._card("joker_priestess"))
         self.assertAlmostEqual(eh.joker_damage_multiplier(p, "basic"), 0.5)
         self.assertAlmostEqual(eh.joker_damage_multiplier(p, "skill"), 1.0)
-        with mock.patch("combat.skills.get_class_skill_map",
+        with mock.patch("pandemonium.combat.skills.get_class_skill_map",
                         return_value={"slash": {"cooldown": 5}}):
-            from combat.skills import set_skill_cooldown
+            from pandemonium.combat.skills import set_skill_cooldown
             msg = set_skill_cooldown(p, "slash")
         self.assertEqual(p["skill_cooldowns"]["slash"], 3)
         self.assertIn("−2", msg or "")
 
     def test_justice_debuff_mirror(self):
-        from combat import status_effects as se
+        from pandemonium.combat import status_effects as se
         p = make_player(allies=[make_ally()])
         state = eh.ensure_eh_state(p)
         p["_eh_in_run"] = True
@@ -1410,7 +1410,7 @@ class TestJoker(unittest.TestCase):
         roster entry to strip — Judgement used to pulse (and Justice mirror)
         in overworld fights until the run was wiped.
         """
-        from combat import status_effects as se
+        from pandemonium.combat import status_effects as se
         p = make_player(allies=[make_ally()])
         state = eh.ensure_eh_state(p)
         eh.apply_joker(p, self._card("joker_judgement"))
@@ -1439,7 +1439,7 @@ class TestJoker(unittest.TestCase):
         self.assertTrue(eh.joker_mirror_debuffs(p, ally, [foe2], before))
 
     def test_star_shortens_debuffs(self):
-        from combat.status_effects import tick_player_debuffs
+        from pandemonium.combat.status_effects import tick_player_debuffs
         p = make_player()
         eh.ensure_eh_state(p)
         eh.apply_joker(p, self._card("joker_star"))
@@ -1474,7 +1474,7 @@ class TestVesperGreetings(unittest.TestCase):
 
     @staticmethod
     def _greet(player, state, room, suspended=False):
-        from facilities.event_horizon_intro import plan_vesper_greeting
+        from pandemonium.facilities.event_horizon_intro import plan_vesper_greeting
         return "\n".join(plan_vesper_greeting(player, state, room, suspended))
 
     def test_first_arrival(self):
@@ -1656,7 +1656,7 @@ class TestBossRush(unittest.TestCase):
         p = self._ready_player()
         eh.begin_rush(p, "solmere")
         p["_eh_in_run"] = True
-        from event_horizon_rooms import generate_rush_room, play_room, room_title
+        from pandemonium.world.event_horizon_rooms import generate_rush_room, play_room, room_title
 
         room = generate_rush_room(p)
         self.assertEqual(room["type"], "boss_rush")
@@ -1703,7 +1703,7 @@ class TestBossRush(unittest.TestCase):
         p = self._ready_player()
         eh.begin_rush(p, "solmere")
         eh.ensure_eh_state(p)["rush_queue"] = []
-        from event_horizon_rooms import generate_rush_room
+        from pandemonium.world.event_horizon_rooms import generate_rush_room
         room = generate_rush_room(p)
         self.assertEqual(room["type"], "rush_done")
 
@@ -1728,7 +1728,7 @@ class TestBossRush(unittest.TestCase):
         # Old saves: kills recorded before the ledger existed (Wonderland
         # flags, White Knight flag, pool:<id> awakening sources) are rebuilt
         # into defeated_superbosses so the rush pool isn't starved.
-        from character import _backfill_superboss_ledger
+        from pandemonium.core.character import _backfill_superboss_ledger
         p = make_player()
         p["defeated_superbosses"] = ["queen_of_mirrors_sylvana"]
         p.update({
@@ -1755,7 +1755,7 @@ class TestBossRush(unittest.TestCase):
         self.assertIn("black_silence", pool_ids)
 
     def test_suspended_menu_offers_rush_with_collapse_confirm(self):
-        from facilities import event_horizon_intro as ei
+        from pandemonium.facilities import event_horizon_intro as ei
 
         p = self._ready_player()
         st = eh.ensure_eh_state(p)
@@ -1793,7 +1793,7 @@ class TestBossRush(unittest.TestCase):
                         stub.calls[0])
 
     def test_suspended_menu_hides_rush_below_gates(self):
-        from facilities import event_horizon_intro as ei
+        from pandemonium.facilities import event_horizon_intro as ei
 
         p = make_player()                       # no kills / depth: gates fail
         st = eh.ensure_eh_state(p)
@@ -1831,7 +1831,7 @@ class TestBossRush(unittest.TestCase):
                          stub.calls[0])
 
     def test_roster_entries_resolve(self):
-        from resources.enemies import ENEMIES
+        from pandemonium.resources.enemies import ENEMIES
         for boss in eh.BOSS_RUSH_ROSTER:
             with self.subTest(boss=boss["id"]):
                 fn = eh.rush_boss_combat(boss)
@@ -1857,7 +1857,7 @@ class TestBossRush(unittest.TestCase):
 
     def test_rush_completion_payout_and_records(self):
         from unittest import mock
-        import dungeon as dungeon_mod
+        import pandemonium.world.dungeon as dungeon_mod
 
         p = self._ready_player()
         eh.begin_rush(p, "solmere")

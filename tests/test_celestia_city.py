@@ -7,23 +7,23 @@ and the celestial loot/theme tables.
 import unittest
 from unittest.mock import patch
 
-import dungeon
-from dungeon import (
+import pandemonium.world.dungeon as dungeon
+from pandemonium.world.dungeon import (
     _ensure_city_floors,
     _advance_city_floor,
     _city_start_floor,
     _grant_celestial_sigil,
     CELESTIAL_START_FLOOR,
 )
-from resources.cities import CITIES
-from resources.items import ITEMS
-from resources.item_generation import (
+from pandemonium.resources.cities import CITIES
+from pandemonium.resources.items import ITEMS
+from pandemonium.resources.item_generation import (
     BASE_FORM_IDS, FORM_WEIGHTS_BY_BIOME, ELEMENT_WEIGHTS_BY_BIOME,
 )
-from resources.wild_dungeon_themes import WILD_DUNGEON_THEMES
-from resources.world_layout import CITY_POSITIONS, REGIONS
-from leveling import get_incomplete_biomes
-from wild_dungeons import (
+from pandemonium.resources.wild_dungeon_themes import WILD_DUNGEON_THEMES
+from pandemonium.resources.world_layout import CITY_POSITIONS, REGIONS
+from pandemonium.progression.leveling import get_incomplete_biomes
+from pandemonium.world.wild_dungeons import (
     _available_seed_cities,
     _city_accessible,
     ensure_wild_dungeon_state,
@@ -77,7 +77,7 @@ class TestCelestiaData(unittest.TestCase):
         self.assertEqual(item["name"], "Celestial Sigil")
 
     def test_city_map_and_service_positions(self):
-        from resources.city_maps import (
+        from pandemonium.resources.city_maps import (
             CITY_MAPS, CITY_SERVICE_POSITIONS, verify_all_cities_mapped,
         )
         self.assertIn("celestia", CITY_MAPS)
@@ -194,7 +194,7 @@ class TestCelestialWildDungeons(unittest.TestCase):
             find_nearest_city(celestia_center, allowed=allowed), "celestia")
 
     def test_spawn_pool_includes_celestia_only_after_sigil(self):
-        import wild_dungeons
+        import pandemonium.world.wild_dungeons as wild_dungeons
 
         player = make_player()
         player["day"] = 7

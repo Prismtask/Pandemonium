@@ -21,10 +21,10 @@ import tkinter as tk
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from character import _refresh_base_form_name, ensure_player_fields
-from combat.elemental import ELEMENTS
-from resources.items import ITEMS, build_item
-from resources.item_generation import (
+from pandemonium.core.character import _refresh_base_form_name, ensure_player_fields
+from pandemonium.combat.elemental import ELEMENTS
+from pandemonium.resources.items import ITEMS, build_item
+from pandemonium.resources.item_generation import (
     ACCESSORY_FORM_AFFINITY, ACCESSORY_FORMS, FLOWER_ITEMS, apply_infusion,
     flower_for_element, pick_family_id,
 )
@@ -120,7 +120,7 @@ check("adding a second element keeps both resistances",
 
 # Blacksmith wiring: equipped gear keeps identity and refreshes the actor's
 # cached elemental profile in the same visit (no re-equip needed).
-import facilities.blacksmith as blacksmith  # noqa: E402
+import pandemonium.facilities.blacksmith as blacksmith # noqa: E402
 
 
 class _SmithTerm:
@@ -164,7 +164,7 @@ check("blacksmith infusion consumes the flower",
 
 # The weapon's primary element feeds matching skill damage through the
 # actor's merged elemental profile (same path secondary/tertiary use).
-from combat.elemental import compute_player_elemental  # noqa: E402
+from pandemonium.combat.elemental import compute_player_elemental  # noqa: E402
 
 base_actor = {"race": "Human", "class": "Warrior", "equipped": {}}
 _, base_dmg = compute_player_elemental(base_actor)
@@ -231,8 +231,8 @@ def _walk(w):
 root = tk.Tk()
 root.withdraw()
 
-import gui.widgets.confirm_dialog as confirm_mod  # noqa: E402
-from gui.screens.inventory_screen import InventoryScreen  # noqa: E402
+import pandemonium.gui.widgets.confirm_dialog as confirm_mod # noqa: E402
+from pandemonium.gui.screens.inventory_screen import InventoryScreen  # noqa: E402
 
 captured = {}
 

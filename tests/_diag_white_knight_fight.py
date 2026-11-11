@@ -16,9 +16,9 @@ import traceback
 
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-from combat.combat_io import set_io, reset_io
-from combat.stats import enemy_stats
-from resources.skill_loader import CLASS_SKILLS
+from pandemonium.combat.combat_io import set_io, reset_io
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.resources.skill_loader import CLASS_SKILLS
 
 ATTRS = ("Strength", "Constitution", "Dexterity", "Wisdom", "Learning", "Charisma")
 FAILS = []
@@ -83,7 +83,7 @@ def make_ally(name):
 
 
 # ── Run A: deterministic crash path (ally skill vs 100% skill dodge) ─────────
-import combat.ally_skills as ask
+import pandemonium.combat.ally_skills as ask
 
 ally_skill = None
 for key, ids in ask.INNATE_SKILLS_MAP.items():
@@ -121,7 +121,7 @@ if ally_skill:
     check("skill dodge -> target unharmed", target["hp"] == 500)
 
 # ── Run B: partial fight — external list must mutate (frozen HP fix) ─────────
-from combat.white_knight import _PhaseLockedKnight, combat_white_knight
+from pandemonium.combat.white_knight import _PhaseLockedKnight, combat_white_knight
 
 player_b = make_player(strength=250)
 boss_b = enemy_stats("white_knight", player_b)
@@ -213,7 +213,7 @@ check("compact line arrives before the first [n/m] action step", before_steps)
 try:
     import types as _types
 
-    from gui.screens.combat_screen import CombatScreen
+    from pandemonium.gui.screens.combat_screen import CombatScreen
     _fake = _types.SimpleNamespace(_actual_turn_order=None)
     _first_compact = next(l for l in io_c.log if "Turn Order:" in l)
     CombatScreen._on_turn_order(_fake, _first_compact)

@@ -27,8 +27,8 @@ except Exception:
 
 import tkinter as tk
 
-from gui.screens.world_map_screen import WorldMapScreen
-from gui.widgets.confirm_dialog import choice_dialog
+from pandemonium.gui.screens.world_map_screen import WorldMapScreen
+from pandemonium.gui.widgets.confirm_dialog import choice_dialog
 
 
 def _walk(widget):

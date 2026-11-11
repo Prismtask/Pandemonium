@@ -28,8 +28,8 @@ try:  # piped consoles on Windows may default to a legacy codepage
 except (AttributeError, OSError):
     pass
 
-import time_blocks as tb
-from gui.screen_manager import ScreenManager
+import pandemonium.core.time_blocks as tb
+from pandemonium.gui.screen_manager import ScreenManager
 
 
 class DummyDungeon(tk.Frame):

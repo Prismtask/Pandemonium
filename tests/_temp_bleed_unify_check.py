@@ -3,12 +3,12 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.status_effects import (
+from pandemonium.combat.status_effects import (
     apply_bleed, apply_weaken, get_weaken_pct, apply_slow_to_enemy, apply_slow_to_player,
     apply_slow_penalty, tick_enemy_debuffs, tick_player_debuffs, is_cleansable,
     cure_bleed, detonate_bleed, SLOW_DEX_PCT, WEAKEN_STR_PCT,
 )
-from combat.weapon.blank_canvas_shawl import _cleanse_actor
+from pandemonium.combat.weapon.blank_canvas_shawl import _cleanse_actor
 
 # ── 1. Bleed core: apply / refresh / weaker-refresh ──────────────────────────
 t = {"name": "Dummy", "hp": 100, "active_debuffs": []}

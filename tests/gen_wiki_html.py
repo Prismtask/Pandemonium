@@ -336,7 +336,7 @@ def _enrich_enemies(enemies):
     awakenings = innate.get("awakenings", {})
 
     try:
-        from combat.ally import get_growth_label  # single source of truth
+        from pandemonium.combat.ally import get_growth_label  # single source of truth
     except Exception:
         get_growth_label = None
 
@@ -386,10 +386,10 @@ STAT_ABBR = {
 
 def build_equipment_markdown():
     """Markdown reference page: weapon base forms, flowers and their sources."""
-    from resources.item_generation import (
+    from pandemonium.resources.item_generation import (
         WEAPON_FORMS, FORM_WEIGHTS_BY_BIOME, ELEMENT_WEIGHTS_BY_BIOME, FLOWER_ITEMS,
     )
-    from resources.items import ITEMS
+    from pandemonium.resources.items import ITEMS
 
     weapon_keys = {f["key"] for f in WEAPON_FORMS}
     form_biomes = {}

@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 import random
 
-import combat.enemy_ai as ea
+import pandemonium.combat.enemy_ai as ea
 
 captured = []
 ea.c_print = lambda *a, **k: captured.append(" ".join(str(x) for x in a))

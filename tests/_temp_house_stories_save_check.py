@@ -8,10 +8,10 @@ try:
 except Exception:
     pass
 
-import save_load
-from character import ensure_player_fields
-from resources.house_stories import HOUSE_STORIES
-import facilities.house_stories as hs
+import pandemonium.core.save_load as save_load
+from pandemonium.core.character import ensure_player_fields
+from pandemonium.resources.house_stories import HOUSE_STORIES
+import pandemonium.facilities.house_stories as hs
 
 player = save_load.load_game(1)
 assert player, "savegame_1 not found"

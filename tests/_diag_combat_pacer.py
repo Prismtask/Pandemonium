@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gui.combat_pacer import (CombatPacer, HOLD_ENEMY, HOLD_PARTY, HOLD_ROUND,
+from pandemonium.gui.combat_pacer import (CombatPacer, HOLD_ENEMY, HOLD_PARTY, HOLD_ROUND,
                               STAGGER, INPUT_SETTLE, RESOLVE_LEAD)
 
 PARTY = ["prism", "Alice", "Ninetales Fox", "Red Hood"]

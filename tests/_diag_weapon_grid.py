@@ -9,8 +9,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from resources.items import ITEMS, build_item, ITEM_RARITY
-from resources.item_generation import (
+from pandemonium.resources.items import ITEMS, build_item, ITEM_RARITY
+from pandemonium.resources.item_generation import (
     WEAPON_FORMS, ELEMENTS, ELEMENT_PREFIXES, BASE_FORM_IDS,
     grade_for_level, pick_weapon_id, pick_equipment_id, apply_infusion,
 )

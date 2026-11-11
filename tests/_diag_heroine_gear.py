@@ -17,12 +17,12 @@ try:
 except Exception:
     pass
 
-from combat.ally import (
+from pandemonium.combat.ally import (
     _get_heroine_floor_rarity,
     create_heroine_ally,
     migrate_heroine_auto_gear,
 )
-from resources.items import build_item
+from pandemonium.resources.items import build_item
 
 SLOTS = ("weapon", "armor", "accessory1", "accessory2")
 

@@ -12,13 +12,13 @@ except AttributeError:
 
 sys.path.insert(0, ".")
 
-import bestiary
-import combat.combat_engine as engine
-import facilities.guild as guild
-import facilities.temple as temple
-import karma
-from character import build_character
-from combat import city_guards
+import pandemonium.progression.bestiary as bestiary
+import pandemonium.combat.combat_engine as engine
+import pandemonium.facilities.guild as guild
+import pandemonium.facilities.temple as temple
+import pandemonium.progression.karma as karma
+from pandemonium.core.character import build_character
+from pandemonium.combat import city_guards
 
 failures = []
 
@@ -134,9 +134,9 @@ check(all(e["level"] == 23 for e in outlaw if e["key"] == "city_guard_elite"),
 check(all(e["max_hp"] > 0 and e["hp"] == e["max_hp"] for e in wanted),
       "Guard HP is initialized")
 
-from resources.enemies import ENEMIES
-from dungeon import get_random_enemy_key
-from facilities.travel_events import _pick_travel_enemy
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.world.dungeon import get_random_enemy_key
+from pandemonium.facilities.travel_events import _pick_travel_enemy
 
 check(ENEMIES["city_guard"].get("city_only")
       and ENEMIES["city_guard_elite"].get("city_only"),
@@ -156,7 +156,7 @@ board_targets = {b["target_enemy"] for b in guild.generate_bounties(p, "solmere"
 check(not any("city_guard" in k for k in board_targets),
       "City guards never appear on guild bounty boards")
 
-from bestiary import get_total_enemy_count
+from pandemonium.progression.bestiary import get_total_enemy_count
 expected_total = sum(
     1 for t in ENEMIES.values()
     if not t.get("_heroine") and not t.get("city_only")
@@ -355,7 +355,7 @@ check(all("reward_favor" not in b for b in high_board + low_board),
       "Bounty entries no longer carry reward_favor")
 check("favor" not in p_high and "favor" not in p_low,
       "Generating bounties does not write City Favor")
-from events import FIXED_EVENTS
+from pandemonium.core.events import FIXED_EVENTS
 check(FIXED_EVENTS[1]["effect"].get("bounty_bonus") == 0.25,
       "New Moon grants a 25% bounty-gold bonus")
 print()
@@ -369,8 +369,8 @@ check(p["karma_gate"].pop("check_pending") is True, "Pending gate is one-shot")
 print()
 
 print("== 9. Gate choice menu ==")
-import gui.screens.city_screen as city_screen_mod
-from resources.cities import CITIES
+import pandemonium.gui.screens.city_screen as city_screen_mod
+from pandemonium.resources.cities import CITIES
 
 _orig_choice_dialog = city_screen_mod.choice_dialog
 try:
@@ -502,7 +502,7 @@ print()
 
 print("== 11. Talk-down / fight launch ==")
 import random as _random
-import combat.stats as combat_stats
+import pandemonium.combat.stats as combat_stats
 
 _orig_randint = _random.randint
 _orig_player_stats = combat_stats.compute_player_stats

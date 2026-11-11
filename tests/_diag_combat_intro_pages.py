@@ -22,8 +22,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from gui.screens.combat_screen import CombatScreen            # noqa: E402
-from combat.combat_ui import defer_dialogue, take_deferred_dialogue  # noqa: E402
+from pandemonium.gui.screens.combat_screen import CombatScreen            # noqa: E402
+from pandemonium.combat.combat_ui import defer_dialogue, take_deferred_dialogue  # noqa: E402
 
 
 class FakeSM:

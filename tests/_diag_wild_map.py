@@ -23,7 +23,7 @@ except Exception:
 
 import tkinter as tk
 
-from gui.screens.world_map_screen import (
+from pandemonium.gui.screens.world_map_screen import (
     WorldMapScreen, _WILD_MARKER_W, _WILD_MARKER_H,
 )
 
@@ -199,7 +199,7 @@ def main():
     # wild_1 expire_day 12; keep wild_2 alive through day 13
     player["day"] = 13
     player["wild_dungeons"]["active"][1]["expire_day"] = 13
-    from wild_dungeons import expire_dungeons
+    from pandemonium.world.wild_dungeons import expire_dungeons
     expired = expire_dungeons(player)
     assert {d["id"] for d in expired} == {"wild_1"}, expired
     screen._draw_wild_dungeons()
@@ -259,7 +259,7 @@ def main():
     # ── 11. explore_dungeon wild branch wiring ───────────────────────────
     # Full wild-run behavior (victory/flee/death/crumble) is covered by
     # tests/_diag_wild_run.py. Here we only verify the branch delegates.
-    import dungeon as dungeon_mod
+    import pandemonium.world.dungeon as dungeon_mod
     assert callable(dungeon_mod._explore_wild_dungeon)
     gone_player = {
         "day": 10, "max_floor": 12, "location": "dungeon",

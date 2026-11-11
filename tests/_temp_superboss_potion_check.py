@@ -3,10 +3,10 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import combat.superboss_common as sbc
-import combat.ally as amod
-import combat.combat_ui as cui
-from combat.stats import enemy_stats
+import pandemonium.combat.superboss_common as sbc
+import pandemonium.combat.ally as amod
+import pandemonium.combat.combat_ui as cui
+from pandemonium.combat.stats import enemy_stats
 
 # ── Silence I/O / HUD ──
 sbc.c_print = lambda *a, **k: ""

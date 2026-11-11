@@ -12,7 +12,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from combat.stats import (
+from pandemonium.combat.stats import (
     get_raw_critical_chance, resolve_critical_chance, format_crit_summary,
     roll_critical_hit, apply_critical_damage, CRIT_MULTIPLIER,
     CRIT_CHANCE_CAP, CRIT_OVERFLOW_TO_DAMAGE,
@@ -72,8 +72,8 @@ assert "100% chance" in s_long and "1.59" in s_long and "overflow bonus +9%" in 
 print("OK: format_crit_summary strings")
 
 # ── All attack paths consume the overflow bonus ──
-from combat import player_actions, skills, ally, ally_skills
-from combat.weapon import black_silence_gloves
+from pandemonium.combat import player_actions, skills, ally, ally_skills
+from pandemonium.combat.weapon import black_silence_gloves
 for mod in (player_actions, skills, ally, ally_skills):
     assert "overflow_crit" in inspect.getsource(mod), mod.__name__
 assert "overflow_crit" in inspect.getsource(black_silence_gloves)
@@ -81,7 +81,7 @@ assert "crit_bonus" in inspect.getsource(skills)
 print("OK: overflow consumed in all attack paths; player skills read crit_bonus")
 
 # ── Combat HUD integration: party entries carry a compact crit line ──
-from combat.combat_ui import format_combat_hud_data
+from pandemonium.combat.combat_ui import format_combat_hud_data
 player = {
     "name": "Tester", "current_hp": 50, "level": 5,
     "attributes": {"Strength": 10, "Constitution": 10, "Dexterity": 40,

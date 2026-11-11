@@ -26,11 +26,11 @@ try:
 except Exception:
     pass
 
-import dungeon as dungeon_mod
-import event_horizon as eh
-import event_horizon_rooms as ehr
-import inventory_ui
-from resources.enemies import ENEMIES
+import pandemonium.world.dungeon as dungeon_mod
+import pandemonium.world.event_horizon as eh
+import pandemonium.world.event_horizon_rooms as ehr
+import pandemonium.inventory.inventory_ui as inventory_ui
+from pandemonium.resources.enemies import ENEMIES
 
 # ── Stub I/O so the loop runs headless ──────────────────────────────────────
 builtins.input = lambda *a, **k: ""
