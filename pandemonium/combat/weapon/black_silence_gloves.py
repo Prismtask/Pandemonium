@@ -22,8 +22,8 @@ State keys on player dict:
 
 import random
 import threading
-from pandemonium.combat.combat_io import c_print, c_input
-from pandemonium.combat.helpers import format_damage_msg, ELEMENT_TAGS, ACTION_CANCELLED_MSG
+from pandemonium.combat.combat_io import c_input
+from pandemonium.combat.helpers import format_damage_msg, ACTION_CANCELLED_MSG
 from pandemonium.combat.status_effects import apply_bleed
 
 # Per-thread combat context: lets the shared hit helper reach the full enemy
@@ -186,16 +186,6 @@ def _workshop_net_damage(power, target, mult, ignore_con_pct=0.0, extra_mult=1.0
         con = int(con * (1.0 - ignore_con_pct))
     return max(1, int((power - con) * mult * extra_mult))
 
-def _compute_scaling_stat(player, workshop_id):
-    """Get the player's effective attribute value for a workshop."""
-    ws = WORKSHOPS[workshop_id]
-    stat_name = ws["stat"]
-    attr_map = {
-        "Strength": "p_str", "Dexterity": "p_dex", "Constitution": "p_con",
-        "Wisdom": "p_wis", "Learning": "p_ler", "Charisma": "p_cha",
-    }
-    # The caller passes these as kwargs
-    return stat_name
 
 
 def _roll_base_damage(scaling_val):
@@ -648,56 +638,3 @@ def _execute_furioso_actor(actor, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_
 
     victory = len(enemies) == 0
     return "\n".join(messages), victory
-
-
-def get_gloves_action_menu(player, enemies):
-    """Build the action menu when Black Silence gloves are equipped.
-    
-    Returns: (menu_string, valid_keys_list)
-    """
-    from pandemonium.combat.capture import is_monster_girl, is_capturable
-    from pandemonium.combat.status_effects import is_silenced
-
-    actions = []
-
-    # Capture
-    if any(is_capturable(e) for e in enemies):
-        actions.append(('c', 'Capture'))
-
-    # Core actions (no Attack — gloves replace it)
-    actions.append(('d', 'Defend'))
-    actions.append(('f', 'Flee'))
-
-    # Use item (blocked if silenced)
-    if not is_silenced(player):
-        actions.append(('u', 'Use item'))
-
-    # Workshop attacks 1-9
-    workshop_state = player.get("gloves_workshop_used", set())
-    if not isinstance(workshop_state, (set, list)):
-        workshop_state = set()
-    workshop_menu = [
-        ('1', 'Allas Workshop [STR]'),
-        ('2', 'Wheels Industry [STR]'),
-        ('3', 'Zelkova Workshop [DEX]'),
-        ('4', 'Old Boys Workshop [STR]'),
-        ('5', 'Mook Workshop [WIS]'),
-        ('6', 'Ranga Workshop [DEX]'),
-        ('7', 'Crystal Atelier [DEX]'),
-        ('8', 'Atelier Logic [WIS]'),
-        ('9', 'Durandal [LEA]'),
-    ]
-    for key, label in workshop_menu:
-        if int(key) not in workshop_state:
-            actions.append((key, label))
-        else:
-            actions.append((key, f'{label} [USED]'))
-
-    # Furioso — only if all 9 used
-    if player.get("gloves_furioso_available"):
-        actions.append(('0', 'FURIOSO'))
-
-    menu_str = '  '.join(f'[{key.upper()}]{label}' for key, label in actions)
-    valid_keys = [key for key, _ in actions]
-
-    return menu_str, valid_keys

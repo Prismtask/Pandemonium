@@ -1,4 +1,4 @@
-from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.combat_io import c_print
 """Wedding accessory special effect engine.
 
 Wedding items are Unique accessories gifted by married monster girls.
@@ -942,7 +942,6 @@ def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
             from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
             wail_dmg = apply_chance_and_choice(player, wail_dmg)
             # Apply to all enemies
-            from pandemonium.combat.combat_engine import prune_dead
             # We can't easily access the enemies list here, so we'll apply to the attacker
             enemy["hp"] = max(0, enemy["hp"] - wail_dmg)
             from pandemonium.combat.helpers import format_damage_msg
@@ -1200,17 +1199,6 @@ def is_wedding_item_soulbound(item):
 
 
 # ── Stat multiplier from cosmic_gravity ────────────────────────────────────
-
-def apply_wedding_stat_multiplier(player, attr_name, base_value):
-    """Return modified stat value after wedding percentage bonuses."""
-    special, bonded = _active(player)
-    if not special or special != "cosmic_gravity":
-        return base_value
-    # Only active when married girl is in party (is_bonded handles this for base effect)
-    # But the base effect (+8%) also requires the girl to be in party
-    # is_bonded already checks this, so if special is active, the girl is in party
-    pct = 0.12 if bonded else 0.08
-    return int(base_value * (1 + pct))
 
 
 # ── Effect blurbs (round-1 combat reminder) ────────────────────────────────

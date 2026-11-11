@@ -34,13 +34,11 @@
 
 import random
 import pandemonium.world.wonderland_guests as wonderland_guests
-from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import (format_enemy_status_line, print_superboss_header,
-                              defer_dialogue)
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.combat_ui import (defer_dialogue)
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
-from pandemonium.combat.ally import get_active_allies, compute_ally_stats
+from pandemonium.combat.ally import get_active_allies, get_living_party, compute_ally_stats
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
 
 # ── Boss key ─────────────────────────────────────────────────────────────────
@@ -72,17 +70,6 @@ def _get_non_defending_allies(player):
     allies = get_active_allies(player)
     return [a for a in allies if not a.get("defending_this_turn", False)
             and a.get("current_hp", 0) > 0]
-
-
-def _get_alive_party(player):
-    """Return list of living player + active allies."""
-    targets = []
-    if player.get("current_hp", 0) > 0:
-        targets.append(player)
-    for ally in get_active_allies(player):
-        if ally.get("current_hp", 0) > 0:
-            targets.append(ally)
-    return targets
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -128,7 +115,7 @@ def _wolf_turn_hook(enemy, ctx, player, p_con, defending, **kwargs):
     if actions_count > 0 and actions_count % 4 == 0:
         def _huff(e, p, dmg):
             # AoE: damage ALL party members
-            party = _get_alive_party(player)
+            party = get_living_party(player)
             total = 0
             for member in party:
                 if member is player:

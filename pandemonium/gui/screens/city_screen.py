@@ -104,7 +104,7 @@ class CityScreen(BaseScreen):
             ).pack(pady=(0, 6))
 
         # ── Receptionist dialogue ─────────────────────────────────────────
-        from pandemonium.world.city_dialogue import service_dialogue, get_city_dialogues
+        from pandemonium.world.city_dialogue import get_city_dialogues
         receptionist_lines = get_city_dialogues(self.city_id, "receptionist").get("enter", [])
         if receptionist_lines:
             import random as _random
@@ -128,7 +128,7 @@ class CityScreen(BaseScreen):
             self._build_hero_card()
 
         # ── City Map (clickable ASCII art) ─────────────────────────────────────
-        from pandemonium.resources.city_maps import get_city_map, CITY_SERVICE_POSITIONS
+        from pandemonium.resources.city_maps import CITY_SERVICE_POSITIONS
         from pandemonium.gui.widgets.city_map import CityMapWidget
 
         positions = CITY_SERVICE_POSITIONS.get(self.city_id, {})

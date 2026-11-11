@@ -15,7 +15,7 @@ from pandemonium.gui.theme import Theme
 from pandemonium.gui.combat.combat_renderer import CombatRenderer
 from pandemonium.gui.combat.action_panel import ActionPanel
 from pandemonium.gui.widgets.confirm_dialog import ok_dialog
-from pandemonium.combat.combat_io import BaseCombatIO, get_io, set_io, reset_io
+from pandemonium.combat.combat_io import BaseCombatIO, set_io, reset_io
 from pandemonium.combat.combat_engine import combat
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.core.utils import strip_ansi, display_name

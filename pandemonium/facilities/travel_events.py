@@ -19,9 +19,9 @@
 
 import random
 import pandemonium.progression.karma as karma
-from pandemonium.core.utils import advance_time, get_difficulty_multiplier_from_time
+from pandemonium.core.utils import get_difficulty_multiplier_from_time
 from pandemonium.resources.enemies import ENEMIES, BIOME_RACES
-from pandemonium.resources.items import ITEMS, ITEM_RARITY, build_item, is_unique_item, market_value, market_anchor_level, soften_rarity
+from pandemonium.resources.items import ITEMS, build_item, is_unique_item, market_value, market_anchor_level, soften_rarity
 from pandemonium.resources.item_generation import pick_equipment_id, player_biome
 from pandemonium.combat.combat_engine import combat
 from pandemonium.combat.stats import get_effective_attribute

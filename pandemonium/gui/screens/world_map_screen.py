@@ -25,7 +25,7 @@ from pandemonium.gui.theme import Theme
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 
 from pandemonium.resources.cities import CITIES
-from pandemonium.resources.items import ITEMS, build_item, ITEM_RARITY, is_unique_item, soften_rarity
+from pandemonium.resources.items import ITEMS, build_item, is_unique_item, soften_rarity
 from pandemonium.resources.item_generation import pick_equipment_id, player_biome
 from pandemonium.resources.trade_goods import (
     roll_cargo_good, build_cargo,
@@ -37,7 +37,6 @@ from pandemonium.facilities.travel_events import (
     _merchant_price, _sell_price, _item_stat_line, _charisma_discount,
 )
 from pandemonium.inventory.core import add_item_to_inventory, remove_item_by_reference, is_sellable_item
-from pandemonium.combat.stats import get_effective_attribute
 from pandemonium.core.utils import get_difficulty_multiplier_from_time
 from pandemonium.core.character import player_max_hp
 from pandemonium.core.events import get_daily_bonus_multiplier
@@ -311,7 +310,6 @@ class WorldMapScreen(BaseScreen):
 
     def _build_wonderland_cheshire(self):
         """Show Cheshire Cat art instead of the world map when in Wonderland."""
-        import textwrap
 
         # Clear everything
         for child in self.winfo_children():

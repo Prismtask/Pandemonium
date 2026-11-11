@@ -205,8 +205,6 @@ def _seen_parts(player):
     return ensure_house_story_state(player)["seen"]
 
 
-def seen_part(player, part_id):
-    return part_id in _seen_parts(player)
 
 
 def next_part(player, story):
@@ -470,24 +468,8 @@ def _record_story_event(player, story, part):
 
 # ── Rendering ────────────────────────────────────────────────────────────────
 
-def _join_names(names):
-    if not names:
-        return "the household"
-    if len(names) == 1:
-        return names[0]
-    if len(names) == 2:
-        return f"{names[0]} and {names[1]}"
-    return ", ".join(names[:3]) + ", and the others"
 
 
-def _format_tokens(text, player, story, part):
-    req = merge_requirements(story, part)
-    targets = _effect_targets(player, story, part, req)
-    names = [display_name(g) for g in targets]
-    girl = names[0] if names else "she"
-    return (text.replace("{player}", player.get("name", "you"))
-                .replace("{girls}", _join_names(names))
-                .replace("{girl}", girl))
 
 
 def render_part(player, story, part, number):

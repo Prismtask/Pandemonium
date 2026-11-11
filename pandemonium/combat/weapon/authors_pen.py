@@ -6,7 +6,7 @@ Active: Rewrite (5 CD) — heal the party for all damage taken in the previous c
         Does not revive fallen allies.
 """
 
-from pandemonium.combat.combat_io import c_print, c_input
+from pandemonium.combat.combat_io import c_print
 
 
 # ─── Equipped Check ───────────────────────────────────────────────────────
@@ -61,14 +61,6 @@ def is_authors_pen_available(actor):
     return actor.get("authors_pen_cooldown", 0) <= 0
 
 
-def get_authors_pen_cooldown_display(actor):
-    """Return cooldown display string for the combat UI, or empty string."""
-    if not _actor_has_authors_pen(actor):
-        return ""
-    cd = actor.get("authors_pen_cooldown", 0)
-    if cd > 0:
-        return f"(Rewrite recharging: {cd} turn(s))"
-    return ""
 
 
 # ─── Round Lifecycle: Damage Tracking ────────────────────────────────────

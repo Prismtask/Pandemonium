@@ -6,14 +6,13 @@ three immortal linked shards, Paradox Fracture vulnerability mechanic.
 """
 
 import random
-from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
 from pandemonium.combat.status_effects import (
-    apply_burn, apply_burn_to_player, apply_bleed, apply_weaken,
-    apply_momentum, clear_momentum, get_momentum_stacks,
+    apply_burn_to_player, apply_bleed, apply_momentum, clear_momentum, get_momentum_stacks,
     detonate_burn, detonate_bleed,
 )
-from pandemonium.combat.ally import get_alive_allies, get_active_allies, compute_ally_stats
+from pandemonium.combat.ally import get_active_allies, get_living_party
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.combat.combat_io import c_print, c_input
 
@@ -65,27 +64,12 @@ MOMENTUM_CAP_P3 = 30
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════
 
-def _get_boss(elist):
-    return next((e for e in elist if e.get("key") == BOSS_KEY), None)
-
-
 def _get_shard(elist, shard_key):
     return next((e for e in elist if e.get("key") == shard_key), None)
 
 
-def _get_stack_threshold(stacks):
-    """Return tier based on stack count: 0=base, 1=empowered, 2=transcendent."""
-    if stacks >= 21:
-        return 2
-    elif stacks >= 11:
-        return 1
-    return 0
 
 
-def _get_paradox_multiplier(ctx):
-    """Damage multiplier for Paradox Fracture on boss (vulnerability)."""
-    pf = ctx.get("paradox_fracture", 0)
-    return 1.0 + (pf * 0.10)
 
 
 def _get_momentum_multiplier(boss, defending=False):
@@ -124,19 +108,6 @@ def _calc_damage(base_roll, stat_mod, target_con, defending=False, ignore_defend
     return max(0, dmg)
 
 
-def _get_target_con(target, player, p_con):
-    """Get CON value for a target (player or ally)."""
-    if target is player:
-        return p_con
-    _, a_con, _, _, _, _ = compute_ally_stats(target)
-    return a_con
-
-
-def _get_alive_party(player):
-    """Return [player] + active alive allies."""
-    party = [player]
-    party.extend(get_active_allies(player))
-    return party
 
 
 def _count_burn_bleed(target):
@@ -255,39 +226,6 @@ def _skill_pulverization(boss, player, p_con, defending, ctx):
     return total_dmg
 
 
-def _skill_chaotic_turmoil(boss, player, p_con, defending, ctx):
-    """Shared: Dark 1-hit ignores Defend, repeats based on missing HP."""
-    phase = ctx["phase"]
-    ler = _get_boss_stat(boss, "ler")
-    burn_dmg, burn_rem, bleed_dmg, bleed_rem = _count_burn_bleed(player)
-    total_dots = burn_dmg + burn_rem + bleed_dmg + bleed_rem
-    dot_bonus = min(6, total_dots // 6)
-    mom = get_momentum_stacks(boss)
-    mom_bonus = min(3, mom // 6)
-
-    hp_pct = boss["hp"] / max(1, boss.get("max_hp", 1))
-    if hp_pct > 0.66:
-        repeats = 1
-    elif hp_pct > 0.33:
-        repeats = 2
-    else:
-        repeats = 3
-
-    total_dmg = 0
-    for i in range(repeats):
-        if player["current_hp"] <= 0:
-            break
-        dmg = _calc_damage(random.randint(6, 14), ler, p_con, False, ignore_defend=True)
-        dmg = dmg + dot_bonus + mom_bonus
-        total_dmg += dmg
-        _apply_boss_damage(boss, player, dmg, element="dark",
-                           skill_name=f"Chaotic Turmoil ({i+1}/{repeats})")
-        apply_burn_to_player(player, tier=5, duration=3)
-        apply_bleed(player, damage=4, duration=3)
-        apply_momentum(boss, 1, cap=MOMENTUM_CAP_P3 if phase >= 3 else MOMENTUM_CAP_P1P2)
-        c_print("  🔥🩸 Burn + Bleed applied!")
-
-    return total_dmg
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -323,7 +261,7 @@ def _skill_temper_and_cast(boss, player, p_con, defending, ctx):
     _apply_boss_damage(boss, player, dmg2, element="fire", skill_name="Temper and Cast (2/2)")
 
     # Detonate
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     det_dmg, msgs = detonate_burn(player, all_party=party)
     if det_dmg == 0:
         # Fallback
@@ -374,7 +312,7 @@ def _skill_immolation(boss, player, p_con, defending, ctx):
     total_dmg += dmg3
     _apply_boss_damage(boss, player, dmg3, element="fire", skill_name="Immolation (3/3)")
 
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     det_dmg, msgs = detonate_burn(player, all_party=party)
     if det_dmg == 0:
         fallback = past_stacks * 3
@@ -432,7 +370,7 @@ def _skill_kalpagni(boss, player, p_con, defending, ctx):
     dmg3 = int((dmg3 + 2) * (1.0 + past_pct))
     total_dmg += dmg3
     _apply_boss_damage(boss, player, dmg3, element="fire", skill_name="Kalpāgni (3/4)")
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     det_dmg, msgs = detonate_burn(player, all_party=party)
     if det_dmg == 0:
         fallback = past_stacks * 3
@@ -906,7 +844,7 @@ def _get_skill_for_cycle(aspect, cycle, phase):
 
 def _pre_player_hook(ctx, enemies):
     """Round-start: phase transitions, Aspect switching, Paradox Fracture, shard regen."""
-    boss = _get_boss(enemies)
+    boss = get_boss(enemies, BOSS_KEY)
     if not boss:
         return None
 
@@ -1024,7 +962,7 @@ def _sync_entity_tags(ctx, enemies):
     """
     active = ctx["active_aspect"]
     phase = ctx["phase"]
-    boss = _get_boss(enemies)
+    boss = get_boss(enemies, BOSS_KEY)
 
     # ── Shards: Aspect stack tags ───────────────────────────
     for shard_key in SHARD_KEYS.values():
@@ -1054,11 +992,11 @@ def _apply_past_passive(ctx, enemies):
     player = ctx.get("_player_ref")
     if not player:
         return
-    boss = _get_boss(enemies)
+    boss = get_boss(enemies, BOSS_KEY)
     if not boss:
         return
 
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     for member in party:
         burn_dmg, burn_rem, _, _ = _count_burn_bleed(member)
         total_burn = burn_dmg + burn_rem
@@ -1100,11 +1038,11 @@ def _apply_future_passive(ctx, player, enemies):
     """Future passive: immediate bleed tick on all bleeding party members, heal boss."""
     if not player:
         return
-    boss = _get_boss(enemies)
+    boss = get_boss(enemies, BOSS_KEY)
     if not boss:
         return
     total_heal = 0
-    for member in _get_alive_party(player):
+    for member in get_living_party(player):
         for d in member.get("active_debuffs", [])[:]:
             if d["type"] == "bleed" and d.get("remaining", 0) > 0:
                 dmg = d.get("damage", 0)
@@ -1176,7 +1114,7 @@ def _enemy_turn_hook(enemy, ctx, player, p_con, defending, **kwargs):
 
 def _post_round_hook(ctx, enemies):
     """Future bleed lifesteal + Paradox Fracture cleanup."""
-    boss = _get_boss(enemies)
+    boss = get_boss(enemies, BOSS_KEY)
     if not boss:
         return None
 
@@ -1186,7 +1124,7 @@ def _post_round_hook(ctx, enemies):
         player = ctx.get("_player_ref")
         if player:
             total_bleed = 0
-            for entity in _get_alive_party(player):
+            for entity in get_living_party(player):
                 for d in entity.get("active_debuffs", []):
                     if d["type"] == "bleed" and d.get("remaining", 0) > 0:
                         total_bleed += d.get("damage", 0)

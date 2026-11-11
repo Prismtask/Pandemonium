@@ -104,9 +104,6 @@ def get_wild_dungeon(player, dungeon_id):
     return None
 
 
-def get_completed_dungeon_ids(player):
-    """Return the list of cleared wild dungeon ids (permanent record)."""
-    return ensure_wild_dungeon_state(player)["completed"]
 
 
 # ── Generation helpers ──────────────────────────────────────────────────────

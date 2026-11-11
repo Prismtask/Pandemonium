@@ -517,7 +517,7 @@ class InventoryScreen(BaseScreen):
             return
 
         from pandemonium.combat.skills import get_class_skill_map, format_mastery_label
-        from pandemonium.combat.skills import get_skill_mastery_level, get_equipped_skill_ids, MAX_SKILL_LOADOUT
+        from pandemonium.combat.skills import get_equipped_skill_ids, MAX_SKILL_LOADOUT
 
         skill_map = get_class_skill_map(self.player)
         if not skill_map:

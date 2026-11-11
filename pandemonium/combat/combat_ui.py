@@ -1,5 +1,5 @@
 # combat_ui.py – HUD and status formatting
-from pandemonium.core.utils import clear_screen, format_time, display_name
+from pandemonium.core.utils import format_time, display_name
 from pandemonium.combat.status_effects import format_player_status_line
 from pandemonium.combat.action_menu import get_action_menu
 from pandemonium.combat.weapon.abyss_fang import is_abyssal_tempo_active, get_abyss_fang_cooldown_display
@@ -8,7 +8,7 @@ from pandemonium.combat.weapon.moonlight_greatsword import get_moonlight_status_
 from pandemonium.combat.ally import format_ally_status_line, _ally_action_menu
 from pandemonium.combat.ally_skills import get_all_ally_skills
 from pandemonium.combat.skills import get_all_unlocked_skills
-from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.combat_io import c_print
 
 
 # ── Deferred dialogue (played by the dungeon screen) ────────────────────────
@@ -38,30 +38,6 @@ def take_deferred_dialogue(player):
     return player.pop(_PENDING_DIALOGUE_KEY, None)
 
 
-def format_enemy_status_line(enemy, extra=""):
-    statuses = []
-    if enemy.get("slowed"):
-        statuses.append("Slowed")
-    if enemy.get("stunned"):
-        statuses.append("Stunned")
-    if enemy.get("blinded"):
-        statuses.append("Blinded")
-    if enemy.get("frozen"):
-        statuses.append("Frozen")
-    if enemy.get("confused"):
-        statuses.append("Confused")
-    if any(d["type"] == "burn" for d in enemy.get("active_debuffs", [])):
-        burn_debuff = next((d for d in enemy.get("active_debuffs", []) if d["type"] == "burn"), None)
-        if burn_debuff:
-            from pandemonium.combat.status_effects import get_burn_tier_name
-            tier_name = get_burn_tier_name(burn_debuff.get("tier", 2))
-            statuses.append(tier_name)
-    if enemy.get("expose_stacks", 0) > 0:
-        statuses.append(f"Exposed×{enemy['expose_stacks']}")
-    if enemy.get("brush_strokes_display"):
-        statuses.append(enemy["brush_strokes_display"])
-    status_str = f" ({', '.join(statuses)})" if statuses else ""
-    return f"{enemy['name']} - HP: {enemy['hp']}{status_str}{extra}"
 
 
 def print_pre_initiative_enemies(enemies):
@@ -104,8 +80,8 @@ _EH_STACK_TYPES = frozenset({
 })
 
 
-def _get_entity_buff_tags(entity):
-    """Return a short buff/debuff tag string for any entity (player, ally, enemy)."""
+
+def _flag_and_cooldown_tags(entity):
     statuses = []
     # Flag-based debuffs
     if entity.get("stunned"):
@@ -140,6 +116,12 @@ def _get_entity_buff_tags(entity):
         statuses.append(f"MOON×{moon_turns}")
 
     # Debuff types from active_debuffs
+    return statuses
+
+
+def _active_debuff_tags(entity):
+    statuses = []
+
     debuff_map = {
         "poison": "PSN",
         "bleed": "BLE",
@@ -175,6 +157,12 @@ def _get_entity_buff_tags(entity):
             statuses.append(tag)
 
     # Tarnished Jade pin stacks — only shown while the Jade is actually equipped
+    return statuses
+
+
+def _gear_and_run_tags(entity):
+    statuses = []
+
     tj_pins = entity.get("tarnished_jade_pins", 0)
     if tj_pins > 0:
         from pandemonium.combat.weapon.tarnished_jade import _actor_has_tarnished_jade
@@ -231,6 +219,12 @@ def _get_entity_buff_tags(entity):
     # type into a single tag. Ally-skill buffs (Frabjous Day, Fate's Favor)
     # are temporary and NOT source-tagged — they keep individual tags so
     # their remaining turns stay visible beside the run total.
+    return statuses
+
+
+def _stacked_eh_tags(entity):
+    statuses = []
+
     stacked = {}
     stacked_order = []
     for b in entity.get("active_buffs", []):
@@ -266,6 +260,12 @@ def _get_entity_buff_tags(entity):
             statuses.append(tag)
 
     # Other buffs (skills, items, blessings…) — one tag each
+    return statuses
+
+
+def _buff_status_tags(entity):
+    statuses = []
+
     for b in entity.get("active_buffs", []):
         if (b.get("source") == "event_horizon" and b.get("permanent")
                 and b.get("type") in _EH_STACK_TYPES):
@@ -328,8 +328,22 @@ def _get_entity_buff_tags(entity):
             continue
         if tag not in statuses:
             statuses.append(tag)
+    return statuses
 
-    # Elemental tag removed — now displayed separately via _get_entity_elem_tags()
+
+def _get_entity_buff_tags(entity):
+    """Return a short buff/debuff tag string for any entity (player, ally, enemy)."""
+    statuses = []
+    for collect in (
+        _flag_and_cooldown_tags,
+        _active_debuff_tags,
+        _gear_and_run_tags,
+        _stacked_eh_tags,
+        _buff_status_tags,
+    ):
+        for tag in collect(entity):
+            if tag not in statuses:
+                statuses.append(tag)
 
     # ── Custom tags (injected by boss scripts, e.g. Chrysalis aspect stacks) ──
     for tag in entity.get("_custom_tags", []):
@@ -467,7 +481,7 @@ def format_combat_hud_data(player, enemies, active_ally=None, header=""):
         cooldowns:   list of cooldown message strings
         active_ally: the ally whose turn it is (or None for player)
     """
-    from pandemonium.combat.ally import (get_active_allies, get_reserve_allies,
+    from pandemonium.combat.ally import (get_reserve_allies,
                              get_all_active_allies_including_defeated,
                              get_all_reserve_allies_including_defeated,
                              ensure_party_order, compute_ally_stats)

@@ -300,15 +300,6 @@ def merge_profiles(base, override):
     return result
 
 
-def add_profiles(a, b):
-    """Add two profiles together, capped at 0.0 minimum, 2.0 maximum."""
-    result = {}
-    for el in ELEMENTS:
-        total = a.get(el, 1.0) + b.get(el, 0.0) - 1.0
-        result[el] = max(0.0, min(2.0, total))
-    return result
-
-
 def _get_equipment_elemental(player_or_ally, which):
     """Sum elemental stats from equipped items.
     
@@ -603,15 +594,3 @@ def calculate_elemental_damage(base_dmg, attacker, target, element=None):
         final_dmg = int(final_dmg * (100 + momentum_stacks * 3) / 100)
     
     return max(0, final_dmg)
-
-
-def format_elemental_short(profile):
-    """Format a compact elemental profile string for display.
-    Only shows values that differ from 1.0."""
-    parts = []
-    for el in ELEMENTS:
-        val = profile.get(el, 1.0)
-        if val != 1.0:
-            sign = "+" if val > 1.0 else ""
-            parts.append(f"{el[:3].upper()}{sign}{val:.1f}")
-    return " ".join(parts) if parts else "Neutral"

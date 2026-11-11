@@ -21,7 +21,7 @@ import random
 
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
 from pandemonium.combat.ally import get_active_allies
 from pandemonium.combat.status_effects import absorb_damage
 
@@ -91,10 +91,6 @@ def _party(player):
     return [player] + get_active_allies(player)
 
 
-def _get_boss(enemies):
-    return next((e for e in enemies if e.get("key") == BOSS_KEY), None)
-
-
 def _armor_mult_for(unit):
     stacks = min(EXPOSE_CAP, unit.get("expose_stacks", 0))
     return max(0.4, 1.0 - 0.10 * stacks)
@@ -140,7 +136,7 @@ def combat_white_knight(player, floor=None, enemies=None):
     """
     if enemies is None:
         enemies = []
-    boss = _get_boss(enemies)
+    boss = get_boss(enemies, BOSS_KEY)
     if boss is None:
         from pandemonium.combat.stats import enemy_stats
         boss = enemy_stats(BOSS_KEY, player)
@@ -180,7 +176,7 @@ def combat_white_knight(player, floor=None, enemies=None):
 
     # ── Hooks ──────────────────────────────────────────────────────────
     def pre_player_hook(ctx, elist):
-        b = _get_boss(elist)
+        b = get_boss(elist, BOSS_KEY)
         if b is None or b["hp"] <= 0:
             return
         ctx["round"] += 1
@@ -288,7 +284,7 @@ def combat_white_knight(player, floor=None, enemies=None):
                 attacker["defeated"] = True
 
     def enemy_turn_hook(enemy, ctx, pl, p_con, defending, **kwargs):
-        b = _get_boss([enemy])
+        b = get_boss([enemy], BOSS_KEY)
         if b is None:
             return 1, False, None, 1.0, 0
 
@@ -350,7 +346,7 @@ def combat_white_knight(player, floor=None, enemies=None):
                     c_print(f"  {t.get('name', 'they')} has fallen.")
 
     def custom_hud_hook(ctx, elist):
-        b = _get_boss(elist)
+        b = get_boss(elist, BOSS_KEY)
         if b is None:
             return
         mode_label = {

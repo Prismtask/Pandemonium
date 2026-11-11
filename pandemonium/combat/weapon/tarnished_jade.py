@@ -1,5 +1,4 @@
-from pandemonium.combat.combat_io import c_print, c_input, c_clear, get_io
-import random
+from pandemonium.combat.combat_io import c_print, get_io
 from pandemonium.core.character import player_max_hp
 
 

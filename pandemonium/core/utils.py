@@ -41,13 +41,6 @@ def _tinput(prompt=""):
         return input(prompt)
 
 
-def _tclear():
-    """Clear screen (no-op in GUI since output is managed by the panel)."""
-    t = _term()
-    if t:
-        t.clear()
-    else:
-        clear_screen()
 
 
 def _tmenu(options, prompt="Choose an option:", allow_cancel=False, cancel_label="Cancel"):

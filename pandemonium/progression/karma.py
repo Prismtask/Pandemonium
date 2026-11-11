@@ -99,9 +99,6 @@ def get_bills_mult(player):
     return max(0.5, min(1.5, mult))
 
 
-def is_lawless_city(city_id):
-    """Blackwake: no Karma gate, no guards, no jail."""
-    return city_id == LAWLESS_CITY
 
 
 def add_journal(player, name, desc):

@@ -483,11 +483,6 @@ def add_ally_skill_mastery_xp(ally, skill_id):
     return False
 
 
-def get_learnable_skill_categories():
-    """Return list of available learnable skill categories (offensive, defensive, support)."""
-    return list(LEARNABLE_SKILLS.keys())
-
-
 def get_learnable_skills_by_category(category):
     """Return dict of learnable skills in a category."""
     return LEARNABLE_SKILLS.get(category, {})
@@ -608,7 +603,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
     import random
     from pandemonium.combat.ally import compute_ally_stats
     from pandemonium.combat.skills import get_mastery_bonuses
-    from pandemonium.combat.status_effects import apply_poison, apply_burn, apply_shock, apply_barrier, apply_sleep, apply_haste, apply_paralyze, apply_entomb, apply_void_touched, apply_bleed, absorb_damage, wake_on_damage, apply_healing, apply_death_ward
+    from pandemonium.combat.status_effects import apply_poison, apply_burn, apply_shock, apply_barrier, apply_sleep, apply_haste, apply_paralyze, apply_entomb, apply_void_touched, apply_bleed, wake_on_damage, apply_healing, apply_death_ward
     from pandemonium.core.character import player_max_hp
 
     # ── Palette heroine: custom kit (degraded boss moves) ──

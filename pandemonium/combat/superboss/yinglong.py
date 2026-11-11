@@ -34,13 +34,12 @@
 #     – Until the Wedge is destroyed Yinglong remains Immortal.
 
 import random
-from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header, print_combat_hud
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.combat_ui import print_combat_hud
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
-from pandemonium.combat.status_effects import apply_weaken, format_player_status_line
+from pandemonium.combat.status_effects import apply_weaken
 from pandemonium.core.character import player_max_hp
-from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.core.utils import display_name
 
 

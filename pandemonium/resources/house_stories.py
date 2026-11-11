@@ -69,8 +69,6 @@ def ensure_state(player):
     return state
 
 
-def get_story(story_id):
-    return HOUSE_STORIES.get(story_id)
 
 
 def iter_story_parts(story):

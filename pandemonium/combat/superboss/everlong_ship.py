@@ -19,13 +19,11 @@
 #   • "The captain goes down with the ship... and so his men followed him."
 
 import random
-from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header, print_combat_hud
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.combat_ui import print_combat_hud
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
-from pandemonium.combat.ally import get_alive_allies, get_active_allies
-from pandemonium.core.character import player_max_hp
-from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.ally import get_active_allies
+from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
 
 
@@ -66,9 +64,6 @@ def _spawn_crew(player, pool=None):
     return crew
 
 
-def _get_crew_count(elist):
-    """Count living crew members in the enemy list."""
-    return sum(1 for e in elist if e.get("key") in CREW_KEYS and e["hp"] > 0)
 
 
 def _get_captain(elist):

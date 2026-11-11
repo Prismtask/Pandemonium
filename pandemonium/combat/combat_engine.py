@@ -27,14 +27,13 @@ from pandemonium.combat.enemy_ai import get_race_extra_logic
 from pandemonium.combat.enemy_skills import enemy_take_turn
 from pandemonium.combat.player_actions import handle_player_turn
 from pandemonium.combat.combat_ui import (
-    print_combat_hud, print_turn_order, print_round_header, print_pre_initiative_enemies,
+    print_turn_order, print_round_header, print_pre_initiative_enemies,
     current_time_label,
 )
 from pandemonium.combat.status_effects import tick_player_debuffs, tick_player_buffs, try_consume_death_ward, clear_stun
 from pandemonium.combat.ally import (
-    get_alive_allies, get_active_allies, compute_ally_stats, handle_ally_turn,
-    auto_fill_active_slots, can_switch, swap_party_member,
-    reinforce_fallen_allies,
+    get_alive_allies, get_active_allies, get_living_party, compute_ally_stats, handle_ally_turn,
+    auto_fill_active_slots, reinforce_fallen_allies,
 )
 from pandemonium.combat.weapon.wedding_specials import (
     begin_wedding_combat, end_wedding_combat,
@@ -126,13 +125,6 @@ def roll_initiative(player, enemies):
 
     combatants.sort(key=lambda c: (c["speed"], random.random()), reverse=True)
     return combatants
-
-
-def _get_alive_party(player):
-    """Return [player] + active (front-row) alive allies."""
-    party = [player]
-    party.extend(get_active_allies(player))
-    return party
 
 
 def _tick_all_state(player):
@@ -410,7 +402,7 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
     player["tarnished_jade_weakened"] = False
 
     # Initialize Black Silence Gloves state for player
-    from pandemonium.combat.weapon.black_silence_gloves import init_gloves_state, clear_gloves_state, _actor_has_black_silence_gloves
+    from pandemonium.combat.weapon.black_silence_gloves import init_gloves_state, _actor_has_black_silence_gloves
     if _actor_has_black_silence_gloves(player):
         init_gloves_state(player)
 
@@ -706,7 +698,7 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                 break
 
             # Check if party is still alive
-            alive_party = _get_alive_party(player)
+            alive_party = get_living_party(player)
             if player["current_hp"] <= 0:
                 c_print("\n  You have been slain.")
                 return _end_combat_with_result(player, "dead")
@@ -857,7 +849,7 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                     continue
 
                 # Pick a target from alive party members
-                alive_party = _get_alive_party(player)
+                alive_party = get_living_party(player)
                 if not alive_party:
                     c_print("  Your entire party has fallen!")
                     return _end_combat_with_result(player, "dead")

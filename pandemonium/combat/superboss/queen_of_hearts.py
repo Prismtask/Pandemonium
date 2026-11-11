@@ -23,10 +23,7 @@
 # Mercy Rule (5% HP):
 #   - Fight ends automatically (victory).
 
-import random
-from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header
+from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.combat_io import c_print, c_input, c_clear

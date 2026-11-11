@@ -13,10 +13,10 @@ import random
 import pandemonium.progression.karma as karma
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat.stats import compute_player_stats
-from pandemonium.core.utils import clear_screen, advance_time, _tprint, _tpause, _tclear, _tmenu, _tinput, display_name
-from pandemonium.resources.items import ITEMS, ITEM_RARITY, build_item, soften_rarity
+from pandemonium.core.utils import _tprint, _tpause, _tmenu, display_name
+from pandemonium.resources.items import build_item, soften_rarity
 from pandemonium.resources.item_generation import pick_equipment_id, dungeon_biome
-from pandemonium.inventory.core import add_item_to_inventory, remove_item_by_reference, is_sellable_item
+from pandemonium.inventory.core import remove_item_by_reference, is_sellable_item
 from pandemonium.progression.leveling import gain_exp, gain_exp_ally
 from pandemonium.combat.combat_engine import combat
 from pandemonium.combat.ally import get_alive_allies

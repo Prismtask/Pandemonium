@@ -32,9 +32,9 @@ Phase 3 — "Vileheart's Desperation" (35%–0% HP):
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
 from pandemonium.combat.status_effects import apply_poison
-from pandemonium.combat.ally import get_active_allies, compute_ally_stats
+from pandemonium.combat.ally import get_living_party, compute_ally_stats
 from pandemonium.combat.combat_io import c_print, c_input
 
 # ═══════════════════════════════════════════════════════════════════
@@ -56,10 +56,6 @@ HEART_PULSE_DMG_NEEDED = 60
 # ═══════════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════
-
-def _get_boss(elist):
-    return next((e for e in elist if e.get("key") == BOSS_KEY), None)
-
 
 def _spawn_spiderling(player, count=1):
     """Create spiderling enemy dicts. Returns list."""
@@ -85,15 +81,6 @@ def _count_spiderlings(elist):
     return sum(1 for e in elist
                if e.get("key") in (SPIDERLING_KEY, VENOMWEAVER_KEY)
                and e["hp"] > 0 and not e.get("captured"))
-
-
-def _get_alive_party(player):
-    """Return [player] + active alive allies."""
-    party = [player] if player.get("current_hp", 0) > 0 else []
-    for ally in get_active_allies(player):
-        if ally.get("current_hp", 0) > 0:
-            party.append(ally)
-    return party
 
 
 def _get_actor_con(actor, player, p_con):
@@ -166,7 +153,7 @@ def _phase1_attack_selection(boss, player, ctx):
 
 def _acid_spray_extra(enemy, player, dmg):
     """Acid Spray: AoE Corrosion debuff to all party members."""
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     for target in party:
         target.setdefault("active_debuffs", []).append({
             "type": "corrosion",
@@ -200,7 +187,7 @@ def _ceiling_attack_selection(boss, player, ctx, elist):
 
 def _toxic_rain_extra(enemy, player, dmg):
     """Toxic Rain: apply poison to all party members."""
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     for target in party:
         apply_poison(target, 3, 4)
     return "🌧️ Toxic Rain! All party poisoned (3 dmg x 4 turns)!"
@@ -208,7 +195,7 @@ def _toxic_rain_extra(enemy, player, dmg):
 
 def _web_cage_extra(enemy, player, dmg):
     """Web Cage: trap a random party member — they skip their next turn."""
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     if not party:
         return None
     target = random.choice(party)
@@ -286,7 +273,7 @@ def _phase3_web_shot(enemy, player, dmg):
 
 def _phase3_acid_spray(enemy, player, dmg):
     """Enhanced Acid Spray: stronger corrosion."""
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     for target in party:
         target.setdefault("active_debuffs", []).append({
             "type": "corrosion",
@@ -302,7 +289,7 @@ def _toxic_explosion_extra(enemy, player, dmg):
 
     Each poison stack deals its remaining total damage instantly.
     """
-    party = _get_alive_party(player)
+    party = get_living_party(player)
     total_detonated = 0
     for target in party:
         for debuff in list(target.get("active_debuffs", [])):
@@ -324,7 +311,7 @@ def _consume_brood_extra(ctx, elist):
         if e.get("key") in (SPIDERLING_KEY, VENOMWEAVER_KEY) and e["hp"] > 0:
             victim_name = e["name"]
             e["hp"] = 0
-            boss = _get_boss(elist)
+            boss = get_boss(elist, BOSS_KEY)
             if boss:
                 heal = int(boss.get("max_hp", 350) * 0.15)
                 boss["hp"] = min(boss.get("max_hp", 350), boss["hp"] + heal)
@@ -423,7 +410,7 @@ def combat_broodmother(player, floor=None, enemies=None):
 
     def pre_player_hook(ctx, elist):
         """Phase transitions and spawn logic at round start."""
-        boss = _get_boss(elist)
+        boss = get_boss(elist, BOSS_KEY)
         if not boss:
             return
 
@@ -591,7 +578,7 @@ def combat_broodmother(player, floor=None, enemies=None):
         else:
             c_print("\n  💚 The heart pulse DETONATES!")
             c_print("  A wave of pure venom washes over your party!")
-            party = _get_alive_party(player)
+            party = get_living_party(player)
             total_dmg = 0
             for target in party:
                 dmg = random.randint(50, 70)
@@ -609,7 +596,7 @@ def combat_broodmother(player, floor=None, enemies=None):
     def post_round_hook(ctx, elist):
         """End-of-round mechanics for all phases."""
         phase = ctx["phase"]
-        boss = _get_boss(elist)
+        boss = get_boss(elist, BOSS_KEY)
 
         # ── Phase 2: retreat timer ──────────────────────────────────
         if ctx["retreat_active"]:
@@ -631,7 +618,7 @@ def combat_broodmother(player, floor=None, enemies=None):
                 boss_data = ctx["boss_escaped_data"]
                 if boss_data:
                     # Impact damage to party
-                    party = _get_alive_party(player)
+                    party = get_living_party(player)
                     for target in party:
                         dmg = 10
                         name = target.get("name", "Someone")
@@ -659,7 +646,7 @@ def combat_broodmother(player, floor=None, enemies=None):
             # Death Throes
             if ctx.get("_death_throes_active"):
                 c_print("\n💀 DEATH THROES: Vile energy pulses from the Broodmother!")
-                party = _get_alive_party(player)
+                party = get_living_party(player)
                 for target in party:
                     name = target.get("name", "Someone")
                     target["current_hp"] = max(0, target.get("current_hp", 0) - 10)
@@ -675,7 +662,7 @@ def combat_broodmother(player, floor=None, enemies=None):
         if not boss_data:
             return
 
-        party = _get_alive_party(player)
+        party = get_living_party(player)
         if not party:
             return
 
@@ -704,7 +691,7 @@ def combat_broodmother(player, floor=None, enemies=None):
     def custom_hud_hook(ctx, elist):
         """Display phase info and mechanical state above the combat HUD."""
         phase = ctx["phase"]
-        boss = _get_boss(elist)
+        boss = get_boss(elist, BOSS_KEY)
 
         # Phase label
         phase_labels = {

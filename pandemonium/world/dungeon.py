@@ -3,11 +3,11 @@ import random
 import pandemonium.progression.karma as karma
 from pandemonium.resources.enemies import ENEMIES, BIOME_RACES
 from pandemonium.resources.items import (
-    build_item, ITEMS, ITEM_RARITY, soften_rarity,
+    build_item, ITEMS, soften_rarity,
     market_anchor_level, kill_gold_offset,
 )
 from pandemonium.resources.item_generation import (
-    pick_equipment_id, player_biome, dungeon_biome, biome_craft_hint,
+    pick_equipment_id, dungeon_biome, biome_craft_hint,
 )
 from pandemonium.resources.cities import CITIES
 from pandemonium.combat.combat_engine import combat
@@ -34,7 +34,7 @@ from pandemonium.combat.superboss.mary_sue import combat_mary_sue
 from pandemonium.combat.superboss.wl_floor_bosses import get_wl_floor_boss, is_wl_boss_floor
 from pandemonium.core.character import player_max_hp
 from pandemonium.core.save_load import save_game
-from pandemonium.core.utils import clear_screen, advance_time, format_time, _tprint, _tpause, _tclear, _tmenu, _term, display_name
+from pandemonium.core.utils import advance_time, _tprint, _tpause, _tmenu, _term, display_name
 from pandemonium.progression.leveling import (gain_exp, gain_exp_ally, get_shared_biome_max_floor,
                       sync_biome_dungeon_depth)
 from pandemonium.world.wild_dungeons import (get_wild_dungeon, complete_wild_dungeon,
@@ -47,10 +47,6 @@ from pandemonium.world.dungeon_rooms import (
     handle_treasure_room,
     handle_trap_room,
     handle_stat_check_room,
-    ROOM_LABELS,
-    STAT_CHECK_EVENTS,
-    WL_ROOM_LABELS,
-    WL_STAT_CHECK_EVENTS,
     get_stat_check_events,
     get_room_labels,
 )
@@ -59,7 +55,6 @@ from pandemonium.world.curse_pandemonium import (
     apply_room_entry_damage,
     apply_healing_reduction,
     apply_gold_reduction,
-    is_flee_blocked,
     end_pandemonium_run,
     format_active_curse_line,
     get_curse,
@@ -67,37 +62,20 @@ from pandemonium.world.curse_pandemonium import (
 from pandemonium.world.wonderland_curses import (
     apply_wonderland_quirk_on_floor_start,
     clear_wonderland_quirk,
-    get_wl_quirk,
     format_active_quirk_line as format_active_wl_quirk_line,
     format_quirk_summary,
     apply_tea_party_regen,
     apply_queens_decree,
     get_curiosity_boost_value,
     get_mad_hatter_drop_chance,
-    get_cheshire_dodge_chance,
-    get_jabberwock_bane_multiplier,
-    get_caterpillars_insight_reduction,
-    get_white_rabbit_cooldown_reduction,
-    get_looking_glass_reroll_chance,
-    get_painting_roses_reduction,
-    # ── Shadow system ──
     SHADOW_CHOICE_FLOORS,
     trigger_shadow_choice,
     format_active_shadows_line,
     clear_all_shadows,
-    get_player_shadows,
     get_shadow_room_damage,
     get_shadow_stat_penalty,
-    get_shadow_skip_chance,
     get_shadow_healing_reduction,
     get_shadow_gold_reduction,
-    get_shadow_damage_taken_multiplier,
-    get_shadow_accuracy_penalty,
-    get_shadow_bleed_poison_extension,
-    get_shadow_initiative_bonus,
-    get_shadow_stat_check_dc_increase,
-    format_mary_sue_shadow_intro,
-    get_mary_sue_shadow_modifiers,
 )
 
 def get_random_enemy_key(floor, boss=False, region=None, player=None,

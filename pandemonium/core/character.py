@@ -471,8 +471,7 @@ def _reconcile_awakened_skills(record):
         apply_awakening_skills(record, key)
 
 
-def ensure_player_fields(player):
-    """Ensure loaded saves have all required fields for new systems."""
+def _ensure_core_player_fields(player):
     player.setdefault("skills", [])
     player.setdefault("skill_cooldowns", {})
     player.setdefault("skill_mastery", {})
@@ -525,6 +524,8 @@ def ensure_player_fields(player):
     player.setdefault("daily_effects", {})
     player.setdefault("event_queue", [])
 
+
+def _ensure_time_event_fields(player):
     # Block time model (docs/time_system_design.md) — derive block fields
     # from the legacy minute clock once per save (no-op when migrated).
     player.setdefault("day_blocks", 0)
@@ -565,6 +566,8 @@ def ensure_player_fields(player):
     ensure_quest_state(player)
     sync_resonance_tier(player)
 
+def _ensure_item_migrations(player):
+
     # Key-item naming migration (2026-09-28): strip the builder's rarity
     # prefix from keepsakes and materials in old saves.
     _strip_stale_rarity_prefixes(player)
@@ -599,6 +602,8 @@ def ensure_player_fields(player):
         ally["elemental_res"] = res
         ally["elemental_dmg"] = dmg
 
+
+def _ensure_social_progress_fields(player):
     # Engagement / wedding system fields
     player.setdefault("girl_talk_today", {})
     player.setdefault("girl_gift_today", {})
@@ -685,6 +690,10 @@ def ensure_player_fields(player):
     _ensure_title_state(player)
     _reconcile_titles(player)
 
+
+def _ensure_party_member_fields(player):
+    from pandemonium.combat.elemental import ELEMENTS
+
     # Ensure ally and house girl fields for leveling system
     for ally in player.get("allies", []):
         # Clean up leftover combat-only state
@@ -749,6 +758,8 @@ def ensure_player_fields(player):
     from pandemonium.combat.ally import migrate_heroine_auto_gear
     migrate_heroine_auto_gear(player)
 
+
+def _ensure_house_and_family_fields(player):
     for house in player.get("houses", {}).values():
         for girl in house.get("monster_girls", []):
             girl.setdefault("exp", 0)
@@ -773,6 +784,16 @@ def ensure_player_fields(player):
     # plus affection ladder v2 cap migration (base 200 / engaged 300).
     from pandemonium.progression.family import ensure_family_fields
     ensure_family_fields(player)
+
+
+def ensure_player_fields(player):
+    """Ensure loaded saves have all required fields for new systems."""
+    _ensure_core_player_fields(player)
+    _ensure_time_event_fields(player)
+    _ensure_item_migrations(player)
+    _ensure_social_progress_fields(player)
+    _ensure_party_member_fields(player)
+    _ensure_house_and_family_fields(player)
 
 
 def player_max_hp(player_or_attrs):

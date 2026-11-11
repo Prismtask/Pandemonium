@@ -12,15 +12,9 @@ Entry point: archivist_intro(player)
 from pandemonium.gui.terminal import term
 from pandemonium.core.save_load import save_game
 import pandemonium.progression.quests as quests
+from pandemonium.facilities.intro_utils import print_header as _header
 
 INTRO_SEEN_FLAG = "intro_seen"
-
-
-def _header(text):
-    rule = "═" * min(len(text) + 4, 70)
-    term.print(rule)
-    term.print(f"  {text}")
-    term.print(rule)
 
 
 def grant_archivist_intro(player):

@@ -10,6 +10,7 @@ Entry point: tutorial_menu(player, city_id=None)
 
 from pandemonium.gui.terminal import term
 from pandemonium.core.save_load import save_game
+from pandemonium.facilities.intro_utils import print_header as _header
 
 
 # ── FacilityScreen subclass with the game clock paused ────────────────────────
@@ -22,13 +23,6 @@ class TutorialScreen(FacilityScreen):
 
 
 # ── Small formatting helpers ──────────────────────────────────────────────────
-
-def _header(text):
-    rule = "═" * min(len(text) + 4, 70)
-    term.print(rule)
-    term.print(f"  {text}")
-    term.print(rule)
-
 
 def _page(lines):
     """Print a page of plain text, one line at a time."""

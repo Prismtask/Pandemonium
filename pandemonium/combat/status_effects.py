@@ -742,10 +742,6 @@ def absorb_damage(target, incoming_damage):
     return incoming_damage, 0
 
 
-def get_barrier_remaining(target):
-    """Return total barrier absorb remaining (0 if none)."""
-    return sum(b.get("value", 0) for b in target.get("active_buffs", [])
-               if b.get("type") == "barrier")
 
 
 # ---------------------------------------------------------------------------
@@ -830,9 +826,6 @@ def wake_on_damage(enemy):
     return None
 
 
-def is_asleep(enemy):
-    """True if the enemy is currently asleep."""
-    return bool(enemy.get("asleep"))
 
 
 # ---------------------------------------------------------------------------
@@ -894,30 +887,12 @@ def apply_paralyze(enemy, duration=2):
     return "applied"
 
 
-def is_paralyzed(enemy):
-    """True if the enemy is currently paralyzed."""
-    return bool(enemy.get("paralyzed"))
 
 
 # ---------------------------------------------------------------------------
 # 6. REGENERATION (Long-Duration HoT)
 # ---------------------------------------------------------------------------
 
-def apply_regen(target, heal_per_tick, duration=5):
-    """Grant long-duration regeneration. Heals a small amount each round."""
-    existing = next(
-        (b for b in target.get("active_buffs", []) if b.get("type") == "regen"), None
-    )
-    if existing:
-        existing["value"] = max(existing["value"], heal_per_tick)
-        existing["remaining"] = max(existing["remaining"], duration)
-        return "refreshed"
-    target.setdefault("active_buffs", []).append({
-        "type": "regen",
-        "value": heal_per_tick,
-        "remaining": duration,
-    })
-    return "applied"
 
 
 # ---------------------------------------------------------------------------
@@ -942,14 +917,8 @@ def apply_entomb(enemy, duration=3):
     return "applied"
 
 
-def is_entombed(enemy):
-    """Check if an enemy is entombed (for healing reduction)."""
-    return bool(enemy.get("entombed"))
 
 
-def get_healing_multiplier(target):
-    """Return healing multiplier (0.5 if entombed, 1.0 otherwise)."""
-    return 0.5 if target.get("entombed") else 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -973,9 +942,6 @@ def apply_void_touched(target, duration=2):
     return "applied"
 
 
-def is_void_touched(target):
-    """True if the target is void-touched."""
-    return bool(target.get("void_touched"))
 
 
 def apply_healing(target, amount, source=None):
@@ -1551,26 +1517,8 @@ def cure_bleed(player):
     return "cured"
 
 
-def cure_silence(player):
-    """Lift silence from the player. Returns 'cured' or 'not_silenced'."""
-    if not player.get("silenced"):
-        return "not_silenced"
-    player["silenced"] = False
-    player["active_debuffs"] = [
-        d for d in player.get("active_debuffs", []) if d.get("type") != "silence"
-    ]
-    return "cured"
 
 
-def dispel_dread(player):
-    """Dispel dread from the player. Returns 'dispelled' or 'not_dreaded'."""
-    if not player.get("dreaded"):
-        return "not_dreaded"
-    player["dreaded"] = False
-    player["active_debuffs"] = [
-        d for d in player.get("active_debuffs", []) if d.get("type") != "dread"
-    ]
-    return "dispelled"
 
 
 def clear_stun(actor):
@@ -1647,9 +1595,6 @@ def is_dreaded(player):
     return bool(player.get("dreaded"))
 
 
-def is_frozen(enemy):
-    """True if the enemy is currently frozen solid."""
-    return bool(enemy.get("frozen"))
 
 
 # ===========================================================================

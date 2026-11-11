@@ -7,7 +7,6 @@ onward. Shared Night / family scenes are triggered from sleep.
 
 from pandemonium.core.utils import advance_time, display_name
 from pandemonium.core.character import player_max_hp
-from pandemonium.resources.enemies import ENEMIES
 from pandemonium.gui.terminal import term
 
 from .core import _house_level_data

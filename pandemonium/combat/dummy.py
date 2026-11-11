@@ -25,6 +25,18 @@ DEFAULT_DUMMY_CONFIG = {
 }
 
 
+def copy_default_dummy_config():
+    """Return a mutable copy of the defaults with independent nested state.
+
+    A shallow ``dict.copy()`` would share the ``elemental_res`` dict, so
+    editing resistances in the barracks menu would silently mutate
+    ``DEFAULT_DUMMY_CONFIG`` for the rest of the session.
+    """
+    config = DEFAULT_DUMMY_CONFIG.copy()
+    config["elemental_res"] = dict(DEFAULT_DUMMY_CONFIG["elemental_res"])
+    return config
+
+
 def create_dummy_enemy(config=None):
     """Build a training dummy enemy dict from configuration.
 
@@ -36,7 +48,7 @@ def create_dummy_enemy(config=None):
         Enemy dict ready for the combat engine (no key lookup needed).
     """
     if config is None:
-        config = DEFAULT_DUMMY_CONFIG.copy()
+        config = copy_default_dummy_config()
 
     hp = config.get("hp", 999999)
     res = config.get("elemental_res", {})
@@ -94,17 +106,3 @@ def _run_dummy_combat(player, dummy_config, enemies=None):
 
 
 # ── GUI helper ────────────────────────────────────────────────────────────────
-
-def prepare_dummy_for_gui(player, dummy_config=None):
-    """Prepare the dummy config and store it on the player for the GUI to pick up.
-
-    Called from barracks when running in GUI/FacilityScreen mode.
-    The city screen's _after_facility will detect the flag and launch CombatScreen.
-
-    Args:
-        player: The player dict.
-        dummy_config: Optional dict overriding default dummy stats.
-    """
-    if dummy_config is None:
-        dummy_config = DEFAULT_DUMMY_CONFIG.copy()
-    player["_pending_dummy_combat"] = dummy_config

@@ -7,9 +7,8 @@ Uses the same 9 workshops the player's Black Silence Gloves would grant.
 
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header, print_combat_hud
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.combat_ui import print_combat_hud
+from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.combat.combat_io import c_print, c_input
@@ -48,10 +47,6 @@ FURIOSO_TIMER_MAX = 4
 # ═══════════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════
-
-def _get_boss(elist):
-    return next((e for e in elist if e.get("key") == BOSS_KEY), None)
-
 
 def _get_boss_stat(boss, stat_key):
     """Get effective stat: str_mod, dex_mod, wis_mod, ler_mod"""
@@ -422,7 +417,7 @@ def combat_black_silence(player, floor=None, enemies=None):
     # ═══════════════════════════════════════════════════════════════
 
     def pre_player_hook(ctx, elist):
-        b = _get_boss(elist)
+        b = get_boss(elist, BOSS_KEY)
         if not b:
             return
 
@@ -513,7 +508,7 @@ def combat_black_silence(player, floor=None, enemies=None):
     def post_round_hook(ctx, elist):
         ctx["cycle_turns_remaining"] = max(0, ctx["cycle_turns_remaining"] - 1)
 
-        b = _get_boss(elist)
+        b = get_boss(elist, BOSS_KEY)
         if not b:
             return
 
@@ -528,7 +523,7 @@ def combat_black_silence(player, floor=None, enemies=None):
             c_print(f"⚠️  The gloves glow brighter... Furioso in {turns_left} turn(s)!")
 
     def custom_hud_hook(ctx, elist):
-        b = _get_boss(elist)
+        b = get_boss(elist, BOSS_KEY)
         if b:
             phase_label = f"Phase {ctx['phase']}"
             if ctx["phase"] == 3:

@@ -3,7 +3,7 @@ from pandemonium.resources.constants import EXP_COEFF_A, EXP_COEFF_B, EXP_POWER
 from pandemonium.resources.cities import CITIES
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat.skills import unlock_skills_for_level
-from pandemonium.core.utils import _tprint, _tpause, _tmenu, display_name
+from pandemonium.core.utils import _tprint, _tmenu, display_name
 from pandemonium.core.events import get_daily_bonus_multiplier
 
 # ── GUI level-up dialog (safe import) ──────────────────────────────────
@@ -101,13 +101,6 @@ def _show_level_results(entity_name, level, chosen_attr, new_value,
 def exp_needed_for_next_level(level):
     return int(EXP_COEFF_A * (level ** EXP_POWER) + EXP_COEFF_B * level)
 
-def get_city_dungeon_progress(player, city_id):
-    """Return list of (dungeon_name, max_floor) for all dungeons in a city.
-    Future-proof: if multiple dungeons per city are added, extend this."""
-    city_prog = player.get("city_floors", {}).get(city_id, {})
-    # Main dungeon (currently one per city; extend here for multiple)
-    progress = [("Main Dungeon", city_prog.get("max_floor", 1))]
-    return progress
 
 
 # ── Shared dungeon depth per biome (2026-11-04) ──────────────────────────────

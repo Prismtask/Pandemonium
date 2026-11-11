@@ -1,9 +1,8 @@
 # facilities/skill_book.py – Skill Book / Skill Menu
 from pandemonium.combat.skills import (
-    PASSIVE_SKILLS,
     get_class_skill_map, get_skill_mastery_level, get_mastery_bonuses,
     format_mastery_label, get_equipped_skill_ids, MAX_SKILL_LOADOUT,
-    get_passive_skill, can_choose_profession, get_class_capstone_id,
+    get_passive_skill, can_choose_profession,
 )
 from pandemonium.resources.skill_loader import PROFESSIONS
 from pandemonium.combat.ally import get_alive_allies

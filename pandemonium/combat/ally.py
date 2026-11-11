@@ -1,9 +1,9 @@
 # combat/ally.py
 """Ally system - companions recruited from house monster girls."""
-from pandemonium.combat.combat_io import c_print, c_input, c_clear, c_renders_menus
+from pandemonium.combat.combat_io import c_print, c_input, c_renders_menus
 import random
 from pandemonium.combat.stats import compute_enemy_attributes
-from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
+from pandemonium.resources.enemies import ENEMIES
 from pandemonium.resources.races_classes import ATTRIBUTES
 from pandemonium.inventory.core import get_total_equipment_mods, remove_item_by_reference
 from pandemonium.resources.quests import get_resonance_grade
@@ -160,49 +160,6 @@ def get_all_reserve_allies_including_defeated(player):
     return result
 
 
-def swap_party_member(player, ally_index):
-    """Swap an ally between front and back rows by their absolute index in allies list.
-    
-    If the ally is in the front row, they swap with the first bench ally.
-    Otherwise (bench or inactive) they swap with the first front-row ally.
-    Returns (message, success_bool).
-    """
-    ensure_party_order(player)
-    allies = player.get("allies", [])
-    order = player.get("party_order", [])
-    n = len(allies)
-
-    if ally_index < 0 or ally_index >= n:
-        return "Invalid ally selection.", False
-
-    ally_name = allies[ally_index]["name"]
-    active_limit = get_active_limit(player)
-    bench_limit = get_bench_limit(player)
-
-    if ally_index in order[:active_limit]:
-        # Ally is in front — swap with first bench ally
-        back_indices = order[active_limit:active_limit + bench_limit]
-        if not back_indices:
-            return (f"{ally_name} is already in the front row and there is no "
-                    f"one on the bench to swap with.", False)
-        target_idx = back_indices[0]
-        # Swap positions in order
-        pos_a = order.index(ally_index)
-        pos_b = order.index(target_idx)
-        order[pos_a], order[pos_b] = order[pos_b], order[pos_a]
-        target_name = allies[target_idx]["name"]
-        return f"{ally_name} moves to the back row. {target_name} steps forward!", True
-    else:
-        # Ally is on the bench (or inactive) — swap with first front-row ally
-        front_indices = order[:active_limit]
-        if not front_indices:
-            return f"There are no front row allies to swap with.", False
-        target_idx = front_indices[0]
-        pos_a = order.index(ally_index)
-        pos_b = order.index(target_idx)
-        order[pos_a], order[pos_b] = order[pos_b], order[pos_a]
-        target_name = allies[target_idx]["name"]
-        return f"{ally_name} steps forward! {target_name} moves to the back row.", True
 
 
 def do_ally_switch(player, front_ally_idx, reserve_ally_idx):
@@ -768,24 +725,6 @@ def format_ally_status_line(ally, idx=None, is_active=False):
     return f"{prefix} {disp:<12} {ally['current_hp']:>3}/{ally['max_hp']:<3}{mg_symbol}{active_mark}"
 
 
-def format_ally_buff_line(ally):
-    """Format a compact buff/debuff tag line for an ally."""
-    statuses = []
-    if ally.get("stunned"):
-        statuses.append("STN")
-    if ally.get("slowed"):
-        statuses.append("SLW")
-    if ally.get("blinded"):
-        statuses.append("BLD")
-    if ally.get("frozen"):
-        statuses.append("FRZ")
-    if any(d["type"] == "poison" for d in ally.get("active_debuffs", [])):
-        statuses.append("PSN")
-    if any(d["type"] == "bleed" for d in ally.get("active_debuffs", [])):
-        statuses.append("BLE")
-    if any(d["type"] == "burn" for d in ally.get("active_debuffs", [])):
-        statuses.append("BRN")
-    return f" [{' '.join(statuses)}]" if statuses else ""
 
 
 def _hp_bar(current, max_hp, width=10):
@@ -807,10 +746,10 @@ def get_alive_allies(player):
             and not a.get("_stress_sit_out")]
 
 
-def get_all_party_members(player):
-    """Return list of all alive party members: [player] + alive allies."""
-    party = [player]
-    party.extend(get_alive_allies(player))
+def get_living_party(player):
+    """Return [player] + active allies, excluding anyone at 0 HP."""
+    party = [player] if player.get("current_hp", 0) > 0 else []
+    party.extend(get_active_allies(player))
     return party
 
 
@@ -1269,7 +1208,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
     """
     from pandemonium.combat.combat_ui import print_combat_hud
     from pandemonium.combat.status_effects import is_silenced, consume_stun
-    from pandemonium.core.character import player_max_hp
 
     # Reset defending flag each turn so it only applies if they choose Defend THIS turn
     ally["defending_this_turn"] = False
@@ -2273,7 +2211,6 @@ def create_heroine_ally(player, heroine_key, floor=None):
     """
     from pandemonium.resources.enemies import ENEMIES
     from pandemonium.combat.elemental import compute_ally_elemental
-    from pandemonium.resources.races_classes import ATTRIBUTES
 
     template_key = _HEROINE_TEMPLATE_KEYS.get(heroine_key)
     if not template_key:
@@ -2501,30 +2438,3 @@ def apply_heroine_permanent_passive(ally):
 
     # Store the passive definition on the ally for combat checks
     ally["_heroine_perm_passive_def"] = passive_def
-
-
-def trigger_heroine_permanent_unlock(player, heroine_key, boss_flag=None):
-    """Standard handler for superboss defeat → heroine permanent unlock.
-    
-    Call this from superboss on_kill hooks to promote the associated heroine.
-    
-    Args:
-        player: player dict
-        heroine_key: "alice", "red_hood", or "dorothy"
-        boss_flag: player flag to set (e.g., "wl_boss_defeated_jabberwock")
-    
-    Returns:
-        ally dict if heroine was found and promoted, None otherwise
-    """
-    ally = get_heroine_in_party(player, heroine_key)
-    if not ally:
-        return None
-
-    join_level = ally.get("level", player.get("level", 1))
-    promote_heroine_to_permanent(player, ally, join_level)
-    set_heroine_state(player, heroine_key, "permanent")
-
-    if boss_flag:
-        player[boss_flag] = True
-
-    return ally

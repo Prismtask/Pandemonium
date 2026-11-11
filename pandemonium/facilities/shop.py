@@ -4,7 +4,7 @@ import random
 import pandemonium.progression.karma as karma
 from pandemonium.progression.karma_dialogue import service_line
 from pandemonium.resources.items import (
-    ITEMS, build_item, ITEM_RARITY, is_unique_item,
+    ITEMS, build_item, is_unique_item,
     market_value, market_anchor_level, clamp_rarity, soften_rarity,
 )
 from pandemonium.resources.item_generation import pick_weapon_id, pick_family_id, roll_shop_grade

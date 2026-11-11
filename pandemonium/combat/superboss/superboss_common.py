@@ -2,7 +2,6 @@ from pandemonium.combat.weapon.abyss_fang import (
     apply_abyss_tempo_round_start,
     tick_abyss_fang_cooldown,
     tick_abyssal_tempo,
-    clear_abyss_fang_state,
     get_abyssal_tempo_count,
 )
 from pandemonium.combat.weapon.captain_cutlass import (
@@ -25,7 +24,7 @@ from pandemonium.combat.weapon.moonlight_greatsword import (
 from pandemonium.combat.stats import compute_player_stats
 from pandemonium.combat.enemy_ai import enemy_attack
 from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import print_combat_hud, print_superboss_header, print_player_mini_hud, format_enemy_status_line, print_turn_order, print_round_header, current_time_label
+from pandemonium.combat.combat_ui import print_combat_hud, print_player_mini_hud, print_turn_order, print_round_header, current_time_label
 from pandemonium.combat.status_effects import tick_player_debuffs, tick_player_buffs, try_consume_death_ward, consume_stun, clear_stun
 from pandemonium.combat.skills import tick_skill_cooldowns
 from pandemonium.combat.fractured_hourglass import tick_hourglass_cooldown
@@ -37,6 +36,11 @@ from pandemonium.combat.combat_io import c_print, c_input, c_clear
 from pandemonium.combat.combat_engine import prune_dead, roll_initiative
 from pandemonium.core.utils import display_name
 import random
+
+
+def get_boss(elist, key):
+    """Return the first enemy dict matching ``key``, or None."""
+    return next((e for e in elist if e.get("key") == key), None)
 
 
 def superboss_triple_action_loop(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, on_kill, print_hud_func):

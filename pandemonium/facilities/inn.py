@@ -566,7 +566,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
     if existing and existing.get("_wonderland_temp"):
         # ── Alice + ??? Blade special interaction ────────────────────
         if heroine_key == "alice":
-            from pandemonium.combat.ally_skills import swap_alice_to_vorpal_skills
 
             # Check if Alice already has the vorpal blade equipped
             has_vorpal_equipped = (

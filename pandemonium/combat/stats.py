@@ -201,20 +201,12 @@ def player_con_mod(player):
     return get_effective_attribute(player, "Constitution")
 
 
-def player_dex_mod(player):
-    return get_effective_attribute(player, "Dexterity")
 
 
-def player_wis_mod(player):
-    return get_effective_attribute(player, "Wisdom")
 
 
-def player_ler_mod(player):
-    return get_effective_attribute(player, "Learning")
 
 
-def player_chr_mod(player):
-    return get_effective_attribute(player, "Charisma")
 
 # ── Critical Hit System ─────────────────────────────────────────────────────
 
@@ -309,9 +301,6 @@ def resolve_critical_chance(entity, entity_type="player", dex=None, lrn=None, bo
     return chance, overflow * CRIT_OVERFLOW_TO_DAMAGE + crit_dmg_bonus
 
 
-def get_critical_chance(entity, entity_type="player", dex=None, lrn=None, bonus=0.0):
-    """Effective (capped) crit chance — convenience wrapper around resolve."""
-    return resolve_critical_chance(entity, entity_type, dex, lrn, bonus)[0]
 
 
 def format_crit_summary(entity, entity_type="player", dex=None, lrn=None, compact=False):

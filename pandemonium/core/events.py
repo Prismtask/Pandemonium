@@ -369,11 +369,6 @@ def _apply_all_stats_buff(player, bonus):
     player.setdefault("active_buffs", []).append(buff)
 
 
-def get_daily_effect(player, key, default=None):
-    """Read a value from the player's currently-active daily effects."""
-    return player.get("daily_effects", {}).get(key, default)
-
-
 def get_daily_bonus_multiplier(player, key):
     """Return 1.0 + a numeric daily effect (e.g. gold_bonus) as a multiplier.
 
@@ -477,31 +472,6 @@ def check_wonderland_unlock_conditions(player):
         return False
 
     return True
-
-
-def trigger_wonderland_unlock(player):
-    """Display the Wonderland unlock event and set the flag.
-
-    Returns the formatted event text so callers can display it.
-    Call this once on the player's next city visit after conditions are met.
-    """
-    player["wonderland_unlocked"] = True
-
-    lines = [
-        "",
-        "=" * 56,
-        "  \u2728  A SHIMMERING PORTAL HAS APPEARED  \u2728",
-        "=" * 56,
-        "",
-        '  "A shimmering portal has appeared in the Veilholt forest.',
-        "   The locals whisper of a realm that exists between",
-        '   pages \u2014 Wonderland."',
-        "",
-        "   (Visit the Veilholt Arcane Tower to investigate.)",
-        "",
-        "=" * 56,
-    ]
-    return "\n".join(lines)
 
 
 # ── Day rollover (called by advance_time) ───────────────────────────────

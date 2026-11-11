@@ -13,10 +13,6 @@ def _actor_has_abyss_fang(actor):
             return weapon
     return None
 
-def _player_has_abyss_fang(player):
-    """Return the Abyss Fang weapon dict if equipped, else None."""
-    return _actor_has_abyss_fang(player)
-
 
 # ─── Availability / UI Helpers ──────────────────────────────────────────
 

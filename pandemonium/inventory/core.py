@@ -1,7 +1,6 @@
-import random
 from pandemonium.core.character import player_max_hp
 from pandemonium.resources.items import (
-    build_item, ITEMS, ITEM_RARITY, _lookup_item_def,
+    _lookup_item_def,
     compute_equipment_mods, compute_elemental_dmg, compute_elemental_res,
 )
 
@@ -151,17 +150,6 @@ def get_flower_items(player):
     flowers.sort(key=lambda it: order.get(it.get("id"), 99))
     return flowers
 
-def remove_item_from_inventory(player, index):
-    """Remove item from inventory by index, decrementing count if stacked."""
-    inv = player.get("inventory", [])
-    if 0 <= index < len(inv):
-        item = inv[index]
-        count = item.get("count", 1)
-        if count > 1:
-            item["count"] = count - 1
-            return item
-        return inv.pop(index)
-    return None
 
 def remove_item_by_reference(player, item, amount=1):
     """Remove amount from a specific item stack in inventory. Returns True if successful."""

@@ -608,7 +608,7 @@ def guild_service(player, city_id="solmere"):
         else:
             term.print(f"Gold: {player.get('gold', 0)}")
         
-        from pandemonium.progression.leveling import can_ascend_level_cap, get_next_level_cap
+        from pandemonium.progression.leveling import can_ascend_level_cap
         can_ascend = can_ascend_level_cap(player)
         if can_ascend:
             term.print("\n  🌟 ASCENSION READY! Your power yearns to break through!")

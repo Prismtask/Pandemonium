@@ -56,7 +56,7 @@ def barracks_service(player, city_id):
 
 def teach_skill_menu(player):
     """Menu to select an ally and teach them a skill."""
-    from .house import get_current_house_allies, get_house_data, save_house_data
+    from .house import get_current_house_allies
     
     allies = get_current_house_allies(player)
     if not allies:
@@ -298,9 +298,9 @@ def _dummy_spar_flow(player):
     The facility stores the selected config on the player and redirects its
     own on_close callback so the city screen launches CombatScreen directly.
     """
-    from pandemonium.combat.dummy import DEFAULT_DUMMY_CONFIG
+    from pandemonium.combat.dummy import copy_default_dummy_config
 
-    dummy_state = DEFAULT_DUMMY_CONFIG.copy()
+    dummy_state = copy_default_dummy_config()
 
     while True:
         result = _dummy_config_menu(dummy_state)
@@ -325,6 +325,7 @@ def _dummy_spar_flow(player):
 
 def _dummy_config_menu(dummy_state):
     """Show the dummy configuration menu using term API (GUI-compatible)."""
+    from pandemonium.combat.dummy import copy_default_dummy_config
     from pandemonium.combat.elemental import ELEMENTS
 
     while True:
@@ -375,7 +376,7 @@ def _dummy_config_menu(dummy_state):
             _configure_resistances_term(dummy_state)
         elif choice == 5:
             dummy_state.clear()
-            dummy_state.update(DEFAULT_DUMMY_CONFIG)
+            dummy_state.update(copy_default_dummy_config())
             term.print("Dummy reset to defaults.")
             term.pause()
         elif choice == 6:

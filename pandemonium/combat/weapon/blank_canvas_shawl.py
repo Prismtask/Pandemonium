@@ -108,7 +108,6 @@ def use_blank_canvas(actor, is_player, player):
 
     Returns a list of message strings.
     """
-    from pandemonium.combat.combat_io import c_print
 
     if not _actor_has_blank_canvas_shawl(actor):
         return ["You are not wearing the Blank Canvas Shawl."]

@@ -44,11 +44,9 @@
 
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
-from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
-from pandemonium.combat.ally import get_active_allies, compute_ally_stats
+from pandemonium.combat.ally import get_active_allies, get_living_party
 from pandemonium.core.utils import display_name
 from pandemonium.combat.superboss.mary_sue_shadows import (
     create_shadow_queen_of_hearts,
@@ -62,9 +60,7 @@ from pandemonium.combat.superboss.mary_sue_shadows import (
     shadow_jabberwock_turn_hook,
     init_plot_armor,
     get_plot_armor_dr,
-    try_strip_plot_armor,
     regen_plot_armor,
-    ALL_ELEMENT_TYPES,
 )
 
 # ── Keys ────────────────────────────────────────────────────────────────────
@@ -104,17 +100,6 @@ def _find_mary_sue(enemies):
         if _is_mary_sue(e) and e["hp"] > 0:
             return e
     return None
-
-
-def _get_living_targets(pl):
-    """Return list of living player + active allies."""
-    targets = []
-    if pl.get("current_hp", 0) > 0:
-        targets.append(pl)
-    for ally in get_active_allies(pl):
-        if ally.get("current_hp", 0) > 0:
-            targets.append(ally)
-    return targets
 
 
 def _get_heroine(pl, key):
@@ -248,7 +233,7 @@ def _mary_sue_tell_me(player, ctx):
 
 def _mary_sue_gentle_rebuke(player, ctx):
     """Light single-target damage. Mary Sue is pulling her punches."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return None
     target = random.choice(targets)
@@ -375,7 +360,7 @@ def _mary_sue_authors_wrath(player, ctx):
 
     if attack["type"] == "physical":
         # "Your strength is a cliché!" — physical + -2 STR
-        targets = _get_living_targets(player)
+        targets = get_living_party(player)
         if targets:
             target = random.choice(targets)
             dmg = random.randint(20, 35)
@@ -398,7 +383,7 @@ def _mary_sue_authors_wrath(player, ctx):
         elem = _WRATH_ELEMENTS[element % len(_WRATH_ELEMENTS)]
         ctx["_wrath_element_idx"] = element + 1
 
-        targets = _get_living_targets(player)
+        targets = get_living_party(player)
         if targets:
             target = random.choice(targets)
             dmg = random.randint(25, 40)
@@ -418,7 +403,7 @@ def _mary_sue_authors_wrath(player, ctx):
 
     else:
         # "Your story is TIRED!" — Dark, ignores 20% CON
-        targets = _get_living_targets(player)
+        targets = get_living_party(player)
         if targets:
             target = random.choice(targets)
             dmg = random.randint(30, 50)
@@ -776,7 +761,7 @@ def combat_mary_sue(player, floor=None, enemies=None):
         if "execution_threshold" in modifiers:
             from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "off_with_heads"):
-                targets = _get_living_targets(pl)
+                targets = get_living_party(pl)
                 for t in targets:
                     hp_pct = t.get("current_hp", 0) / max(1, t.get("max_hp", 100))
                     if hp_pct < 0.30 and hp_pct > 0:
@@ -1115,7 +1100,7 @@ def combat_mary_sue(player, floor=None, enemies=None):
         if "maddening_aura" in modifiers:
             from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "madness_contagion"):
-                targets = _get_living_targets(pl)
+                targets = get_living_party(pl)
                 if targets and random.random() < 0.50:
                     victim = random.choice(targets)
                     victim.setdefault("active_debuffs", []).append({
@@ -1161,7 +1146,7 @@ def combat_mary_sue(player, floor=None, enemies=None):
             from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "caterpillars_smoke"):
                 penalty = sue_ref.get("_smoke_aura_penalty", 0.15)
-                targets = _get_living_targets(pl)
+                targets = get_living_party(pl)
                 applied = 0
                 for t in targets:
                     t.setdefault("active_debuffs", []).append({
@@ -1185,7 +1170,7 @@ def combat_mary_sue(player, floor=None, enemies=None):
                 if dmg_taken > 0:
                     reflect_pct = sue_ref.get("_damage_reflect", 0.25)
                     reflect_dmg = max(1, int(dmg_taken * reflect_pct))
-                    party = _get_living_targets(pl)
+                    party = get_living_party(pl)
                     if party:
                         victim = random.choice(party)
                         c_print(f'\n  💔 Shattered mirror shards fly at {victim.get("name", "someone")}!')
@@ -1307,7 +1292,7 @@ def _resolve_heroines(player, ctx):
     The ending prose is deferred to the dungeon screen (the combat ticker
     only shows 3 lines) — see combat_ui.defer_dialogue (2026-11-10).
     """
-    from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state, get_heroine_in_party
+    from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
     from pandemonium.combat.combat_ui import defer_dialogue
     ending_lines = []
 

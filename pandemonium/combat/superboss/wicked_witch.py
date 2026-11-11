@@ -27,12 +27,11 @@
 
 import random
 import pandemonium.world.wonderland_guests as wonderland_guests
-from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import (format_enemy_status_line, print_superboss_header,
-                              defer_dialogue)
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.combat_ui import (defer_dialogue)
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
+from pandemonium.combat.ally import get_living_party
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
 
 # ── Keys ────────────────────────────────────────────────────────────────────
@@ -93,20 +92,9 @@ def _spawn_monkeys(player, enemies, count=3):
     return spawned
 
 
-def _get_living_targets(player):
-    """Return list of living player + active allies."""
-    targets = []
-    if player.get("current_hp", 0) > 0:
-        targets.append(player)
-    for ally in player.get("allies", []):
-        if ally.get("current_hp", 0) > 0:
-            targets.append(ally)
-    return targets
-
-
 def _find_lowest_fire_res(player):
     """Find the party member with the lowest fire resistance rating (lowest = weakest)."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return None
     best = targets[0]
@@ -151,7 +139,7 @@ def _remove_broomstick_evasion(witch):
 
 def _witch_ember_volley(witch, player):
     """3 small fire hits on random targets. Applies Bleed (3 dmg × 3 turns) per hit."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     for i in range(3):
         if not targets:
             break
@@ -164,7 +152,7 @@ def _witch_ember_volley(witch, player):
 
 def _witch_fireball(witch, player):
     """Single-target heavy fire damage. 25% chance to destroy one consumable."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return
     target = random.choice(targets)
@@ -196,7 +184,7 @@ def _witch_wall_of_flame(witch):
 
 def _witch_scrying_smoke(witch, player):
     """Read one target's lowest resistance; next attack exploits it."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return
     target = random.choice(targets)
@@ -217,7 +205,7 @@ def _witch_emerald_cackle(witch, player, ctx):
     """AoE dark damage + 40% Fear on each target. +15% fire damage for 1 turn."""
     c_print('\n  "Eh heheheheHAHAHAHA!"')
     c_print("  The Witch's cackle echoes through the chamber!")
-    for target in _get_living_targets(player):
+    for target in get_living_party(player):
         dmg = random.randint(15, 25)
         c_print(f"  {target.get('name', 'You')} takes {dmg} dmg [DARK] — Emerald Cackle")
         _deal_damage(target, dmg, "dark")
@@ -294,7 +282,7 @@ def _witch_phase1_turn(witch, player, ctx):
 
 def _witch_broomstick_dive(witch, player):
     """Physical dive attack on landing turn."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return
     target = random.choice(targets)
@@ -306,7 +294,7 @@ def _witch_broomstick_dive(witch, player):
 
 def _witch_fire_from_above(witch, player):
     """AoE fire damage on all party members."""
-    for target in _get_living_targets(player):
+    for target in get_living_party(player):
         dmg = random.randint(20, 30)
         c_print(f"  Fire rains on {target.get('name', 'You')}! {dmg} dmg [FIRE]")
         _deal_damage(target, dmg, "fire")
@@ -314,7 +302,7 @@ def _witch_fire_from_above(witch, player):
 
 def _witch_here_my_pretty(witch, player):
     """Mark one target: +15% damage taken from all sources for 2 turns."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return
     target = random.choice(targets)
@@ -381,7 +369,7 @@ def _witch_phase2_turn(witch, player, ctx, elist):
 
 def _witch_emerald_curse(witch, player):
     """Single target: dark damage + cannot be healed for 2 turns."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return
     target = random.choice(targets)
@@ -398,7 +386,7 @@ def _witch_emerald_curse(witch, player):
 
 def _witch_black_smoke(witch, player):
     """AoE dark damage. Applies Blinding to non-Dorothy targets."""
-    for target in _get_living_targets(player):
+    for target in get_living_party(player):
         if target.get("_heroine_key") == "dorothy":
             continue  # Dorothy immune
         dmg = random.randint(20, 35)
@@ -417,7 +405,7 @@ def _witch_death_throes(witch, player):
     """Final AoE fire to ALL combatants (including witch)."""
     c_print('\n  "I\'LL TAKE YOU ALL WITH ME!"')
     c_print("  The Witch explodes in a final burst of emerald flame!")
-    for target in _get_living_targets(player):
+    for target in get_living_party(player):
         dmg = random.randint(50, 70)
         c_print(f"  {target.get('name', 'You')} takes {dmg} dmg [FIRE] — Death Throes!")
         _deal_damage(target, dmg, "fire")
@@ -696,7 +684,7 @@ def combat_wicked_witch(player, floor=None, enemies=None):
     def on_kill_hook(target, elist, ctx):
         """Handle Witch death, Dorothy permanent unlock, and drops."""
         if _is_witch(target) and target.get("hp", 0) <= 0:
-            from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state, get_heroine_in_party
+            from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
 
             c_print("\nThe Witch dissolves into a puddle of ink and emerald")
             c_print("smoke. Her hat floats for a moment, then sinks.")

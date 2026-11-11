@@ -1,9 +1,9 @@
-from pandemonium.combat.combat_io import c_print, c_input, c_clear, c_renders_menus
+from pandemonium.combat.combat_io import c_print, c_input, c_renders_menus
 from pandemonium.combat.helpers import ACTION_CANCELLED_MSG
 import random
 from pandemonium.core.character import player_max_hp
-from pandemonium.combat.status_effects import cure_curse, apply_poison, apply_healing, is_silenced, is_dreaded, format_player_status_line, consume_stun
-from pandemonium.combat.combat_ui import print_combat_hud, format_enemy_status_line
+from pandemonium.combat.status_effects import cure_curse, apply_poison, apply_healing, is_silenced, is_dreaded, consume_stun
+from pandemonium.combat.combat_ui import print_combat_hud
 from pandemonium.combat.weapon.abyss_fang import wield_abyss_fang
 from pandemonium.combat.weapon.wedding_specials import (
     apply_wedding_attack_bonus_procs,
@@ -12,11 +12,11 @@ from pandemonium.combat.weapon.wedding_specials import (
 )
 from pandemonium.combat.action_menu import get_action_menu
 from pandemonium.combat.capture import (
-    is_monster_girl, is_capturable, attempt_capture,
+    is_capturable, attempt_capture,
     net_can_capture, net_level_gate_message, get_capture_chance,
 )
 from pandemonium.combat.stat_milestones import get_strength_bonus, get_wisdom_bonus, get_dexterity_damage_bonus
-from pandemonium.combat.skills import get_available_skills, execute_skill, set_skill_cooldown, format_mastery_label, get_passive_skill, get_passive_life_steal
+from pandemonium.combat.skills import get_available_skills, execute_skill, set_skill_cooldown, format_mastery_label, get_passive_life_steal
 from pandemonium.inventory.core import remove_item_by_reference
 
 

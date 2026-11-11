@@ -148,13 +148,6 @@ def unlock_skills_for_level(player):
     return names
 
 
-def initialize_skills(player):
-    """Set up skill-related fields on a new character."""
-    player.setdefault("skills", [])
-    player.setdefault("skill_cooldowns", {})
-    player.setdefault("skill_mastery", {})
-    player.setdefault("passive_unlocked", True)
-    unlock_skills_for_level(player)
 
 
 # ── Cooldown Management ───────────────────────────────────────────────────

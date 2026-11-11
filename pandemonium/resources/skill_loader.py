@@ -10,11 +10,6 @@ def _resolve_yaml_path() -> str:
     return os.path.join(os.path.dirname(__file__), "skill_book", "skill_list.yaml")
 
 
-def _resolve_innate_yaml_path() -> str:
-    """Return the absolute path to the innate_skills.yaml file."""
-    return os.path.join(os.path.dirname(__file__), "skill_book", "innate_skills.yaml")
-
-
 class SkillLoader:
     """Loads and caches passive / class skill data from the project YAML."""
 

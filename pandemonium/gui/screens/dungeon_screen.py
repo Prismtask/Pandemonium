@@ -9,7 +9,6 @@ This is essentially a FacilityScreen with dungeon-specific branding and an ASCII
 map side panel.
 """
 
-import threading
 import queue
 import time
 import tkinter as tk

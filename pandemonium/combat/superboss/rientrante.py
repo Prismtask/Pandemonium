@@ -6,7 +6,7 @@ from pandemonium.combat.combat_ui import print_combat_hud
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed, apply_blind
 from pandemonium.combat.ally import get_alive_allies
-from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.core.utils import display_name
 

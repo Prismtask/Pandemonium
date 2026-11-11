@@ -17,7 +17,6 @@ from pandemonium.facilities.herbalist import herbalist_service
 from pandemonium.facilities.arcane_tower import arcane_tower_service
 from pandemonium.facilities.black_market import black_market_service
 from pandemonium.facilities.guild import guild_service
-from pandemonium.facilities.house import house_menu
 from pandemonium.facilities.gift_shop import gift_shop_service
 from pandemonium.facilities.star_tower import star_tower_service
 

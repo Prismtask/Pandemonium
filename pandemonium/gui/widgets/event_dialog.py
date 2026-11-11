@@ -16,44 +16,14 @@ Usage:
 """
 
 import queue
-import threading
 import tkinter as tk
 from typing import List, Optional
 
 from pandemonium.gui.theme import Theme
+from pandemonium.gui.widgets.dialog_utils import safe_toplevel, has_gui, is_main_thread
 
 # All world events are daily (daily_effects cleared on day rollover).
 _DEFAULT_DURATION = "Until the end of the day"
-
-
-def _safe_toplevel(parent=None):
-    """Return a usable tkinter toplevel/root, or None if unavailable.
-
-    Never creates a fresh Tk root — that flashes a blank window with the
-    default Tk icon and creates a second Tcl interpreter.
-    """
-    try:
-        if parent is not None:
-            return parent.winfo_toplevel()
-    except (tk.TclError, AttributeError):
-        pass
-    try:
-        return tk._default_root
-    except Exception:
-        return None
-
-
-def _has_gui():
-    """Return True if tkinter has a root window (GUI is available)."""
-    try:
-        return tk._default_root is not None
-    except Exception:
-        return False
-
-
-def _is_main_thread():
-    """Return True if the calling thread is the main thread."""
-    return threading.current_thread() is threading.main_thread()
 
 
 def show_event_notice(events: List[dict],
@@ -64,10 +34,10 @@ def show_event_notice(events: List[dict],
     Blocks until the player clicks Continue. Safe to call from any thread.
     No-op when the GUI is not available or there are no events.
     """
-    if not events or not _has_gui():
+    if not events or not has_gui():
         return
 
-    if _is_main_thread():
+    if is_main_thread():
         try:
             dlg = _EventNoticeDialog(events, day_text, parent)
             dlg.dialog.wait_window()
@@ -114,7 +84,7 @@ class _EventNoticeDialog:
         self._result_queue = None  # Set externally for cross-thread use
         self._scrollable = False
 
-        top = _safe_toplevel(parent) if parent else _safe_toplevel()
+        top = safe_toplevel(parent) if parent else safe_toplevel()
         if top is None:
             raise RuntimeError("Event Notice dialog: no tkinter root available")
         self.dialog = tk.Toplevel(top)

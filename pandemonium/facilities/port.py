@@ -62,7 +62,7 @@ def port_service(player, city_id):
     ship_name = ship["name"] if ship else None
 
     from pandemonium.resources.trade_goods import (
-        cargo_travel_penalty, cargo_overloaded_for_travel,
+        cargo_overloaded_for_travel,
         cargo_total_weight,
     )
     ship_cap = ship.get("cargo_capacity", 0) if ship else 0

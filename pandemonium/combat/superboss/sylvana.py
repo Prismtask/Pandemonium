@@ -49,9 +49,6 @@ def _make_fake_copy(boss):
     dict.__setitem__(fake, "max_hp", boss["max_hp"])
     return fake
 
-def _is_sylvana(e):
-    return e.get("key") == "queen_of_mirrors_sylvana"
-
 
 def _grant_cracked_mirror(player):
     """Grant the Cracked Mirror key item once, on the Queen's defeat.

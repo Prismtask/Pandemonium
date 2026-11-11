@@ -36,12 +36,12 @@ Usage:
 """
 
 import queue
-import threading
 import traceback
 import tkinter as tk
 from typing import Optional, List, Dict
 
 from pandemonium.gui.theme import Theme
+from pandemonium.gui.widgets.dialog_utils import safe_toplevel, has_gui, is_main_thread
 
 
 class LevelUpDialogError(Exception):
@@ -62,36 +62,6 @@ _ATTR_DISPLAY = {
 
 _ATTR_ORDER = ["Strength", "Constitution", "Dexterity",
                "Wisdom", "Learning", "Charisma"]
-
-
-def _safe_toplevel(parent=None):
-    """Return a usable tkinter toplevel/root, or None if unavailable.
-
-    Never creates a fresh Tk root — that flashes a blank window with the
-    default Tk icon and creates a second Tcl interpreter.
-    """
-    try:
-        if parent is not None:
-            return parent.winfo_toplevel()
-    except (tk.TclError, AttributeError):
-        pass
-    try:
-        return tk._default_root
-    except Exception:
-        return None
-
-
-def _has_gui():
-    """Return True if tkinter has a root window (GUI is available)."""
-    try:
-        return tk._default_root is not None
-    except Exception:
-        return False
-
-
-def _is_main_thread():
-    """Return True if the calling thread is the main thread."""
-    return threading.current_thread() is threading.main_thread()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -115,10 +85,10 @@ def choose_level_up_attribute(entity_name: str,
     Returns the chosen attribute key (e.g. "Strength"), or None if the
     dialog was closed without a choice (caller should pick randomly).
     """
-    if not _has_gui():
+    if not has_gui():
         return None
 
-    if _is_main_thread():
+    if is_main_thread():
         # Main thread: build and run dialog synchronously
         dlg = _AttrChoiceDialog(entity_name, level, attributes, parent,
                                 note=note)
@@ -165,10 +135,10 @@ def show_level_up_results(entity_name: str,
     Blocks until the user clicks Continue. Safe to call from any thread.
     If the GUI is not available, this is a no-op.
     """
-    if not _has_gui():
+    if not has_gui():
         return
 
-    if _is_main_thread():
+    if is_main_thread():
         dlg = _ResultsDialog(
             entity_name=entity_name,
             level=level,
@@ -225,7 +195,7 @@ class _AttrChoiceDialog:
         self._result = None
         self._result_queue = None  # Set externally for cross-thread use
 
-        top = _safe_toplevel(parent) if parent else _safe_toplevel()
+        top = safe_toplevel(parent) if parent else safe_toplevel()
         if top is None:
             raise LevelUpDialogError("Level-up dialog: no tkinter root available")
         self.dialog = tk.Toplevel(top)
@@ -354,7 +324,7 @@ class _ResultsDialog:
                  parent=None):
         self._result_queue = None  # Set externally for cross-thread use
 
-        top = _safe_toplevel(parent) if parent else _safe_toplevel()
+        top = safe_toplevel(parent) if parent else safe_toplevel()
         if top is None:
             raise LevelUpDialogError("Level-up results dialog: no tkinter root available")
         self.dialog = tk.Toplevel(top)

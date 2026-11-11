@@ -5,7 +5,7 @@ a = Analysis(
     ['launcher.py'],
     pathex=[],
     binaries=[],
-    datas=[('C:\\Code\\Pandemonium\\pandemonium\\resources\\enemies\\enemies_data', 'pandemonium/resources/enemies/enemies_data'), ('C:\\Code\\Pandemonium\\pandemonium\\resources\\skill_book', 'pandemonium/resources/skill_book'), ('C:\\Code\\Pandemonium\\pandemonium\\gui', 'pandemonium/gui'), ('C:\\Code\\Pandemonium\\pandemonium\\resources\\family_scenes.yaml', 'pandemonium/resources')],
+    datas=[('c:\\Code\\Pandemonium\\pandemonium\\resources\\enemies\\enemies_data', 'pandemonium/resources/enemies/enemies_data'), ('c:\\Code\\Pandemonium\\pandemonium\\resources\\skill_book', 'pandemonium/resources/skill_book'), ('c:\\Code\\Pandemonium\\pandemonium\\gui', 'pandemonium/gui'), ('c:\\Code\\Pandemonium\\pandemonium\\resources\\family_scenes.yaml', 'pandemonium/resources')],
     hiddenimports=['tkinter', 'tkinter.ttk', 'tkinter.font', 'tkinter.messagebox', 'yaml'],
     hookspath=[],
     hooksconfig={},

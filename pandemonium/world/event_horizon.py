@@ -229,8 +229,6 @@ def actor_key(actor, player):
     return f"{actor.get('key', '?')}:{actor.get('name', '?')}"
 
 
-def get_room(player):
-    return int(ensure_eh_state(player).get("room", 0))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1975,8 +1973,6 @@ def clear_run(player):
     return best
 
 
-def payout_summary(amount):
-    return f"  ◎ The Horizon pays out: +{amount} gold."
 
 
 def build_run_summary(player, payout=0, fatal=False):

@@ -19,15 +19,13 @@ Floor → Boss mapping:
 """
 
 import random
-from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.combat_io import c_print
 from pandemonium.combat.status_effects import (
     apply_bleed, apply_blind, apply_curse,
     apply_dread, apply_freeze, apply_silence,
     apply_weaken, apply_drain,
-    apply_burn, apply_poison,
-    has_fear_immunity,
+    apply_burn, has_fear_immunity,
 )
-from pandemonium.combat.elemental import ELEMENTS, calculate_elemental_damage
 
 
 # ── Inline helpers for effects not in status_effects ──────────────
@@ -66,31 +64,14 @@ def _apply_sleep(player, duration=2):
     return "applied"
 
 
-def _apply_stun(player, duration=1):
-    """Apply stun to a player (skip 1 turn)."""
-    player["stunned"] = True
-    return "applied"
 
 
-def _apply_vulnerable(player, duration=2, value=0.25):
-    """Apply vulnerable debuff."""
-    for debuff in player.get("active_debuffs", []):
-        if debuff.get("type") == "vulnerable":
-            debuff["remaining"] = max(debuff.get("remaining", 0), duration)
-            return "refreshed"
-    player.setdefault("active_debuffs", []).append(
-        {"type": "vulnerable", "value": value, "remaining": duration}
-    )
-    return "applied"
 
 
 # ═══════════════════════════════════════════════════════════════════════
 # AI Helper — extra logic injector for enemy_ai
 # ═══════════════════════════════════════════════════════════════════════
 
-def _wl_boss_extra_logic(enemy, player, dmg, boss_ai_fn):
-    """Wrap a floor boss AI as an extra_logic callback for enemy_ai."""
-    return boss_ai_fn(enemy, player, dmg)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -862,30 +843,6 @@ def the_nothing_ai(enemy, player, dmg):
 # gives them a shared mechanic: Mary Sue's abandoned experiments are
 # unstable and may glitch.
 
-def authors_draft_glitch(enemy, player, dmg):
-    """Shared AI for F41-48 regular enemies — unstable storybook creations."""
-    hp_pct = enemy["hp"] / enemy["max_hp"]
-
-    # Glitch: random effect when attacking
-    glitch_roll = random.random()
-
-    if glitch_roll < 0.10:
-        # Beneficial glitch for enemy
-        enemy["hp"] = min(enemy["max_hp"], enemy["hp"] + random.randint(3, 8))
-        c_print(f"\n  * The {enemy['name']} glitches — reality rewrites to heal it!")
-    elif glitch_roll < 0.20:
-        # Harmful glitch for enemy
-        enemy["hp"] -= random.randint(3, 8)
-        c_print(f"\n  * The {enemy['name']} glitches — its form destabilizes!")
-    elif glitch_roll < 0.25:
-        # Narrative skip: enemy vanishes
-        if hp_pct < 0.40:
-            c_print(f"\n  * The {enemy['name']} glitches..."
-                     f"\n  'This story was abandoned.' — it fades from existence!")
-            enemy["hp"] = 0
-            return "The abandoned character fades away..."
-
-    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════

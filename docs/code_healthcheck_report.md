@@ -1,5 +1,9 @@
 # Pandemonium Code Healthcheck Report
 
+> **Superseded:** This is the 2026-07-28 audit. See
+> [`code_healthcheck_report_2026-11-11.md`](code_healthcheck_report_2026-11-11.md)
+> for the current health check.
+
 **Date:** 2026-07-28  
 **Audited:** 75+ Python files across `./`, `combat/`, `facilities/`, `gui/`  
 **Findings:** 87 issues across 6 categories

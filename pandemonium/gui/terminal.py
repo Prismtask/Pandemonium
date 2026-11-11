@@ -16,8 +16,7 @@ rather than a raw text entry.
 """
 
 import threading
-import queue
-from typing import Optional, List
+from typing import List
 
 
 # ── Thread-local terminal reference ────────────────────────────────────────

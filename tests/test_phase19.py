@@ -37,7 +37,6 @@ class TestPhase19Imports(unittest.TestCase):
             scarecrow_king_ai, bandersnatch_alpha_ai,
             wizard_of_oz_ai, headless_horseman_ai,
             snow_queen_ai, the_nothing_ai,
-            authors_draft_glitch,
         )
         self.assertIsNotNone(WL_FLOOR_BOSS_MAP)
         self.assertTrue(callable(get_wl_floor_boss))

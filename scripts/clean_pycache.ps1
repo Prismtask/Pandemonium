@@ -4,6 +4,7 @@
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File clean_pycache.ps1
+#   powershell -ExecutionPolicy Bypass -File .\scripts\clean_pycache.ps1
 #   (or right-click -> Run with PowerShell)
 
 # This script lives in scripts/, but it cleans the project root one level up.

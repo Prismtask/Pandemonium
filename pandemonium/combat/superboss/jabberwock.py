@@ -33,14 +33,12 @@
 
 import random
 import pandemonium.world.wonderland_guests as wonderland_guests
-from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.player_actions import handle_player_turn
-from pandemonium.combat.combat_ui import (format_enemy_status_line, print_superboss_header,
-                              defer_dialogue)
+from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.combat_ui import (defer_dialogue)
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
-from pandemonium.combat.ally import get_active_allies, compute_ally_stats
+from pandemonium.combat.ally import get_active_allies, get_living_party
 
 # ── Keys ────────────────────────────────────────────────────────────────────
 
@@ -65,20 +63,6 @@ def _find_jabberwock(enemies):
     return None
 
 
-def _count_live_bandersnatches(enemies):
-    return sum(1 for e in enemies
-               if _is_bandersnatch(e) and e["hp"] > 0 and not e.get("captured"))
-
-
-def _get_living_targets(player):
-    """Return list of living player + active allies."""
-    targets = []
-    if player.get("current_hp", 0) > 0:
-        targets.append(player)
-    for ally in get_active_allies(player):
-        if ally.get("current_hp", 0) > 0:
-            targets.append(ally)
-    return targets
 
 
 def _get_alice(player):
@@ -116,7 +100,7 @@ def _jabberwock_burble(jabber, player):
     c_print('\n  "The Jabberwock burbles — nonsense spills from its jaws like smoke."')
 
     alice = _get_alice(player)
-    for target in _get_living_targets(player):
+    for target in get_living_party(player):
         chance = 0.40
         # Alice gets +15% dodge vs Burble
         if target is alice:
@@ -300,7 +284,7 @@ def _jabberwock_vorpal_beam_fire(jabber, player, ctx):
         # Beam fires!
         c_print('\n  💀 "VORPAL BEAM!" — A line of blinding light tears through the party!')
         from pandemonium.combat.elemental import resistance_multiplier
-        for target in _get_living_targets(player):
+        for target in get_living_party(player):
             dmg = random.randint(60, 90)
             res = target.get("elemental_res", {}).get("thunder", 1.0)
             final_dmg = max(1, int(dmg * resistance_multiplier(res)))
@@ -315,7 +299,7 @@ def _jabberwock_vorpal_beam_fire(jabber, player, ctx):
 
 def _jabberwock_narrative_rewrite(player):
     """Erase the last positive buff from a random party member."""
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     # Find targets that have buffs
     buffed = [t for t in targets if t.get("active_buffs")]
     if not buffed:
@@ -399,7 +383,7 @@ def _jabberwock_phase3_turn(jabber, player, ctx):
 def _jabberwock_death_throes(player):
     """15 unavoidable environmental damage to all party members each round."""
     c_print('\n  💥 "The dungeon COLLAPSES around you — pages tear, ink bleeds, the story dies!"')
-    for target in _get_living_targets(player):
+    for target in get_living_party(player):
         target["current_hp"] = max(0, target.get("current_hp", 0) - 15)
         c_print(f"    {target.get('name', 'You')} takes 15 damage from the collapsing narrative!")
         if target.get("current_hp", 0) <= 0:
@@ -412,7 +396,7 @@ def _jabberwock_final_vorpal_strike(jabber, player, ctx):
     c_print('  "Every claw, every jaw, every burble and galumph."')
     c_print('  "It shapes them into one FINAL ATTACK — a sentence with no period, no mercy."')
 
-    targets = _get_living_targets(player)
+    targets = get_living_party(player)
     if not targets:
         return
 

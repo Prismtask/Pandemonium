@@ -9,13 +9,7 @@ Wired into utils.advance_time() after day rollover (month boundary check via
 events.get_month_day(day)[1] == 1).
 """
 
-from pandemonium.core.events import get_month_day
 from pandemonium.progression.karma import get_bills_mult
-
-
-def is_month_start(day):
-    """True when `day` is the 1st of a month (months are 30 days)."""
-    return get_month_day(day)[1] == 1
 
 
 def compute_monthly_bills(player):

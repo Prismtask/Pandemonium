@@ -13,7 +13,7 @@ import random
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.combat_io import c_print
-from pandemonium.combat.ally import get_active_allies
+from pandemonium.combat.ally import get_active_allies, get_living_party
 
 # ── Keys ────────────────────────────────────────────────────────────────────
 
@@ -245,17 +245,6 @@ def _is_shadow_jabberwock(e):
     return e.get("key") == SHADOW_JABBER_KEY
 
 
-def _get_living_targets(pl):
-    """Return list of living player + active allies."""
-    targets = []
-    if pl.get("current_hp", 0) > 0:
-        targets.append(pl)
-    for ally in get_active_allies(pl):
-        if ally.get("current_hp", 0) > 0:
-            targets.append(ally)
-    return targets
-
-
 def shadow_jabberwock_turn_hook(enemy, ctx, pl, p_con, defending, enemies_list):
     """AI for Shadow Jabberwock.
 
@@ -306,7 +295,7 @@ def shadow_jabberwock_turn_hook(enemy, ctx, pl, p_con, defending, enemies_list):
         else:
             c_print('\n  💀 "VORPAL BEAM!" — A line of pale light tears through the party!')
             from pandemonium.combat.elemental import resistance_multiplier
-            for target in _get_living_targets(pl):
+            for target in get_living_party(pl):
                 dmg = random.randint(40, 60)
                 res = target.get("elemental_res", {}).get("thunder", 1.0)
                 final_dmg = max(1, int(dmg * resistance_multiplier(res)))
@@ -445,22 +434,6 @@ def get_plot_armor_dr(armor):
     return min(0.60, armor["stacks"] * 0.12)
 
 
-def try_strip_plot_armor(armor, damage_type):
-    """Attempt to strip a Plot Armor stack with the given damage type.
-
-    Returns True if a stack was stripped, False otherwise.
-    """
-    if armor["stacks"] <= 0:
-        return False
-    if damage_type not in ALL_ELEMENT_TYPES:
-        damage_type = "physical"
-    if damage_type not in armor["used_types"]:
-        armor["used_types"].add(damage_type)
-        armor["stacks"] -= 1
-        c_print(f'\n  📖 "A crack appears in Mary Sue\'s narrative armor!"')
-        c_print(f'  ({armor["stacks"]} stacks remaining — {get_plot_armor_dr(armor)*100:.0f}% DR)')
-        return True
-    return False
 
 
 def regen_plot_armor(armor):
