@@ -2,7 +2,7 @@
 import random
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import (
     apply_blind
 )
@@ -65,7 +65,7 @@ def _grant_cracked_mirror(player):
            for i in player.get("inventory", [])):
         return
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
     mirror = build_item("cracked_mirror", rarity="unique")
     if add_item_to_inventory(player, mirror):
         player["sylvana_mirror_obtained"] = True

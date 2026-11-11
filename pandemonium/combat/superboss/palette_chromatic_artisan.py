@@ -1,4 +1,4 @@
-# combat/palette_chromatic_artisan.py
+# combat/superboss/palette_chromatic_artisan.py
 """Palette, the Chromatic Artisan — Superboss encounter.
 
 A painter whose canvas is reality. Cycles through 7 color stances; each color
@@ -13,7 +13,7 @@ import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.ally import get_active_allies, compute_ally_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.core.utils import display_name
@@ -862,7 +862,7 @@ def combat_palette(player, floor=None, enemies=None):
 
             # Grant loot
             from pandemonium.resources.items import build_item
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
 
             brush = build_item("palette_brush", rarity="unique")
             c_print(f"\n  🎁 Received: {brush['name']}!")

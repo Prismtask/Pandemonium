@@ -294,9 +294,9 @@ This keeps old saves easy to migrate and avoids a fragile “guest phase” inte
 | `facilities/inn.py` | Replaced the static three-heroine menu with guest-state-driven options, Hatter scenes, and a guest hint option. |
 | `wonderland_guests.py` | Guest state machine, strict-order invitations, late arcs, variant gating, Mary Sue fallback. |
 | `combat/ally.py` | `promote_heroine_to_permanent()` marks the guest arc `resolved`. |
-| `combat/big_bad_wolf.py` | Red Hood variant: Howl interrupted + Huntress's Oath at 50% HP. |
-| `combat/wicked_witch.py` | Dorothy variant: phase-2 cleanse + phase-3 10% party heal. |
-| `combat/jabberwock.py` | Alice variant: Vorpal Opening damage + first Page Storm cut. |
+| `combat/superboss/big_bad_wolf.py` | Red Hood variant: Howl interrupted + Huntress's Oath at 50% HP. |
+| `combat/superboss/wicked_witch.py` | Dorothy variant: phase-2 cleanse + phase-3 10% party heal. |
+| `combat/superboss/jabberwock.py` | Alice variant: Vorpal Opening damage + first Page Storm cut. |
 | `dungeon.py` | `on_boss_defeated()` closes/late-flags guest arcs; no boss relocation. |
 | `quests.py` / `resources/quests.py` | Heroine objectives read guest states; `sq_wonderland_01` gains the tea-party scene objective. |
 | `character.py` | Seeds/migrates `wonderland_guests` and `wl_hatter_three_guests_seen`. |

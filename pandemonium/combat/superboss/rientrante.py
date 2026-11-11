@@ -1,9 +1,9 @@
-# combat/rientrante.py – Rientrante, the Frostbound / Truth Unveiled superboss
+# combat/superboss/rientrante.py – Rientrante, the Frostbound / Truth Unveiled superboss
 import random
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed, apply_blind
 from pandemonium.combat.ally import get_alive_allies
 from pandemonium.combat.combat_io import c_print, c_input, c_clear

@@ -19,7 +19,7 @@ from pandemonium.combat.weapon.moonlight_greatsword import (
     tick_moonlight,
     clear_moonlight_state,
 )
-# combat/superboss_common.py
+# combat/superboss/superboss_common.py
 """Shared functions for superboss fights, extracted to break circular imports."""
 
 from pandemonium.combat.stats import compute_player_stats

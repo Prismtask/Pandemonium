@@ -1,4 +1,4 @@
-# combat/broodmother.py
+# combat/superboss/broodmother.py
 """Superboss: Broodmother Vileheart — Pandemonium's first superboss.
 
 Three-phase fight with venom, swarm, and desperation mechanics.
@@ -32,7 +32,7 @@ Phase 3 — "Vileheart's Desperation" (35%–0% HP):
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_poison
 from pandemonium.combat.ally import get_active_allies, compute_ally_stats
 from pandemonium.combat.combat_io import c_print, c_input
@@ -767,7 +767,7 @@ def combat_broodmother(player, floor=None, enemies=None):
 
             # Grant loot
             from pandemonium.resources.items import build_item
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             pendant = build_item("vileheart_pendant", rarity="unique")
             c_print(f"\n  🎁 Received: {pendant['name']}!")
             c_print(f"    A dark pendant that still thrums with venomous life.")

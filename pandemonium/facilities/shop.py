@@ -10,7 +10,7 @@ from pandemonium.resources.items import (
 from pandemonium.resources.item_generation import pick_weapon_id, pick_family_id, roll_shop_grade
 from pandemonium.resources.cities import CITIES
 from pandemonium.core.utils import advance_time
-from pandemonium.inventory.inventory import (
+from pandemonium.inventory.core import (
     add_item_to_inventory, get_inventory_caps, count_inventory,
     get_sorted_equipment, get_sorted_items, is_sellable_item,
 )
@@ -194,7 +194,7 @@ def _parse_sell_selection(raw, all_items):
 
 
 def sell_items(player):
-    from pandemonium.inventory.inventory import remove_item_by_reference
+    from pandemonium.inventory.core import remove_item_by_reference
     inv = player.get("inventory", [])
     if not inv:
         term.print("No items to sell.")
@@ -269,7 +269,7 @@ def sell_items(player):
 
 def _cargo_market(player, city_id):
     """Permit-gated cargo trading: buy local stock, sell held cargo."""
-    from pandemonium.inventory.inventory import remove_item_by_reference, get_cargo_items
+    from pandemonium.inventory.core import remove_item_by_reference, get_cargo_items
     from pandemonium.resources.trade_goods import (
         TRADE_GOODS, build_cargo, cargo_buy_price, cargo_sell_price,
         cargo_total_weight, cargo_capacity, cargo_overload_limit,

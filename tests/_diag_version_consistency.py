@@ -1,9 +1,9 @@
 """Diagnostic: version consistency between version.py and the changelog.
 
 version.py is the single source of truth for the current version; the
-changelog (gui/screens/changelog_screen.py) keeps frozen per-release headers,
-newest first. When a version is bumped, both must change together — this
-script catches drift.
+changelog (pandemonium/gui/screens/changelog_screen.py) keeps frozen
+per-release headers, newest first. When a version is bumped, both must change
+together — this script catches drift.
 
 Usage:
     .venv/Scripts/python.exe tests/_diag_version_consistency.py
@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def load_version_namespace():
     ns = {}
-    path = ROOT / "version.py"
+    path = ROOT / "pandemonium" / "core" / "version.py"
     exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), ns)
     return ns
 
@@ -53,7 +53,7 @@ def main():
     elif display and not label.startswith(display):
         problems.append(f"VERSION_LABEL {label!r} should start with VERSION_DISPLAY {display!r}.")
 
-    changelog = (ROOT / "gui" / "screens" / "changelog_screen.py").read_text(encoding="utf-8")
+    changelog = (ROOT / "pandemonium" / "gui" / "screens" / "changelog_screen.py").read_text(encoding="utf-8")
     match = re.search(r'self\._add_version\(\s*"([^"]+)"', changelog)
     if match is None:
         problems.append('No self._add_version("...") literal found in changelog_screen.py.')

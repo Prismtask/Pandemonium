@@ -4,7 +4,7 @@ from pandemonium.core.utils import advance_time, _int_to_roman, _get_wonderland_
 from pandemonium.world.city_dialogue import service_dialogue
 from pandemonium.facilities.shop import get_discounted_price
 from pandemonium.resources.items import build_item
-from pandemonium.inventory.inventory import add_item_to_inventory, get_inventory_caps, count_inventory
+from pandemonium.inventory.core import add_item_to_inventory, get_inventory_caps, count_inventory
 from pandemonium.gui.terminal import term
 
 

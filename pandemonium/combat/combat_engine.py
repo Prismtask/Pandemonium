@@ -106,7 +106,7 @@ def roll_initiative(player, enemies):
     # Enemies
     pandemonium_speed_bonus = 0
     if player.get("pandemonium_curse"):
-        from pandemonium.world.pandemonium_curses import get_enemy_initiative_bonus
+        from pandemonium.world.curse_pandemonium import get_enemy_initiative_bonus
         pandemonium_speed_bonus = get_enemy_initiative_bonus(player)
 
     # Wonderland Shadow: Cheshire Cat's Absence — enemy initiative bonus
@@ -726,7 +726,7 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
 
                 # Pandemonium: Echoing Madness curse — chance to skip turn
                 if player.get("pandemonium_curse"):
-                    from pandemonium.world.pandemonium_curses import roll_skip_turn
+                    from pandemonium.world.curse_pandemonium import roll_skip_turn
                     if roll_skip_turn(player):
                         c_print("  🌀  Echoing whispers overwhelm you — you lose your turn!")
                         continue

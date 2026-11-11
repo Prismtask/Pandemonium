@@ -56,7 +56,7 @@ Before writing code, confirm each applies and how it will be handled:
 - [ ] **Notifications:** Journal + log only for quest/dispatch flows; toasts main-thread only, never from facility threads.
 - [ ] **Threading:** I/O via `_tprint`/`_tpause`/`_tinput`; tkinter calls marshalled with `after()`; results returned via queues.
 - [ ] **Local imports:** never import a name inside a branch if it is used elsewhere in the same function (UnboundLocalError trap — see `tests/_diag_local_imports.py`).
-- [ ] **Combat parity:** anything combat-related must work for the player **and** allies (actor-based pattern for unique equipment; ally cooldowns tick in `combat/superboss_common.py` too; reinforcement loops call `reinforce_fallen_allies`; end state cleared via `end_of_combat_cleanup()`).
+- [ ] **Combat parity:** anything combat-related must work for the player **and** allies (actor-based pattern for unique equipment; ally cooldowns tick in `combat/superboss/superboss_common.py` too; reinforcement loops call `reinforce_fallen_allies`; end state cleared via `end_of_combat_cleanup()`).
 - [ ] **Rewards:** use shared APIs — `leveling.gain_exp` / `gain_exp_ally`; `resources/items.build_item` + `inventory.add_item_to_inventory`.
 - [ ] **Display:** reuse shared formatters (`format_mastery_label`, stat-line conventions, HUD fixed widths) — never fork display logic.
 - [ ] **Version/changelog:** plan the changelog bullet and whether this needs a version bump (read the bump procedure inside `version.py`).

@@ -1,7 +1,7 @@
 # Mage Skill Rework — Time Warp & Cataclysm
 
 **Status:** ✅ Implemented 2026-10-24 in v0.1.8.2 — playtest pending — **Date:** 2026-10-24
-**Scope:** `resources/skill_book/skill_list.yaml`, `combat/skills.py`, `combat/player_actions.py`, `combat/combat_engine.py`, `combat/superboss_common.py`, `combat/combat_ui.py`, `tests/_temp_gen_skills_wiki.py`, `version.py`, changelog / wiki
+**Scope:** `resources/skill_book/skill_list.yaml`, `combat/skills.py`, `combat/player_actions.py`, `combat/combat_engine.py`, `combat/superboss/superboss_common.py`, `combat/combat_ui.py`, `tests/_temp_gen_skills_wiki.py`, `version.py`, changelog / wiki
 **Related:** [`player_skill_extension_design.md`](./player_skill_extension_design.md) · [`mastery_extension_design.md`](./mastery_extension_design.md)
 
 **Summary:** two Mage changes:

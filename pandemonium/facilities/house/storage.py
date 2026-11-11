@@ -5,7 +5,7 @@ equipment/other bag caps and the tier-based chest capacity. Wedding
 accessories are soulbound and cannot be deposited.
 """
 
-from pandemonium.inventory.inventory import (
+from pandemonium.inventory.core import (
     count_inventory,
     get_inventory_caps,
     get_sorted_equipment,

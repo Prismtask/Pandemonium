@@ -34,7 +34,7 @@ print("afflictions:", eh.get("entropy_afflictions"))
 print()
 print("=== PLAYER ===")
 from pandemonium.combat.stats import compute_player_stats, get_effective_attribute
-from pandemonium.inventory.inventory import get_total_equipment_mods
+from pandemonium.inventory.core import get_total_equipment_mods
 print("base attributes:", player["attributes"])
 print("equipment mods:", get_total_equipment_mods(player))
 print("weapon:", (player.get("equipped", {}).get("weapon") or {}).get("id"),

@@ -257,7 +257,7 @@ import pandemonium.combat.combat_engine as ce
 check("the standard engine begins and settles encounters",
       "begin_encounter" in inspect.getsource(ce.combat)
       and "settle_pending_falls" in inspect.getsource(ce._end_combat_with_result))
-import pandemonium.combat.superboss_common as sc
+import pandemonium.combat.superboss.superboss_common as sc
 check("superboss fights begin encounters",
       "begin_encounter" in inspect.getsource(sc.superboss_combat_loop))
 

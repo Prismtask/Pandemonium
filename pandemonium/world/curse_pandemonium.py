@@ -1,4 +1,4 @@
-# pandemonium_curses.py — Floor curses & cumulative corruption for Pandemonium
+# curse_pandemonium.py — Floor curses & cumulative corruption for Pandemonium
 """
 Pandemonium Curse System
 ─────────────────────────

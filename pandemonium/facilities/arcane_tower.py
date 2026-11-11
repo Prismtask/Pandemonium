@@ -20,7 +20,7 @@ from pandemonium.combat.skills import (
     get_class_skill_map, format_mastery_label
 )
 from pandemonium.resources.items import build_item, ITEM_RARITY
-from pandemonium.inventory.inventory import add_item_to_inventory, remove_item_by_reference
+from pandemonium.inventory.core import add_item_to_inventory, remove_item_by_reference
 from pandemonium.resources.cities import CITIES
 from pandemonium.core.utils import _get_wonderland_max_floor
 

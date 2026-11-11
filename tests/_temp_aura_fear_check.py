@@ -45,7 +45,7 @@ assert not has_fear_immunity(p)
 p["active_buffs"].append({"type": "fear_immunity", "remaining": 2})
 assert has_fear_immunity(p)
 
-from pandemonium.combat.wl_floor_bosses import _apply_fear
+from pandemonium.combat.superboss.wl_floor_bosses import _apply_fear
 immune = {"name": "You", "current_hp": 50,
           "active_buffs": [{"type": "fear_immunity", "remaining": 2}],
           "active_debuffs": []}

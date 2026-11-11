@@ -26,11 +26,11 @@
 ## Wonderland Boss Schedule
 | Floor | Boss | File |
 |---|---|---|
-| F10 | Queen of Hearts | `./pandemonium/combat/queen_of_hearts.py` |
-| F20 | Wolf | `./pandemonium/combat/wl_floor_bosses.py` |
-| F30 | Wicked Witch | `./pandemonium/combat/wicked_witch.py` |
-| F40 | Jabberwock | `./pandemonium/combat/jabberwock.py` |
-| F50 | Mary Sue | `./pandemonium/combat/mary_sue.py` |
+| F10 | Queen of Hearts | `./pandemonium/combat/superboss/queen_of_hearts.py` |
+| F20 | Wolf | `./pandemonium/combat/superboss/wl_floor_bosses.py` |
+| F30 | Wicked Witch | `./pandemonium/combat/superboss/wicked_witch.py` |
+| F40 | Jabberwock | `./pandemonium/combat/superboss/jabberwock.py` |
+| F50 | Mary Sue | `./pandemonium/combat/superboss/mary_sue.py` |
 
 ## Dungeon Rooms
 - 10 rooms/floor, 10% non-combat chance.

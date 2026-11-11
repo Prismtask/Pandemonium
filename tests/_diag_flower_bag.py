@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pandemonium.core.character import ensure_player_fields
 from pandemonium.resources.items import build_item
-from pandemonium.inventory.inventory import add_item_to_inventory, get_flower_items
+from pandemonium.inventory.core import add_item_to_inventory, get_flower_items
 
 _results = []
 

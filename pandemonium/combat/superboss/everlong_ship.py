@@ -1,4 +1,4 @@
-# combat/everlong_ship.py – The Everlong Ship superboss encounter
+# combat/superboss/everlong_ship.py – The Everlong Ship superboss encounter
 #
 # MECHANIC OVERVIEW:
 # ─────────────────
@@ -22,7 +22,7 @@ import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.player_actions import handle_player_turn
 from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header, print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.ally import get_alive_allies, get_active_allies
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
@@ -394,7 +394,7 @@ def combat_everlong_ship(player, floor=None, enemies=None):
 
             # Award Cutlass of the Captain
             from pandemonium.resources.items import build_item
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             cutlass = build_item("cutlass_of_the_captain", "unique")
             c_print("\n  ⚓ You obtained: CUTLASS OF THE CAPTAIN (Unique) ⚓")
             prompt_acquire_item(player, cutlass)

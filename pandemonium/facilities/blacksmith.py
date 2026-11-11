@@ -5,7 +5,7 @@ from pandemonium.resources.items import (
     compute_equipment_mods, compute_elemental_dmg, compute_elemental_res,
 )
 from pandemonium.resources.dialogues import BLACKSMITH_DIALOGUES
-from pandemonium.inventory.inventory import apply_scroll_to_item, remove_item_by_reference, add_item_to_inventory
+from pandemonium.inventory.core import apply_scroll_to_item, remove_item_by_reference, add_item_to_inventory
 from pandemonium.core.utils import advance_time, display_name
 from pandemonium.gui.terminal import term
 from pandemonium.gui.theme import Theme
@@ -253,7 +253,7 @@ def transmute_flower(player, src_element, dst_element, ratio=TRANSMUTE_RATIO):
     refused. Element ids come from ``item_generation.FLOWER_ITEMS``.
     """
     from pandemonium.resources.item_generation import flower_for_element
-    from pandemonium.inventory.inventory import consume_stackable_items
+    from pandemonium.inventory.core import consume_stackable_items
 
     src_id = flower_for_element(src_element)
     dst_id = flower_for_element(dst_element)
@@ -345,7 +345,7 @@ def _infusion_summary(item):
 def infuse_item(player, dialogues, city_id):
     """Apply one flower infusion to a chosen piece of equipment."""
     from pandemonium.resources.item_generation import FLOWER_ITEMS, apply_infusion, flower_for_element
-    from pandemonium.inventory.inventory import consume_stackable_items
+    from pandemonium.inventory.core import consume_stackable_items
 
     pool = []
     slots = ["weapon", "armor", "accessory1", "accessory2", "accessory3"]
@@ -565,7 +565,7 @@ def commission_item(player, dialogues, city_id):
     keeps its value.
     """
     from pandemonium.resources.item_generation import FLOWER_ITEMS, apply_infusion, flower_for_element
-    from pandemonium.inventory.inventory import consume_stackable_items, get_inventory_caps, count_inventory
+    from pandemonium.inventory.core import consume_stackable_items, get_inventory_caps, count_inventory
 
     term.print("\n--- Forge Commission (Order a Base) ---")
     term.print("The smith forges a plain (common) piece in the form you choose")

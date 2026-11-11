@@ -2,7 +2,7 @@
 import random
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_weaken, apply_burn_to_player
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg

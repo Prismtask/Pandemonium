@@ -284,7 +284,7 @@ def voss_epilogue(player):
     term.pause("Continue")
 
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
     from pandemonium.progression.family import journal_event
 
     item = build_item(VOSS_EPILOGUE_ITEM)
@@ -356,7 +356,7 @@ def _give_field_kit(player):
         return ['Voss taps the ledger. "One kit at a time, field agent."']
 
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     kit = build_item(FIELD_KIT_ID)
     if not add_item_to_inventory(player, kit):

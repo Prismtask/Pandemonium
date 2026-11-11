@@ -118,7 +118,7 @@ Keep the pool ≤ ~40–45 so category menus stay readable.
 - `slow` / `blind` branches now respect a single chosen target when the skill targets one enemy.
 - Removed the dead duplicate `regen` branch and the now-unused `apply_regen` import.
 
-**`combat/status_effects.py` / `combat/combat_engine.py` / `combat/superboss_common.py`**
+**`combat/status_effects.py` / `combat/combat_engine.py` / `combat/superboss/superboss_common.py`**
 - New `apply_death_ward()` / `try_consume_death_ward()` (Undying Vow); the save is wired into both engines' enemy-attack and DoT death paths for allies and the player.
 
 **`combat/skills.py`**

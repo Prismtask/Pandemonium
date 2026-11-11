@@ -238,7 +238,7 @@ def journal_entries(player):
 # ── Effects ─────────────────────────────────────────────────────────────────
 
 def _grant_item(player, item_id, count):
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
     from pandemonium.resources.items import build_item
     try:
         item = build_item(item_id)

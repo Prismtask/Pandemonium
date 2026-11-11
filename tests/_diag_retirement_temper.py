@@ -150,7 +150,7 @@ check("same element refused", transmute_flower(p, "dark", "dark"), False)
 check("unknown element refused", transmute_flower(p, "fire", "void"), False)
 
 print("=== Flower consumption ===")
-from pandemonium.inventory.inventory import consume_stackable_items
+from pandemonium.inventory.core import consume_stackable_items
 player = {"inventory": [build_item("emberbloom", "common") for _ in range(2)]}
 player["inventory"][0]["count"] = 2
 player["inventory"][1]["count"] = 2

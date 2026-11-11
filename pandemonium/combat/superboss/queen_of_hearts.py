@@ -1,4 +1,4 @@
-# combat/queen_of_hearts.py – Wonderland Superboss: Queen of Hearts (Floor 10)
+# combat/superboss/queen_of_hearts.py – Wonderland Superboss: Queen of Hearts (Floor 10)
 #
 # MECHANIC OVERVIEW:
 # ─────────────────
@@ -27,7 +27,7 @@ import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.player_actions import handle_player_turn
 from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
 

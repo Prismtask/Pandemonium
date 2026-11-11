@@ -177,7 +177,7 @@ def _mods_text(item):
 
 def _scaling_text(item):
     """Return '  ▸ Scales: STR' for weapons with a scaling stat, else ''."""
-    from pandemonium.inventory.inventory import format_scaling_stat
+    from pandemonium.inventory.core import format_scaling_stat
     scale = format_scaling_stat(item)
     return f"  {scale}" if scale else ""
 
@@ -195,7 +195,7 @@ def _grant_starter_weapon(player, announce=True):
     item = build_item(item_id, rarity="common")
     pclass = player.get("class", "hero")
     if player.get("equipped", {}).get("weapon"):
-        from pandemonium.inventory.inventory import add_item_to_inventory
+        from pandemonium.inventory.core import add_item_to_inventory
         add_item_to_inventory(player, item)
         if announce:
             term.print("")

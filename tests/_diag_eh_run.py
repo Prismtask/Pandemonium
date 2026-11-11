@@ -29,7 +29,7 @@ except Exception:
 import pandemonium.world.dungeon as dungeon_mod
 import pandemonium.world.event_horizon as eh
 import pandemonium.world.event_horizon_rooms as ehr
-import pandemonium.inventory.inventory_ui as inventory_ui
+import pandemonium.inventory.legacy_ui as legacy_ui
 from pandemonium.resources.enemies import ENEMIES
 
 # ── Stub I/O so the loop runs headless ──────────────────────────────────────
@@ -42,7 +42,7 @@ def _fake_acquire(player, item):
     return True
 
 
-inventory_ui.prompt_acquire_item = _fake_acquire
+legacy_ui.prompt_acquire_item = _fake_acquire
 
 _TEST_ENEMY = next(
     k for k, d in ENEMIES.items()

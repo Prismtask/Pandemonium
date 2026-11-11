@@ -2,7 +2,7 @@
 import sys
 sys.path.insert(0, "c:/Code/Pandemonium")
 
-import pandemonium.combat.palette_chromatic_artisan as pca
+import pandemonium.combat.superboss.palette_chromatic_artisan as pca
 from pandemonium.resources.enemies import ENEMIES
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.resources.items import build_item

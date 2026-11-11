@@ -5,7 +5,7 @@ import random
 from pandemonium.combat.stats import compute_enemy_attributes
 from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
 from pandemonium.resources.races_classes import ATTRIBUTES
-from pandemonium.inventory.inventory import get_total_equipment_mods, remove_item_by_reference
+from pandemonium.inventory.core import get_total_equipment_mods, remove_item_by_reference
 from pandemonium.resources.quests import get_resonance_grade
 from pandemonium.core.utils import display_name
 from pandemonium.core.events import format_days_left
@@ -816,7 +816,7 @@ def get_all_party_members(player):
 
 def equip_ally_item(ally, item, player, target_slot=None):
     """Equip an item on an ally from the player's inventory."""
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     # Block equipping temporary Wonderland heroines
     # EXCEPTION: vorpal_blade_rusted / vorpal_blade on Alice (heroine quest item)
@@ -898,7 +898,7 @@ def equip_ally_item(ally, item, player, target_slot=None):
 
 def unequip_ally_slot(ally, slot, player):
     """Unequip an item from an ally and return to player's inventory."""
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     # Block unequipping temporary Wonderland heroines
     # EXCEPTION: vorpal blade on Alice (heroine quest item)
@@ -1024,7 +1024,7 @@ def dismiss_allies_back_to_house(player):
 
     Unequips all gear (returns to player inventory) and restores the girls to the house.
     """
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
     allies = player.pop("allies", [])
     if not allies:
         return
@@ -1061,7 +1061,7 @@ def dismiss_allies_back_to_house(player):
 
 def _return_ally_to_house(player, ally, house):
     """Return a single ally to the house's monster_girls list."""
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     stashed_equipment = {}
     # Skip returning equipped items for temp heroines (their gear is innate)
@@ -1702,7 +1702,7 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
         final_dmg = max(0, final_dmg)
 
         # Pandemonium: Weakened Resolve curse — allies deal less damage too
-        from pandemonium.world.pandemonium_curses import apply_damage_dealt_multiplier
+        from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
         final_dmg = apply_damage_dealt_multiplier(player, final_dmg)
         
         # Wonderland: Jabberwock's Bane — bonus damage vs boss enemies

@@ -36,7 +36,7 @@ class TestPhase3Imports(unittest.TestCase):
 
     def test_inventory_ui_unchanged(self):
         """inventory_ui.py should still import and provide core functions."""
-        from pandemonium.inventory.inventory_ui import prompt_acquire_item, _format_equipment_stat_line
+        from pandemonium.inventory.legacy_ui import prompt_acquire_item, _format_equipment_stat_line
         self.assertTrue(callable(prompt_acquire_item))
         self.assertTrue(callable(_format_equipment_stat_line))
 
@@ -131,7 +131,7 @@ class TestPhase3BackwardsCompatibility(unittest.TestCase):
 
     def test_inventory_ui_data_functions_exist(self):
         """Key inventory functions still exist."""
-        from pandemonium.inventory.inventory_ui import (
+        from pandemonium.inventory.legacy_ui import (
             prompt_acquire_item, _format_equipment_stat_line,
         )
         self.assertTrue(callable(prompt_acquire_item))

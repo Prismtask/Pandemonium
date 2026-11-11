@@ -17,7 +17,7 @@ from pandemonium.combat.fractured_hourglass import (
     is_fractured_hourglass, use_fractured_hourglass, get_hourglass_cooldown,
     tick_hourglass_cooldown, HOURGLASS_COOLDOWN_TURNS,
 )
-from pandemonium.inventory.inventory import is_combat_only_item, use_consumable
+from pandemonium.inventory.core import is_combat_only_item, use_consumable
 
 failures = []
 

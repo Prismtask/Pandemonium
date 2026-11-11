@@ -1,4 +1,4 @@
-from pandemonium.inventory.inventory import (get_inventory_caps, count_inventory, get_sorted_equipment, get_sorted_items,
+from pandemonium.inventory.core import (get_inventory_caps, count_inventory, get_sorted_equipment, get_sorted_items,
                        add_item_to_inventory, remove_item_by_reference, format_scaling_stat)
 from pandemonium.resources.items import is_unique_item
 from pandemonium.core.utils import _tprint, _tpause, _tclear, _tmenu, _tinput

@@ -16,7 +16,7 @@ from pandemonium.combat.stats import compute_player_stats
 from pandemonium.core.utils import clear_screen, advance_time, _tprint, _tpause, _tclear, _tmenu, _tinput, display_name
 from pandemonium.resources.items import ITEMS, ITEM_RARITY, build_item, soften_rarity
 from pandemonium.resources.item_generation import pick_equipment_id, dungeon_biome
-from pandemonium.inventory.inventory import add_item_to_inventory, remove_item_by_reference, is_sellable_item
+from pandemonium.inventory.core import add_item_to_inventory, remove_item_by_reference, is_sellable_item
 from pandemonium.progression.leveling import gain_exp, gain_exp_ally
 from pandemonium.combat.combat_engine import combat
 from pandemonium.combat.ally import get_alive_allies
@@ -700,7 +700,7 @@ def handle_treasure_room(player, floor):
     item = build_item(item_id, rarity)
 
     _tprint(f"\nYou found: {item['name']}  {_item_stat_line(item)}")
-    from pandemonium.inventory.inventory_ui import prompt_acquire_item
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     prompt_acquire_item(player, item.copy())
 
     # Tempering flowers — treasure rooms are the reliable farming spot
@@ -865,7 +865,7 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
 
     if requires_check:
         # Pandemonium: Mirrored Mind / Unstable Ground curses increase DC
-        from pandemonium.world.pandemonium_curses import get_stat_check_dc_modifier
+        from pandemonium.world.curse_pandemonium import get_stat_check_dc_modifier
         dc_mod = get_stat_check_dc_modifier(player, stat_name)
         if dc_mod > 0:
             dc += dc_mod

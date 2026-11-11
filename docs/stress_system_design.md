@@ -90,7 +90,7 @@ The bands mirror `facilities/dispatch.stress_band()` (Calm / Wound-Up / Tired / 
 - `combat/party_stress.py` — companion meter, fall settlement, refusal, banded penalty/tag, sleep recovery; `REFUSAL_LINES` + template override.
 - `combat/hallucination.py` — rattled tier bump, rattled-only trigger.
 - `combat/ally.py` — stress penalty in `get_ally_effective_attribute`; `_stress_sit_out` filters on the party-selection helpers; `combat/combat_ui.py` HUD tags.
-- `combat/combat_engine.py` / `combat/superboss_common.py` — `begin_encounter` at fight start, `settle_pending_falls` at fight end.
+- `combat/combat_engine.py` / `combat/superboss/superboss_common.py` — `begin_encounter` at fight start, `settle_pending_falls` at fight end.
 - `facilities/house.py`, `facilities/inn.py`, `facilities/camp.py` — `on_party_sleep` at real sleep.
 - `character.py` — `stress` seeded in `ensure_player_fields()` and `build_character()`.
 - `dreams.py` / `resources/dreams.py` — `player_stress` dream effect.

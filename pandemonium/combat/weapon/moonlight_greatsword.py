@@ -13,7 +13,7 @@ allies alike. State lives on the actor:
 
 Lifecycle is wired in ``combat/combat_engine.py`` (``_combat_inner``,
 ``_tick_all_state``, ``clear_battle_scoped_state``) and mirrored in
-``combat/superboss_common.py``.
+``combat/superboss/superboss_common.py``.
 """
 
 import random
@@ -283,7 +283,7 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
 
         # Pandemonium: Weakened Resolve curse — the party deals less damage
         if player_ref.get("pandemonium_curse"):
-            from pandemonium.world.pandemonium_curses import apply_damage_dealt_multiplier
+            from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
             hit = apply_damage_dealt_multiplier(player_ref, hit)
 
         # Wonderland: Jabberwock's Bane — bonus damage vs boss enemies

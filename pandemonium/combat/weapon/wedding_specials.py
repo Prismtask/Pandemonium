@@ -1118,7 +1118,7 @@ def apply_wedding_combat_end(player, victory):
             if consumables:
                 dup = random.choice(consumables).copy()
                 dup.pop("id", None)  # Remove ID to avoid issues
-                from pandemonium.inventory.inventory import add_item_to_inventory
+                from pandemonium.inventory.core import add_item_to_inventory
                 if add_item_to_inventory(player, dup):
                     _msg(f"Mimic's Tooth — your {dup['name']} somehow duplicated!")
             else:
@@ -1128,7 +1128,7 @@ def apply_wedding_combat_end(player, victory):
             gift_ids = [k for k, v in ITEMS.items() if v.get("type") == "gift"]
             if gift_ids:
                 gift = build_item(random.choice(gift_ids), "common")
-                from pandemonium.inventory.inventory import add_item_to_inventory
+                from pandemonium.inventory.core import add_item_to_inventory
                 if add_item_to_inventory(player, gift):
                     _msg(f"Mimic's Tooth — you found a hidden {gift['name']}!")
 

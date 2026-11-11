@@ -1,4 +1,4 @@
-# combat/big_bad_wolf.py — Wonderland Superboss: Big Bad Wolf (Floor 20)
+# combat/superboss/big_bad_wolf.py — Wonderland Superboss: Big Bad Wolf (Floor 20)
 #
 # MECHANIC OVERVIEW:
 # ─────────────────
@@ -38,7 +38,7 @@ from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.player_actions import handle_player_turn
 from pandemonium.combat.combat_ui import (format_enemy_status_line, print_superboss_header,
                               defer_dialogue)
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.ally import get_active_allies, compute_ally_stats
 from pandemonium.combat.combat_io import c_print, c_input, c_clear

@@ -22,10 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = (
     list(ROOT.glob("*.py"))
-    + list((ROOT / "combat").rglob("*.py"))
-    + list((ROOT / "gui").rglob("*.py"))
-    + list((ROOT / "facilities").rglob("*.py"))
-    + list((ROOT / "resources").rglob("*.py"))
+    + list((ROOT / "pandemonium").rglob("*.py"))
 )
 
 LIST_FIELDS = ("body", "orelse", "finalbody", "handlers", "items")

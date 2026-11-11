@@ -757,7 +757,7 @@ def print_combat_hud(player, enemies, active_ally=None, header=""):
                     c_print(f"|  {cd_msg:<66}|")
 
     # Pandemonium: Display active floor curse (only while a run is active)
-    from pandemonium.world.pandemonium_curses import get_curse
+    from pandemonium.world.curse_pandemonium import get_curse
     curse = get_curse(player)
     if curse:
         c_print("|" + " " * 68 + "|")

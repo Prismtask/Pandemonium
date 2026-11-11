@@ -81,7 +81,7 @@
 2. Add YAML entry in `./pandemonium/resources/enemies/`
 3. Import in `./pandemonium/world/dungeon.py`
 4. Add to tier pool in `./pandemonium/world/dungeon.py`
-5. Use `./pandemonium/combat/superboss_common.py` for shared combat loop logic
+5. Use `./pandemonium/combat/superboss/superboss_common.py` for shared combat loop logic
 
 ## Adding a Persistent Field (checklist)
 1. Add `.setdefault("field_name", default_value)` in `./pandemonium/core/character.py` `ensure_player_fields()`

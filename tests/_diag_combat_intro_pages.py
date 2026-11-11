@@ -152,15 +152,15 @@ def main():
     print("OK — deferred dialogue queue roundtrip")
 
     # ── 5. Wiring: dungeon plays it, wild entry clears the log ─────────
-    dungeon_src = (ROOT / "dungeon.py").read_text(encoding="utf-8")
+    dungeon_src = (ROOT / "pandemonium" / "world" / "dungeon.py").read_text(encoding="utf-8")
     assert "_play_deferred_dialogue(player)" in dungeon_src, \
         "Wonderland dispatch no longer plays deferred dialogue"
-    wild_src = (ROOT / "gui" / "screens" / "world_map_screen.py").read_text(encoding="utf-8")
+    wild_src = (ROOT / "pandemonium" / "gui" / "screens" / "world_map_screen.py").read_text(encoding="utf-8")
     assert 'player.pop("_dungeon_log", None)' in wild_src, \
         "wild-dungeon entry still inherits the previous run's log"
-    for rel in ("combat/big_bad_wolf.py", "combat/wicked_witch.py",
-                "combat/jabberwock.py", "combat/mary_sue.py"):
-        text = (ROOT / rel).read_text(encoding="utf-8")
+    for rel in ("combat/superboss/big_bad_wolf.py", "combat/superboss/wicked_witch.py",
+                "combat/superboss/jabberwock.py", "combat/superboss/mary_sue.py"):
+        text = (ROOT / "pandemonium" / rel).read_text(encoding="utf-8")
         assert "defer_dialogue(" in text, f"{rel} still prints its ending in combat"
         assert "becomes a" in text and "ally." in text, \
             f"{rel} lost its promotion line"

@@ -1,4 +1,4 @@
-# combat/mary_sue.py — Wonderland Final Superboss: Mary Sue (Floor 50)
+# combat/superboss/mary_sue.py — Wonderland Final Superboss: Mary Sue (Floor 50)
 #
 # MECHANIC OVERVIEW:
 # ─────────────────
@@ -45,12 +45,12 @@
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
 from pandemonium.combat.ally import get_active_allies, compute_ally_stats
 from pandemonium.core.utils import display_name
-from pandemonium.combat.mary_sue_shadows import (
+from pandemonium.combat.superboss.mary_sue_shadows import (
     create_shadow_queen_of_hearts,
     create_shadow_card_soldier,
     create_shadow_big_bad_wolf,

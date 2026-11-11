@@ -21,7 +21,7 @@ import random
 
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.ally import get_active_allies
 from pandemonium.combat.status_effects import absorb_damage
 
@@ -406,7 +406,7 @@ def combat_white_knight(player, floor=None, enemies=None):
             c_print("\nThe porcelain falls away. The oath is kept at last —")
             c_print("what remains is a blade that never misses its promise.")
             from pandemonium.resources.items import build_item
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             rapier = build_item("last_oath", "unique")
             c_print("\n  ⚜ You obtained: LAST OATH (Unique) ⚜")
             prompt_acquire_item(player, rapier)

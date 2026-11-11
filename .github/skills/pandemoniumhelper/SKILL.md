@@ -62,7 +62,7 @@ description: 'Iterative development helper for the Pandemonium Python text-based
 Every unique item effect must work for the player AND allies unless it's a wedding accessory:
 - Implement in `./pandemonium/combat/weapon/<name>.py` with `_actor_has_<id>(actor)` + `is_player` flags; never hardcode the player dict.
 - Wire into BOTH `combat/player_actions.py` and `combat/ally.py` (`handle_ally_turn`, `_ally_action_menu`, ally basic-attack path).
-- Lifecycle: tick/clear per-ally state in `combat/combat_engine.py` (`_tick_all_state`, `_combat_inner`, `_end_combat_with_result`) AND `combat/superboss_common.py` (superboss rounds have their own loop).
+- Lifecycle: tick/clear per-ally state in `combat/combat_engine.py` (`_tick_all_state`, `_combat_inner`, `_end_combat_with_result`) AND `combat/superboss/superboss_common.py` (superboss rounds have their own loop).
 - Mirror player context onto allies at combat start (`ally["floor"]`, `ally["dungeon_region"]`) for floor/region-gated effects.
 - Actors are identifiable via `actor.get("is_ally")` and `actor.get("race")`; player HP uses `player_max_hp()`, ally HP uses `ally["max_hp"]`.
 - Player-only exceptions: wedding accessories (`combat/weapon/wedding_specials.py`) and vanity items (e.g. Perception-Blocking Mask).

@@ -9,7 +9,7 @@ from tkinter import ttk
 
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
-from pandemonium.inventory.inventory import format_scaling_stat
+from pandemonium.inventory.core import format_scaling_stat
 from pandemonium.core.utils import display_name
 
 
@@ -172,7 +172,7 @@ class InventoryScreen(BaseScreen):
         self.styled_label(inner, text=info).pack(anchor=tk.W, padx=4, pady=(0, 8))
 
         # ── Attributes ───────────────────────────────────────────────────────
-        from pandemonium.inventory.inventory import get_total_equipment_mods
+        from pandemonium.inventory.core import get_total_equipment_mods
         from pandemonium.resources.races_classes import ATTRIBUTES
 
         equip_mods = get_total_equipment_mods(self.player)
@@ -327,7 +327,7 @@ class InventoryScreen(BaseScreen):
             self.styled_label(self.bag_frame, text="No player data.").pack(pady=20)
             return
 
-        from pandemonium.inventory.inventory import (
+        from pandemonium.inventory.core import (
             get_inventory_caps, count_inventory,
             get_sorted_equipment, get_sorted_items, get_key_items, get_cargo_items,
             get_flower_items,
@@ -661,7 +661,7 @@ class InventoryScreen(BaseScreen):
 
     def _render_ally_page(self, parent, ally):
         """Render a full dedicated page for an ally — mirrors the player Character tab."""
-        from pandemonium.inventory.inventory import get_total_equipment_mods
+        from pandemonium.inventory.core import get_total_equipment_mods
         from pandemonium.resources.races_classes import ATTRIBUTES
 
         # ── Reconcile vorpal skills before display ───────────────────────────
@@ -1474,7 +1474,7 @@ class InventoryScreen(BaseScreen):
             return
 
         # ── Player path (original) ───────────────────────────────────────
-        from pandemonium.inventory.inventory import equip_item
+        from pandemonium.inventory.core import equip_item
 
         # Handle accessory slot selection
         if item.get("slot") == "accessory":
@@ -1501,7 +1501,7 @@ class InventoryScreen(BaseScreen):
 
     def _unequip_slot(self, slot):
         """Unequip a slot on the player."""
-        from pandemonium.inventory.inventory import unequip_slot
+        from pandemonium.inventory.core import unequip_slot
         result = unequip_slot(self.player, slot)
         self._handle_unequip_result(result)
         self._refresh_all()
@@ -2014,7 +2014,7 @@ class InventoryScreen(BaseScreen):
 
     def _use_item(self, item):
         """Use a consumable/utility item."""
-        from pandemonium.inventory.inventory import use_consumable, remove_item_by_reference, is_combat_only_item
+        from pandemonium.inventory.core import use_consumable, remove_item_by_reference, is_combat_only_item
         if is_combat_only_item(item):
             self.sm.log(f"{item['name']} can only be used in combat.")
             return
@@ -2045,7 +2045,7 @@ class InventoryScreen(BaseScreen):
 
     def _do_drop(self, item):
         """Actually perform the drop."""
-        from pandemonium.inventory.inventory import remove_item_by_reference
+        from pandemonium.inventory.core import remove_item_by_reference
         remove_item_by_reference(self.player, item, item.get("count", 1))
         self.sm.log(f"Dropped {item['name']}.")
         self._refresh_all()
@@ -2107,7 +2107,7 @@ class InventoryScreen(BaseScreen):
                 except (StopIteration, IndexError):
                     pass
 
-                from pandemonium.inventory.inventory import equip_item
+                from pandemonium.inventory.core import equip_item
                 result = equip_item(self.player, item, target_slot=slot)
                 if result is False:
                     self.player.setdefault("inventory", []).append(item)

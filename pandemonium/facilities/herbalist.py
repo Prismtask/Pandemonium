@@ -1,6 +1,6 @@
 # facilities/herbalist.py
 from pandemonium.core.utils import advance_time
-from pandemonium.inventory.inventory import add_item_to_inventory
+from pandemonium.inventory.core import add_item_to_inventory
 from pandemonium.world.city_dialogue import service_dialogue
 from pandemonium.resources.items import build_item  # <-- Import the unified builder
 from pandemonium.gui.terminal import term

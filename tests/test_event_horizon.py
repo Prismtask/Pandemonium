@@ -728,7 +728,7 @@ class TestBeatingRoot(unittest.TestCase):
         self.assertEqual(len(p["inventory"]), 1)
 
     def test_equip_auto_picks_slot3_when_unlocked(self):
-        from pandemonium.inventory.inventory import equip_item
+        from pandemonium.inventory.core import equip_item
         p = make_player()
         p["equipped"] = {"weapon": None, "armor": None,
                          "accessory1": None, "accessory2": None}
@@ -741,7 +741,7 @@ class TestBeatingRoot(unittest.TestCase):
     def test_equip_slot3_locked_falls_back_to_default(self):
         # The third slot stays invisible until unlocked — a locked request
         # falls back to the normal accessory auto-pick chain, no message.
-        from pandemonium.inventory.inventory import equip_item
+        from pandemonium.inventory.core import equip_item
         p = make_player()
         p["equipped"] = {"weapon": None, "armor": None,
                          "accessory1": None, "accessory2": None}
@@ -751,7 +751,7 @@ class TestBeatingRoot(unittest.TestCase):
         self.assertNotIn("accessory3", p["equipped"])
 
     def test_equipment_mods_include_slot3(self):
-        from pandemonium.inventory.inventory import get_total_equipment_mods
+        from pandemonium.inventory.core import get_total_equipment_mods
         p = make_player()
         p["equipped"] = {"accessory3": {
             "id": "x", "name": "X", "slot": "accessory",

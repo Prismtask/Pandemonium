@@ -1,7 +1,7 @@
 import random
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_poison, apply_curse
 from pandemonium.resources.items import build_item
 from pandemonium.combat.combat_io import c_print, c_input
@@ -220,7 +220,7 @@ def combat_slitcurrent(player, floor=None, enemies=None):
             c_print("has been shaped into an edge.")
             c_print("\n  ✦ You obtained: ABYSS FANG (Unique) ✦")
             abyss_fang = build_item("abyss_fang", "unique")
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, abyss_fang)
             # Set defeated flag AFTER awarding loot
             player["boss_defeated_slitcurrent"] = True

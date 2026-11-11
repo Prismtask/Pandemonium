@@ -26,10 +26,10 @@ def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
     Returns:
         True if the incoming item ended up in the inventory, False if dropped.
     """
-    from pandemonium.inventory.inventory import (get_inventory_caps, count_inventory,
+    from pandemonium.inventory.core import (get_inventory_caps, count_inventory,
                            get_sorted_equipment, get_sorted_items,
                            remove_item_by_reference)
-    from pandemonium.inventory.inventory_ui import _format_equipment_stat_line
+    from pandemonium.inventory.legacy_ui import _format_equipment_stat_line
     from pandemonium.resources.items import is_unique_item
 
     def _log(text):

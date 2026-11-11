@@ -35,7 +35,7 @@ from pandemonium.resources.trade_goods import (
 
 # Prefer the proper inventory helper (handles capacity / stacking if implemented)
 try:
-    from pandemonium.inventory.inventory import (
+    from pandemonium.inventory.core import (
         add_item_to_inventory as _add_to_inv, remove_item_by_reference,
         is_sellable_item,
     )
@@ -229,7 +229,7 @@ def _item_stat_line(item):
         perk = describe_item_perk(item)
         if perk:
             line += f" | {perk}"
-        from pandemonium.inventory.inventory import format_scaling_stat
+        from pandemonium.inventory.core import format_scaling_stat
         scale = format_scaling_stat(item)
         return f"{line}  {scale}" if scale else line
 
@@ -448,7 +448,7 @@ def _handle_discovery(player, travel_type):
             item    = build_item(item_id, rarity)
             term.print(f"\n  A waterlogged satchel surfaces from the deep. You haul it aboard.")
             term.print(f"  Found: {item['name']}  {_item_stat_line(item)}")
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, item.copy())
         else:
             # Drifting cargo crate — 1-3 units of a random good
@@ -457,7 +457,7 @@ def _handle_discovery(player, travel_type):
             cargo["count"] = random.randint(1, 3)
             term.print(f"\n  A broken-open cargo crate drifts by. You fish out the salvage!")
             term.print(f"  Found: {cargo['name']} x{cargo['count']}  [Cargo, {cargo['weight']} wt each]")
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, cargo)
     else:
         if roll < 0.45:
@@ -471,7 +471,7 @@ def _handle_discovery(player, travel_type):
             item    = build_item(item_id, rarity)
             term.print(f"\n  A hollow tree stump — something's wedged inside.")
             term.print(f"  Found: {item['name']}  {_item_stat_line(item)}")
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, item.copy())
         else:
             # Abandoned wagon — 1-3 units of a random cargo good
@@ -480,7 +480,7 @@ def _handle_discovery(player, travel_type):
             cargo["count"] = random.randint(1, 3)
             term.print(f"\n  An abandoned wagon lies overturned at the roadside.")
             term.print(f"  Found: {cargo['name']} x{cargo['count']}  [Cargo, {cargo['weight']} wt each]")
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, cargo)
 
     term.pause("  Press Continue...")

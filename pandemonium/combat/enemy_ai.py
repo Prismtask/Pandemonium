@@ -389,7 +389,7 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # Pandemonium: Crystal Fragility curse — player & allies take more damage
     if actual_player and actual_player.get("pandemonium_curse"):
-        from pandemonium.world.pandemonium_curses import apply_damage_taken_multiplier
+        from pandemonium.world.curse_pandemonium import apply_damage_taken_multiplier
         enemy_dmg = apply_damage_taken_multiplier(actual_player, enemy_dmg)
 
     # Wonderland Shadow: Off With Their Heads — player takes more damage
@@ -517,7 +517,7 @@ def get_race_extra_logic(enemy):
 
     # ── Wonderland floor boss AI (Phase 19) ───────────────────────
     try:
-        from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+        from pandemonium.combat.superboss.wl_floor_bosses import WL_FLOOR_BOSS_MAP
         for floor, (boss_name, boss_key, ai_fn) in WL_FLOOR_BOSS_MAP.items():
             if key == boss_key:
                 # Return the boss-specific AI wrapped for extra_logic signature

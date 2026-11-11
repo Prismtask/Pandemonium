@@ -1,5 +1,5 @@
 """
-combat/wl_floor_bosses.py — Wonderland Floor Boss AI Patterns (Phase 19)
+combat/superboss/wl_floor_bosses.py — Wonderland Floor Boss AI Patterns (Phase 19)
 
 Each of the 20 regular floor bosses (every even floor that isn't a multiple
 of 10) has a unique combat AI function. These bosses are encountered in

@@ -616,13 +616,13 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
     if is_palette_ally(ally):
         if skill_id == "palette_signature":
             from pandemonium.combat.palette_ally import start_palette_signature
-            from pandemonium.world.pandemonium_curses import get_cooldown_increase
+            from pandemonium.world.curse_pandemonium import get_cooldown_increase
             ally.setdefault("skill_cooldowns", {})[skill_id] = skill_def.get("cooldown", 4) + get_cooldown_increase(player)
             add_ally_skill_mastery_xp(ally, skill_id)
             return start_palette_signature(ally), False
         if skill_id == "palette_spectrum":
             from pandemonium.combat.palette_ally import palette_spectrum_attack
-            from pandemonium.world.pandemonium_curses import get_cooldown_increase
+            from pandemonium.world.curse_pandemonium import get_cooldown_increase
             ally.setdefault("skill_cooldowns", {})[skill_id] = skill_def.get("cooldown", 3) + get_cooldown_increase(player)
             add_ally_skill_mastery_xp(ally, skill_id)
             return palette_spectrum_attack(ally, player, enemies)
@@ -799,7 +799,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         # Race passive damage bonuses (Angel vs Demons, Clockwork vs shocked)
         dmg = int(dmg * get_race_damage_multiplier(ally, target))
         # Pandemonium: Weakened Resolve curse — allies deal less damage too
-        from pandemonium.world.pandemonium_curses import apply_damage_dealt_multiplier
+        from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
         dmg = apply_damage_dealt_multiplier(player, dmg)
         # Event Horizon trophies: Old Dopo Robe + Chance and Choice
         from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
@@ -1483,7 +1483,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             "apply_void_touched", "heal_percent", "revive_percent",
             "cleanse_one_debuff", "cleanse_all_debuffs"
         )):
-            from pandemonium.world.pandemonium_curses import get_cooldown_increase
+            from pandemonium.world.curse_pandemonium import get_cooldown_increase
             cooldown = skill_def.get("cooldown", 1) + get_cooldown_increase(player)
             ally.setdefault("skill_cooldowns", {})[skill_id] = max(0, cooldown - cd_reduction)
             add_ally_skill_mastery_xp(ally, skill_id)
@@ -1764,7 +1764,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     msg_parts.append(f"{name}'s Unholy Resilience rejects allied healing!")
                     continue
                 # Pandemonium: Blighted Recovery curse — allied heals reduced too
-                from pandemonium.world.pandemonium_curses import apply_healing_reduction
+                from pandemonium.world.curse_pandemonium import apply_healing_reduction
                 heal = apply_healing_reduction(player, heal)
                 healed = apply_healing(member, heal, source=ally)
                 if healed < 0:
@@ -1828,7 +1828,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     msg_parts.append(f"{display_name(target)}'s Unholy Resilience rejects allied healing!")
                 else:
                     # Pandemonium: Blighted Recovery curse — allied heals reduced too
-                    from pandemonium.world.pandemonium_curses import apply_healing_reduction
+                    from pandemonium.world.curse_pandemonium import apply_healing_reduction
                     heal = apply_healing_reduction(player, heal)
                     actual = apply_healing(target, heal, source=ally)
                     name = display_name(target)
@@ -1858,7 +1858,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         msg_parts.append(f"{name}'s {removed.get('type', 'debuff')} cleansed!")
 
     # ── Cooldown & Mastery ──
-    from pandemonium.world.pandemonium_curses import get_cooldown_increase
+    from pandemonium.world.curse_pandemonium import get_cooldown_increase
     cooldown = skill_def.get("cooldown", 1) + get_cooldown_increase(player)
 
     # Consume cooldown_reduction buff if present

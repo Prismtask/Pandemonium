@@ -1,4 +1,4 @@
-# combat/mary_sue_shadows.py — Mary Sue Shadow Boss Factory & AI
+# combat/superboss/mary_sue_shadows.py — Mary Sue Shadow Boss Factory & AI
 #
 # Provides creation functions and simplified enemy_turn_hook implementations
 # for the three shadow bosses Mary Sue summons during her fight.

@@ -61,7 +61,7 @@ def main():
 
     # 1. Every superboss runs the shared loop, and the loop now prints the
     #    standard round header (floor + time) instead of "  >> ROUND n".
-    src = (ROOT / "combat" / "superboss_common.py").read_text(encoding="utf-8")
+    src = (ROOT / "pandemonium" / "combat" / "superboss" / "superboss_common.py").read_text(encoding="utf-8")
     assert "print_round_header(round_num" in src, \
         "superboss loop still uses its own round header"
     assert 'c_print(f"  >> ROUND {round_num}")' not in src, \
@@ -71,15 +71,17 @@ def main():
     assert '⚔️  ROUND {round_num}: ACTION PHASE' in src, \
         "superboss action-phase header should match the standard engine"
     # The header carries the phase track, not the retired HH:MM clock.
-    for rel in ("combat/superboss_common.py", "combat/combat_engine.py"):
-        text = (ROOT / rel).read_text(encoding="utf-8")
+    for rel in ("combat/superboss/superboss_common.py", "combat/combat_engine.py"):
+        text = (ROOT / "pandemonium" / rel).read_text(encoding="utf-8")
         assert "current_time_label(player)" in text, f"{rel} still uses the old clock"
         assert "time_str = format_time(" not in text, f"{rel} still uses format_time"
-    ui = (ROOT / "combat" / "combat_ui.py").read_text(encoding="utf-8")
+    ui = (ROOT / "pandemonium" / "combat" / "combat_ui.py").read_text(encoding="utf-8")
     assert 'parts.append(f"Time: {time_str}")' not in ui, \
         "round header still labels the clock as 'Time:'"
-    users = [p.stem for p in (ROOT / "combat").glob("*.py")
+    users = [p.stem for p in (ROOT / "pandemonium" / "combat").glob("*.py")
              if "superboss_combat_loop" in p.read_text(encoding="utf-8")]
+    users += [p.stem for p in (ROOT / "pandemonium" / "combat" / "superboss").glob("*.py")
+              if "superboss_combat_loop" in p.read_text(encoding="utf-8")]
     assert len(users) >= 17, f"expected 17 superboss modules, found {sorted(users)}"
     print(f"OK — {len(users)} superboss modules share the standard round header")
 
@@ -87,7 +89,7 @@ def main():
     border_re = re.compile(r'c_print\([^)]*"[=!~─═\-]" \* \d+')
     offenders = []
     for name in BOSS_FILES:
-        text = (ROOT / "combat" / f"{name}.py").read_text(encoding="utf-8")
+        text = (ROOT / "pandemonium" / "combat" / "superboss" / f"{name}.py").read_text(encoding="utf-8")
         if border_re.search(text):
             offenders.append(name)
     assert not offenders, f"divider prints remain in {offenders}"

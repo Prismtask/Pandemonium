@@ -1,4 +1,4 @@
-# combat/entangled_chrysalis.py
+# combat/superboss/entangled_chrysalis.py
 """Chrysalis, the Entangled One — Superboss encounter.
 
 Pandemonium floor 20 exclusive. Three Temporal Aspects (Past/Present/Future),
@@ -7,7 +7,7 @@ three immortal linked shards, Paradox Fracture vulnerability mechanic.
 
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import (
     apply_burn, apply_burn_to_player, apply_bleed, apply_weaken,
     apply_momentum, clear_momentum, get_momentum_stacks,
@@ -1408,7 +1408,7 @@ def combat_entangled_chrysalis(player, floor=None, enemies=None):
 
             # Loot: Chronoweave Mantle (100%) + Fractured Hourglass (100%)
             from pandemonium.resources.items import build_item
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             mantle = build_item("chronoweave_mantle", "unique")
             # Unique template — rarity comes from the registry, not the roll.
             hourglass = build_item("fractured_hourglass")

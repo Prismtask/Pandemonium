@@ -5,7 +5,7 @@ sys.path.insert(0, "c:/Code/Pandemonium")
 import pandemonium.combat.ally as ally_mod
 import pandemonium.combat.ally_skills as ask
 import pandemonium.combat.palette_ally as pal
-import pandemonium.combat.palette_chromatic_artisan as pca
+import pandemonium.combat.superboss.palette_chromatic_artisan as pca
 import pandemonium.combat.weapon.chronoweave as chrono
 import pandemonium.combat.weapon.palette_brush as pb
 

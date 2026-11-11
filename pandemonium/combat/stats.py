@@ -1,7 +1,7 @@
 # stats.py – attribute math, scaling, and enemy stats
 from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
 from pandemonium.resources.races_classes import ATTRIBUTES
-from pandemonium.inventory.inventory import get_total_equipment_mods
+from pandemonium.inventory.core import get_total_equipment_mods
 from pandemonium.core.utils import get_difficulty_multiplier_from_time
 from pandemonium.combat.status_effects import get_weaken_pct
 

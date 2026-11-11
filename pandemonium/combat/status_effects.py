@@ -1001,7 +1001,7 @@ def apply_healing(target, amount, source=None):
     # casts pass source=player); ally-cast heals are handled at their call
     # sites in combat/ally_skills.py.
     if isinstance(source, dict):
-        from pandemonium.world.pandemonium_curses import apply_healing_reduction
+        from pandemonium.world.curse_pandemonium import apply_healing_reduction
         amount = apply_healing_reduction(source, amount)
 
     # Form tradition healing (Mending — from the healer, else the recipient)

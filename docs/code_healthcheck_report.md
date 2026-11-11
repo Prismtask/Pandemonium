@@ -32,12 +32,12 @@
 
 | # | Function | Defined In | Copies |
 |---|----------|-----------|:------:|
-| 9 | `prune_dead` | `combat/combat_engine.py`, `combat/superboss_common.py` | **2** |
-| 10 | `roll_initiative` | `combat/combat_engine.py`, `combat/superboss_common.py` | **2** *(superboss version is stripped-down — missing Wisdom milestone, curses, Haste)* |
-| 11 | `_get_alive_party` | `combat/combat_engine.py`, `combat/broodmother.py`, `combat/big_bad_wolf.py`, `combat/entangled_chrysalis.py` | **4** |
+| 9 | `prune_dead` | `combat/combat_engine.py`, `combat/superboss/superboss_common.py` | **2** |
+| 10 | `roll_initiative` | `combat/combat_engine.py`, `combat/superboss/superboss_common.py` | **2** *(superboss version is stripped-down — missing Wisdom milestone, curses, Haste)* |
+| 11 | `_get_alive_party` | `combat/combat_engine.py`, `combat/superboss/broodmother.py`, `combat/superboss/big_bad_wolf.py`, `combat/superboss/entangled_chrysalis.py` | **4** |
 | 12 | `_player_has_tarnished_jade` | `combat/helpers.py`, `combat/tarnished_jade.py` | **2** |
 | 13 | `_player_has_black_silence_gloves` | `combat/action_menu.py`, `combat/black_silence_gloves.py` | **2** |
-| 14 | `_get_boss` pattern | `combat/broodmother.py`, `combat/black_silence.py`, `combat/entangled_chrysalis.py` | **3** *(only `BOSS_KEY` differs)* |
+| 14 | `_get_boss` pattern | `combat/superboss/broodmother.py`, `combat/superboss/black_silence.py`, `combat/superboss/entangled_chrysalis.py` | **3** *(only `BOSS_KEY` differs)* |
 | 15 | `ELEMENT_TAGS` / `elemental_tags` | `combat/helpers.py`, `combat/enemy_ai.py` | **2** |
 
 ### GUI Duplicates
@@ -58,7 +58,7 @@
 | 20 | `leveling.py` | 186 | `get_incomplete_biomes()` | Never called anywhere |
 | 21 | `inventory.py` | 137 | `consume_stackable_items()` | Never called anywhere |
 | 22 | `inventory.py` | 213 | `get_total_equipment_mods()` | Never called anywhere |
-| 23 | `pandemonium_curses.py` | 246 | `format_curse_header()` | Never called anywhere |
+| 23 | `curse_pandemonium.py` | 246 | `format_curse_header()` | Never called anywhere |
 | 24 | `wonderland_curses.py` | 793 | `get_heroine_shadow_floor50_dialogue()` | Never called + **bug** (references undefined dict) |
 | 25 | `combat/abyss_fang.py` | 16 | `_player_has_abyss_fang()` | Never called (only `_actor_has_abyss_fang` is used) |
 | 26 | `combat/tarnished_jade.py` | 15 | `_player_has_tarnished_jade()` | Only called internally; external callers use `helpers.py` copy |
@@ -81,9 +81,9 @@
 | 34 | `combat/capture.py` |
 | 35 | `combat/skills.py` |
 | 36 | `combat/enemy_ai.py` |
-| 37 | `combat/broodmother.py` |
-| 38 | `combat/ignis.py` |
-| 39 | `combat/slitcurrent.py` |
+| 37 | `combat/superboss/broodmother.py` |
+| 38 | `combat/superboss/ignis.py` |
+| 39 | `combat/superboss/slitcurrent.py` |
 | 40 | `combat/captain_cutlass.py` |
 
 ### `clear_screen` imported but never called (7 files)
@@ -109,9 +109,9 @@ All use `term.clear()` instead of `clear_screen()`.
 | 50 | `facilities/skill_book.py` | `player_max_hp` from `character` |
 | 51 | `combat/action_menu.py` | `is_monster_girl` from `capture` |
 | 52 | `combat/dummy.py` | `get_io`, `TerminalIO` from `combat_io` |
-| 53 | `combat/ignis.py` | `superboss_triple_action_loop` |
-| 54 | `combat/slitcurrent.py` | `superboss_triple_action_loop` |
-| 55 | `combat/sylvana.py` | `superboss_triple_action_loop` |
+| 53 | `combat/superboss/ignis.py` | `superboss_triple_action_loop` |
+| 54 | `combat/superboss/slitcurrent.py` | `superboss_triple_action_loop` |
+| 55 | `combat/superboss/sylvana.py` | `superboss_triple_action_loop` |
 | 56 | `gui/screens/main_menu_screen.py` | `from tkinter import ttk` |
 | 57 | `gui/screens/facility_screen.py` | `from tkinter import scrolledtext` |
 | 58 | `gui/screens/city_screen.py` | `service_dialogue` from `city_dialogue` |

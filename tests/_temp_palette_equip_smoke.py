@@ -232,7 +232,7 @@ assert ally_member["current_hp"] == 40
 assert palette_ally["afterimage_turns"] == 2
 
 # ── 9. Paint gate respects Afterimage (boss module) ──
-import pandemonium.combat.palette_chromatic_artisan as pca
+import pandemonium.combat.superboss.palette_chromatic_artisan as pca
 pca.c_print = _quiet
 ctx = {"phase": 1, "current_color": "crimson", "fixative_turns": 0, "player_survived_burst": False}
 boss = {"name": "Palette", "level": 35}

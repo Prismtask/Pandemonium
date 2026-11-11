@@ -635,7 +635,7 @@ class CombatScreen(BaseScreen):
         """Launch combat in a daemon thread."""
         # Loot prompts from the combat thread must use the GUI dialog, not
         # the legacy console fallback in inventory_ui.
-        from pandemonium.inventory.inventory_ui import set_acquire_handler
+        from pandemonium.inventory.legacy_ui import set_acquire_handler
         set_acquire_handler(self._acquire_item_gui)
 
         # ── Reconcile vorpal skills before combat ─────────────────────────
@@ -673,7 +673,7 @@ class CombatScreen(BaseScreen):
                 import traceback
                 self.io.output_queue.put(("ERROR", str(e) + "\n" + traceback.format_exc()))
             finally:
-                from pandemonium.inventory.inventory_ui import set_acquire_handler
+                from pandemonium.inventory.legacy_ui import set_acquire_handler
                 set_acquire_handler(None)
                 reset_io()
 

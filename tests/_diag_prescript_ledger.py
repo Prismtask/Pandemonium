@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, ".")
 
 import pandemonium.combat.weapon.prescript_ledger as pl
-import pandemonium.inventory.inventory as inventory
+import pandemonium.inventory.core as core
 import pandemonium.facilities.guild as guild
 from pandemonium.resources.items import build_item
 from pandemonium.combat.combat_ui import _get_entity_buff_tags
@@ -240,10 +240,10 @@ class _TermStub:
 
 
 _orig_term = guild.term
-_orig_add = inventory.add_item_to_inventory
+_orig_add = core.add_item_to_inventory
 granted = []
 try:
-    inventory.add_item_to_inventory = lambda p, i: granted.append(i) or True
+    core.add_item_to_inventory = lambda p, i: granted.append(i) or True
     guild.term = _TermStub(choice=0)
 
     # A: not enough bounties -> rejected
@@ -266,7 +266,7 @@ try:
     check(any("Both relics" in l for l in guild.term.lines), "both claimed -> ledger closed")
 finally:
     guild.term = _orig_term
-    inventory.add_item_to_inventory = _orig_add
+    core.add_item_to_inventory = _orig_add
 
 print("== 12b. Level 20+ bounty gate ==")
 gen_player = {"level": 30, "karma": 100, "karma_enabled": True}

@@ -157,7 +157,7 @@ def is_whole(player):
 
 
 def has_mirror(player):
-    from pandemonium.inventory.inventory import has_item
+    from pandemonium.inventory.core import has_item
     return has_item(player, mirror_item_id())
 
 

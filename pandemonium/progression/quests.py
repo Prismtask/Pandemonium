@@ -418,7 +418,7 @@ def grant_resonance_orb(player):
     orb = _find_resonance_orb(player)
     if orb is None:
         from pandemonium.resources.items import build_item
-        from pandemonium.inventory.inventory import add_item_to_inventory
+        from pandemonium.inventory.core import add_item_to_inventory
         orb = build_item("resonance_orb")
         add_item_to_inventory(player, orb)      # key items bypass bag limits
     orb = _refresh_resonance_orb(player) or orb
@@ -603,7 +603,7 @@ def _grant_rewards(player, quest):
 
     for item_spec in rewards.get("items", []):
         from pandemonium.resources.items import build_item
-        from pandemonium.inventory.inventory import add_item_to_inventory
+        from pandemonium.inventory.core import add_item_to_inventory
         item = build_item(item_spec["id"], rarity=item_spec.get("rarity", "common"))
         if add_item_to_inventory(player, item):
             messages.append(f"   Received: {item['name']}")

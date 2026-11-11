@@ -18,7 +18,7 @@ from pandemonium.facilities.dispatch import (
     girl_status_line,
     injured_text,
 )
-from pandemonium.inventory.inventory import consume_stackable_items, remove_item_by_reference
+from pandemonium.inventory.core import consume_stackable_items, remove_item_by_reference
 
 from .constants import (
     AWAKEN_AFFECTION_REQ,
@@ -456,7 +456,7 @@ def _house_lounge(player, city_id, house):
                     from pandemonium.resources.items import build_item, ITEMS
                     if wedding_id in ITEMS:
                         wedding_item = build_item(wedding_id, "unique")
-                        from pandemonium.inventory.inventory import add_item_to_inventory
+                        from pandemonium.inventory.core import add_item_to_inventory
                         if add_item_to_inventory(player, wedding_item):
                             term.print(f"\n  *** You received: {wedding_item['name']} ***")
                         else:

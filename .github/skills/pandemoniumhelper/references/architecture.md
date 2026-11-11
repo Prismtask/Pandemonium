@@ -33,7 +33,7 @@
 | `./pandemonium/combat/ally.py` | Ally creation, turn actions |
 | `./pandemonium/combat/skills.py` | Class skills: definitions, cooldowns, mastery |
 | `./pandemonium/combat/ally_skills.py` | Ally innate/learnable skill execution |
-| `./pandemonium/combat/superboss_common.py` | Shared superboss combat loop |
+| `./pandemonium/combat/superboss/superboss_common.py` | Shared superboss combat loop |
 | `./pandemonium/combat/capture.py` | Monster-girl capture |
 | `./pandemonium/combat/city_guards.py` | Non-lethal city-gate guard squads, jail outcome, gate cooldowns |
 | `./pandemonium/combat/stats.py` | Effective stats (base+eq+buffs), 1.7× Pandemonium multiplier |
@@ -54,23 +54,23 @@
 | File | Boss |
 |---|---|
 | `./pandemonium/combat/abyss_fang.py` | Abyss Fang (multi-phase superboss), Abyssal Tempo stacks |
-| `./pandemonium/combat/black_silence.py` | Black Silence |
+| `./pandemonium/combat/superboss/black_silence.py` | Black Silence |
 | `./pandemonium/combat/black_silence_gloves.py` | Black Silence Gloves |
-| `./pandemonium/combat/broodmother.py` | Broodmother |
+| `./pandemonium/combat/superboss/broodmother.py` | Broodmother |
 | `./pandemonium/combat/captain_cutlass.py` | Captain Cutlass (high tide, rally, riposte) |
-| `./pandemonium/combat/entangled_chrysalis.py` | Entangled Chrysalis (Pandemonium F20, 3 Temporal Aspects, Paradox Fracture) |
-| `./pandemonium/combat/everlong_ship.py` | Everlong Ship |
-| `./pandemonium/combat/ignis.py` | Ignis |
-| `./pandemonium/combat/jabberwock.py` | Jabberwock (Wonderland F40) |
-| `./pandemonium/combat/mary_sue.py` / `./pandemonium/combat/mary_sue_shadows.py` | Mary Sue (Wonderland F50, 5-phase, Plot Armor) |
-| `./pandemonium/combat/queen_of_hearts.py` | Queen of Hearts (Wonderland F10) |
-| `./pandemonium/combat/rientrante.py` | Rientrante |
-| `./pandemonium/combat/slitcurrent.py` | Slitcurrent |
-| `./pandemonium/combat/sylvana.py` | Sylvana |
+| `./pandemonium/combat/superboss/entangled_chrysalis.py` | Entangled Chrysalis (Pandemonium F20, 3 Temporal Aspects, Paradox Fracture) |
+| `./pandemonium/combat/superboss/everlong_ship.py` | Everlong Ship |
+| `./pandemonium/combat/superboss/ignis.py` | Ignis |
+| `./pandemonium/combat/superboss/jabberwock.py` | Jabberwock (Wonderland F40) |
+| `./pandemonium/combat/superboss/mary_sue.py` / `./pandemonium/combat/superboss/mary_sue_shadows.py` | Mary Sue (Wonderland F50, 5-phase, Plot Armor) |
+| `./pandemonium/combat/superboss/queen_of_hearts.py` | Queen of Hearts (Wonderland F10) |
+| `./pandemonium/combat/superboss/rientrante.py` | Rientrante |
+| `./pandemonium/combat/superboss/slitcurrent.py` | Slitcurrent |
+| `./pandemonium/combat/superboss/sylvana.py` | Sylvana |
 | `./pandemonium/combat/tarnished_jade.py` | Tarnished Jade |
-| `./pandemonium/combat/wicked_witch.py` | Wicked Witch (Wonderland F30) |
-| `./pandemonium/combat/wl_floor_bosses.py` | Wonderland floor bosses |
-| `./pandemonium/combat/yinglong.py` | Yinglong |
+| `./pandemonium/combat/superboss/wicked_witch.py` | Wicked Witch (Wonderland F30) |
+| `./pandemonium/combat/superboss/wl_floor_bosses.py` | Wonderland floor bosses |
+| `./pandemonium/combat/superboss/yinglong.py` | Yinglong |
 | `./pandemonium/combat/dummy.py` | Training dummy |
 
 ## Non-Combat
@@ -78,7 +78,7 @@
 | File | Role |
 |---|---|
 | `./pandemonium/world/dungeon_rooms.py` | Non-combat rooms: fountain, merchant, trap, treasure, stat-check (10% chance) |
-| `./pandemonium/world/pandemonium_curses.py` | Pandemonium curses: 10 types, 4 corruption tiers (1.0×–2.5×) |
+| `./pandemonium/world/curse_pandemonium.py` | Pandemonium curses: 10 types, 4 corruption tiers (1.0×–2.5×) |
 | `./pandemonium/world/wonderland_curses.py` | Wonderland quirks + Shadow system (Floor 40+) |
 
 ## Facilities

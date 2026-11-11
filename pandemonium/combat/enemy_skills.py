@@ -13,7 +13,7 @@ enemy YAML — see ``docs/enemy_ai_behaviors_design.md`` for the schema.
 
 Deliberately untouched:
   * superbosses (they keep their scripted loops in ``combat/superboss_common``),
-  * Wonderland floor bosses (``combat/wl_floor_bosses.py`` owns their AI),
+  * Wonderland floor bosses (``combat/superboss/wl_floor_bosses.py`` owns their AI),
   * hallucinations / dummies / any enemy with ``round_hook`` or
     ``ai_disabled`` set.
 
@@ -430,7 +430,7 @@ def _has_scripted_ai(enemy):
     key = enemy.get("key")
     if key:
         try:
-            from pandemonium.combat.wl_floor_bosses import WL_FLOOR_BOSS_MAP
+            from pandemonium.combat.superboss.wl_floor_bosses import WL_FLOOR_BOSS_MAP
             if any(key == entry[1] for entry in WL_FLOOR_BOSS_MAP.values()):
                 return True
         except ImportError:

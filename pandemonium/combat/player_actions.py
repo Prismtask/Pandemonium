@@ -17,7 +17,7 @@ from pandemonium.combat.capture import (
 )
 from pandemonium.combat.stat_milestones import get_strength_bonus, get_wisdom_bonus, get_dexterity_damage_bonus
 from pandemonium.combat.skills import get_available_skills, execute_skill, set_skill_cooldown, format_mastery_label, get_passive_skill, get_passive_life_steal
-from pandemonium.inventory.inventory import remove_item_by_reference
+from pandemonium.inventory.core import remove_item_by_reference
 
 
 def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, on_kill=None, on_hit=None, _action_override=None):
@@ -426,7 +426,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
 
         # Pandemonium: Weakened Resolve curse — player deals less damage
         if player.get("pandemonium_curse"):
-            from pandemonium.world.pandemonium_curses import apply_damage_dealt_multiplier
+            from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
             final_dmg = apply_damage_dealt_multiplier(player, final_dmg)
 
         # Wonderland: Jabberwock's Bane — bonus damage vs boss enemies
@@ -851,7 +851,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     })
                     msg += f"The {target['name']} is blinded (reduced dexterity). "
             if "escape_bonus" in item:
-                from pandemonium.world.pandemonium_curses import is_flee_blocked
+                from pandemonium.world.curse_pandemonium import is_flee_blocked
                 if is_flee_blocked(player):
                     c_print("The crystalline walls seal shut — there is NO escape from this floor!")
                     return "continue", False
@@ -860,7 +860,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                 return "fled", False
 
             if item.get("fixed_flee"):
-                from pandemonium.world.pandemonium_curses import is_flee_blocked
+                from pandemonium.world.curse_pandemonium import is_flee_blocked
                 if is_flee_blocked(player):
                     c_print("The crystalline walls seal shut — there is NO escape from this floor!")
                     return "continue", False
@@ -928,7 +928,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             return "continue", False
 
         # Pandemonium: Crystalline Prison curse blocks all fleeing
-        from pandemonium.world.pandemonium_curses import is_flee_blocked
+        from pandemonium.world.curse_pandemonium import is_flee_blocked
         if is_flee_blocked(player):
             c_print("The crystalline walls seal shut — there is NO escape from this floor!")
             return "continue", False

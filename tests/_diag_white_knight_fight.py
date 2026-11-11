@@ -121,7 +121,7 @@ if ally_skill:
     check("skill dodge -> target unharmed", target["hp"] == 500)
 
 # ── Run B: partial fight — external list must mutate (frozen HP fix) ─────────
-from pandemonium.combat.white_knight import _PhaseLockedKnight, combat_white_knight
+from pandemonium.combat.superboss.white_knight import _PhaseLockedKnight, combat_white_knight
 
 player_b = make_player(strength=250)
 boss_b = enemy_stats("white_knight", player_b)

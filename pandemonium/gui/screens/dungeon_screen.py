@@ -570,12 +570,12 @@ class DungeonScreen(FacilityScreen):
         dungeon_rooms.render_event_horizon_status = _gui_eh_status
 
         # ── Intercept full-backpack prompt ───────────────────────────────
-        import pandemonium.inventory.inventory_ui as inventory_ui
-        _orig_acquire = inventory_ui.prompt_acquire_item
+        import pandemonium.inventory.legacy_ui as legacy_ui
+        _orig_acquire = legacy_ui.prompt_acquire_item
 
         def _gui_acquire(player, item):
             # First try normal add — if it fits, no dialog needed
-            from pandemonium.inventory.inventory import add_item_to_inventory
+            from pandemonium.inventory.core import add_item_to_inventory
             if add_item_to_inventory(player, item):
                 return True
             # Inventory full — show the GUI dialog on the MAIN thread and block
@@ -607,7 +607,7 @@ class DungeonScreen(FacilityScreen):
                             or getattr(self, "_finished", False)):
                         return False
 
-        inventory_ui.prompt_acquire_item = _gui_acquire
+        legacy_ui.prompt_acquire_item = _gui_acquire
 
         try:
             super()._run_facility()
@@ -615,7 +615,7 @@ class DungeonScreen(FacilityScreen):
             dungeon_rooms.render_ascii_map = _orig_render
             dungeon_rooms.render_party_status = _orig_party
             dungeon_rooms.render_event_horizon_status = _orig_eh_status
-            inventory_ui.prompt_acquire_item = _orig_acquire
+            legacy_ui.prompt_acquire_item = _orig_acquire
 
     def _show_acquire_dialog(self, player, item):
         """Show a GUI dialog when inventory is full after a dungeon drop."""
@@ -797,7 +797,7 @@ class DungeonScreen(FacilityScreen):
             boss_key = "entangled_chrysalis"
 
             def start_combat():
-                from pandemonium.combat.entangled_chrysalis import combat_entangled_chrysalis
+                from pandemonium.combat.superboss.entangled_chrysalis import combat_entangled_chrysalis
                 from pandemonium.gui.screens.combat_screen import CombatScreen
                 self.sm.push_overlay(
                     CombatScreen,
@@ -817,7 +817,7 @@ class DungeonScreen(FacilityScreen):
             boss_key = "white_knight"
 
             def start_combat():
-                from pandemonium.combat.white_knight import combat_white_knight
+                from pandemonium.combat.superboss.white_knight import combat_white_knight
                 from pandemonium.gui.screens.combat_screen import CombatScreen
                 self.sm.push_overlay(
                     CombatScreen,
@@ -846,15 +846,15 @@ class DungeonScreen(FacilityScreen):
             boss_key = wl_entry[0]
 
             if tier == "queen_of_hearts":
-                from pandemonium.combat.queen_of_hearts import combat_queen_of_hearts as func
+                from pandemonium.combat.superboss.queen_of_hearts import combat_queen_of_hearts as func
             elif tier == "big_bad_wolf":
-                from pandemonium.combat.big_bad_wolf import combat_big_bad_wolf as func
+                from pandemonium.combat.superboss.big_bad_wolf import combat_big_bad_wolf as func
             elif tier in ("wicked_witch", "wicked_witch_of_the_west"):
-                from pandemonium.combat.wicked_witch import combat_wicked_witch as func
+                from pandemonium.combat.superboss.wicked_witch import combat_wicked_witch as func
             elif tier == "jabberwock":
-                from pandemonium.combat.jabberwock import combat_jabberwock as func
+                from pandemonium.combat.superboss.jabberwock import combat_jabberwock as func
             elif tier == "mary_sue":
-                from pandemonium.combat.mary_sue import combat_mary_sue as func
+                from pandemonium.combat.superboss.mary_sue import combat_mary_sue as func
             else:
                 return "victory"
 
@@ -893,23 +893,23 @@ class DungeonScreen(FacilityScreen):
 
         # Import the combat function lazily to avoid circular imports
         if tier == 0:
-            from pandemonium.combat.broodmother import combat_broodmother as func
+            from pandemonium.combat.superboss.broodmother import combat_broodmother as func
         elif tier == 1:
-            from pandemonium.combat.slitcurrent import combat_slitcurrent as func
+            from pandemonium.combat.superboss.slitcurrent import combat_slitcurrent as func
         elif tier == 2:
-            from pandemonium.combat.sylvana import combat_sylvana as func
+            from pandemonium.combat.superboss.sylvana import combat_sylvana as func
         elif tier == 3:
-            from pandemonium.combat.ignis import combat_ignis as func
+            from pandemonium.combat.superboss.ignis import combat_ignis as func
         elif tier == 4:
-            from pandemonium.combat.yinglong import combat_yinglong as func
+            from pandemonium.combat.superboss.yinglong import combat_yinglong as func
         elif tier == 5:
-            from pandemonium.combat.rientrante import combat_rientrante as func
+            from pandemonium.combat.superboss.rientrante import combat_rientrante as func
         elif tier == 6:
-            from pandemonium.combat.everlong_ship import combat_everlong_ship as func
+            from pandemonium.combat.superboss.everlong_ship import combat_everlong_ship as func
         elif tier == 7:
-            from pandemonium.combat.black_silence import combat_black_silence as func
+            from pandemonium.combat.superboss.black_silence import combat_black_silence as func
         elif tier == 8:
-            from pandemonium.combat.palette_chromatic_artisan import combat_palette as func
+            from pandemonium.combat.superboss.palette_chromatic_artisan import combat_palette as func
         else:
             return "victory"
 

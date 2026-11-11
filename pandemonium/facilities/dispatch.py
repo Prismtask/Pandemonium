@@ -783,7 +783,7 @@ def collect_reports(player, home_city, house):
 
         for iid in rep.get("items", []):
             from pandemonium.resources.items import build_item
-            from pandemonium.inventory.inventory import add_item_to_inventory
+            from pandemonium.inventory.core import add_item_to_inventory
             item = build_item(iid)
             if add_item_to_inventory(player, item):
                 term.print(f"  + {item['name']}")

@@ -1395,7 +1395,7 @@ class CityScreen(BaseScreen):
         (handled in dungeon.py) or on floors 46/50 (by design).
         """
         p = self.player
-        from pandemonium.world.pandemonium_curses import end_pandemonium_run
+        from pandemonium.world.curse_pandemonium import end_pandemonium_run
         end_pandemonium_run(p)
         # Reset High Tide stacks
         p["cutlass_high_tide_stacks"] = 0
@@ -1572,7 +1572,7 @@ class CityScreen(BaseScreen):
 
         # Safety net: death always ends the run — scrub Pandemonium run state
         # so no stale curse can survive into other dungeons or the next save.
-        from pandemonium.world.pandemonium_curses import end_pandemonium_run
+        from pandemonium.world.curse_pandemonium import end_pandemonium_run
         end_pandemonium_run(self.player)
 
         def _continue_game():

@@ -76,7 +76,7 @@ def run_item_turn(renders_menus):
 
 def guarded_prints(rel_path):
     """Return the print statements directly guarded by c_renders_menus()."""
-    src = (ROOT / rel_path).read_text(encoding="utf-8")
+    src = (ROOT / "pandemonium" / rel_path).read_text(encoding="utf-8")
     return re.findall(r"if not c_renders_menus\(\):\s*\n\s*c_print\((.*)", src)
 
 
@@ -120,7 +120,7 @@ def main():
     #    rows must not be printed in GUI mode (the header line stays — the
     #    screen parses it to pick ally/revive target mode).
     for rel in ("combat/skills.py", "combat/ally_skills.py"):
-        src = (ROOT / rel).read_text(encoding="utf-8")
+        src = (ROOT / "pandemonium" / rel).read_text(encoding="utf-8")
         rosters = re.findall(r"if not c_renders_menus\(\):\s*\n\s+for ", src)
         assert rosters, f"{rel} still prints target rosters in GUI mode"
         assert 'c_print("Select target:")' in src or \
@@ -128,7 +128,7 @@ def main():
     print("OK — ally/party/revive target rosters are gated, headers kept")
 
     # 6. Blacksmith lists were exact duplicates of its buttons.
-    bs = (ROOT / "facilities" / "blacksmith.py").read_text(encoding="utf-8")
+    bs = (ROOT / "pandemonium" / "facilities" / "blacksmith.py").read_text(encoding="utf-8")
     assert 'term.print(f"{i+1}.' not in bs, "blacksmith still prints its item lists"
     print("OK — blacksmith no longer double-prints its item lists")
 

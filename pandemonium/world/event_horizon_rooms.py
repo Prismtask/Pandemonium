@@ -537,7 +537,7 @@ def grant_trophy(player, item_id):
     if not item:
         _tprint(f"  [ERROR] Unknown trophy item: {item_id}")
         return False
-    from pandemonium.inventory.inventory_ui import prompt_acquire_item
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     if prompt_acquire_item(player, item):
         return True
     _tprint(f"  (Your bag is full — the {item.get('name', item_id)} waits in the distortion.)")

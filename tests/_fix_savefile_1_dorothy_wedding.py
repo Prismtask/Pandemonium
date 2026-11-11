@@ -36,7 +36,7 @@ with open(PATH, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 from pandemonium.resources.items import build_item
-from pandemonium.inventory.inventory import add_item_to_inventory
+from pandemonium.inventory.core import add_item_to_inventory
 
 ITEM_ID = "wedding_wonderland_dorothy"
 

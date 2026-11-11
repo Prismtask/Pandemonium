@@ -2,7 +2,7 @@ import pandemonium.facilities.casino as casino
 import pandemonium.progression.karma as karma
 import pandemonium.progression.karma_dialogue as karma_dialogue
 from pandemonium.core.utils import advance_time, _get_wonderland_max_floor
-from pandemonium.inventory.inventory import add_item_to_inventory
+from pandemonium.inventory.core import add_item_to_inventory
 from pandemonium.resources.items import random_equipment, build_item, ITEM_RARITY, market_value, market_anchor_level
 from pandemonium.world.city_dialogue import service_dialogue
 from pandemonium.gui.terminal import term

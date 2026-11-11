@@ -12,7 +12,7 @@ from pandemonium.combat.stats import (
     enemy_stats, get_dodge_chance, roll_dodge,
     roll_skill_dodge, roll_accuracy_penalty,
 )
-from pandemonium.combat.white_knight import (
+from pandemonium.combat.superboss.white_knight import (
     _armor_mult_for, _set_dodge, combat_white_knight, BOSS_KEY,
 )
 from pandemonium.combat.weapon.last_oath import _actor_has_last_oath, try_last_oath_expose
@@ -116,7 +116,7 @@ check(item is not None and item.get("name") == "Last Oath", "Last Oath item buil
 check(item.get("drop_source") == "white_knight", "drop_source registered")
 
 print("== 8. Phase floors (anti-skip / anti-one-shot) ==")
-from pandemonium.combat.white_knight import _PhaseLockedKnight
+from pandemonium.combat.superboss.white_knight import _PhaseLockedKnight
 k = _PhaseLockedKnight({"max_hp": 1500, "hp": 1500, "_wk_phase": 1, "_wk_round": 1})
 k["hp"] = k["hp"] - 9999
 check(k["hp"] == 975, "P1 floor: lethal burst clamps at 65% (975/1500)")

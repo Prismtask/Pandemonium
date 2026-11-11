@@ -27,7 +27,7 @@ except Exception:
     pass
 
 import pandemonium.world.dungeon as dungeon_mod
-import pandemonium.inventory.inventory_ui as inventory_ui
+import pandemonium.inventory.legacy_ui as legacy_ui
 from pandemonium.resources.enemies import ENEMIES
 
 # ── Stub I/O so the loop runs headless ──────────────────────────────────────
@@ -40,7 +40,7 @@ def _fake_acquire(player, item):
     return True
 
 
-inventory_ui.prompt_acquire_item = _fake_acquire
+legacy_ui.prompt_acquire_item = _fake_acquire
 
 
 def _check_combat_context(player, kwargs, ctx):

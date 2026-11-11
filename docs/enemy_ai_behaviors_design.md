@@ -219,7 +219,7 @@ Notes:
 `get_enemy_kit` returns `None` for:
 
 - `super_boss: true` templates,
-- every key in `combat/wl_floor_bosses.py::WL_FLOOR_BOSS_MAP`,
+- every key in `combat/superboss/wl_floor_bosses.py::WL_FLOOR_BOSS_MAP`,
 - enemies carrying a `round_hook` (e.g. the hallucination),
 - the training dummy (`is_dummy`),
 - templates with `ai_disabled: true`.

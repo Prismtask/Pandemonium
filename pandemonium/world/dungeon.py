@@ -16,22 +16,22 @@ from pandemonium.combat.enemy_skills import (
 )
 from pandemonium.combat.stats import player_con_mod
 from pandemonium.combat.combat_ui import take_deferred_dialogue
-from pandemonium.combat.broodmother import combat_broodmother 
-from pandemonium.combat.slitcurrent import combat_slitcurrent
-from pandemonium.combat.sylvana import combat_sylvana
-from pandemonium.combat.ignis import combat_ignis
-from pandemonium.combat.yinglong import combat_yinglong
-from pandemonium.combat.rientrante import combat_rientrante
-from pandemonium.combat.everlong_ship import combat_everlong_ship
-from pandemonium.combat.black_silence import combat_black_silence
-from pandemonium.combat.palette_chromatic_artisan import combat_palette
-from pandemonium.combat.entangled_chrysalis import combat_entangled_chrysalis
-from pandemonium.combat.queen_of_hearts import combat_queen_of_hearts
-from pandemonium.combat.big_bad_wolf import combat_big_bad_wolf
-from pandemonium.combat.wicked_witch import combat_wicked_witch
-from pandemonium.combat.jabberwock import combat_jabberwock
-from pandemonium.combat.mary_sue import combat_mary_sue
-from pandemonium.combat.wl_floor_bosses import get_wl_floor_boss, is_wl_boss_floor
+from pandemonium.combat.superboss.broodmother import combat_broodmother 
+from pandemonium.combat.superboss.slitcurrent import combat_slitcurrent
+from pandemonium.combat.superboss.sylvana import combat_sylvana
+from pandemonium.combat.superboss.ignis import combat_ignis
+from pandemonium.combat.superboss.yinglong import combat_yinglong
+from pandemonium.combat.superboss.rientrante import combat_rientrante
+from pandemonium.combat.superboss.everlong_ship import combat_everlong_ship
+from pandemonium.combat.superboss.black_silence import combat_black_silence
+from pandemonium.combat.superboss.palette_chromatic_artisan import combat_palette
+from pandemonium.combat.superboss.entangled_chrysalis import combat_entangled_chrysalis
+from pandemonium.combat.superboss.queen_of_hearts import combat_queen_of_hearts
+from pandemonium.combat.superboss.big_bad_wolf import combat_big_bad_wolf
+from pandemonium.combat.superboss.wicked_witch import combat_wicked_witch
+from pandemonium.combat.superboss.jabberwock import combat_jabberwock
+from pandemonium.combat.superboss.mary_sue import combat_mary_sue
+from pandemonium.combat.superboss.wl_floor_bosses import get_wl_floor_boss, is_wl_boss_floor
 from pandemonium.core.character import player_max_hp
 from pandemonium.core.save_load import save_game
 from pandemonium.core.utils import clear_screen, advance_time, format_time, _tprint, _tpause, _tclear, _tmenu, _term, display_name
@@ -54,7 +54,7 @@ from pandemonium.world.dungeon_rooms import (
     get_stat_check_events,
     get_room_labels,
 )
-from pandemonium.world.pandemonium_curses import (
+from pandemonium.world.curse_pandemonium import (
     apply_curse_on_floor_start,
     apply_room_entry_damage,
     apply_healing_reduction,
@@ -569,7 +569,7 @@ def add_drop_to_inventory(player, enemy_level, pandemonium=False, enemy_element=
         item_id, rarity = drop
         item = build_item(item_id, rarity)
         _tprint(f"An enemy drops: {item['name']} [{rarity}]!")
-        from pandemonium.inventory.inventory_ui import prompt_acquire_item
+        from pandemonium.inventory.legacy_ui import prompt_acquire_item
         if prompt_acquire_item(player, item):
             _tprint(f"You acquired the {item['name']}!")
         return True
@@ -791,7 +791,7 @@ def _wonderland_superboss_dispatch(player, floor, superboss_override):
             # Guard: only award loot once per save per floor
             loot_flag = f"wl_floor_looted_{floor}"
             if not player.get(loot_flag):
-                from pandemonium.inventory.inventory import add_item_to_inventory
+                from pandemonium.inventory.core import add_item_to_inventory
                 wl_drop_map = {
                     10: "rose_tinted_crown",
                     20: "crimson_hood_scrap",
@@ -962,7 +962,7 @@ def _grant_glass_anchor(player):
         return
 
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     anchor = build_item("glass_anchor", rarity="legendary")
     added = add_item_to_inventory(player, anchor)
@@ -986,7 +986,7 @@ def _grant_celestial_sigil(player, announce=True):
         return False
 
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     sigil = build_item("celestial_sigil", rarity="epic")
     if not add_item_to_inventory(player, sigil):
@@ -1466,7 +1466,7 @@ def _wild_victory(player, dungeon_id, dungeon):
     _tprint(f"\n  +{gold} gold  |  +{exp} XP to you and your allies")
 
     # ── Claim the previewed reward pool ─────────────────────────────────
-    from pandemonium.inventory.inventory_ui import prompt_acquire_item
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     obtained = []
     for entry in dungeon.get("reward_pool", []):
         item_id = entry.get("item_id")
@@ -1917,7 +1917,7 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                 if superboss_override:
                     result = superboss_override("white_knight", floor)
                 else:
-                    from pandemonium.combat.white_knight import combat_white_knight
+                    from pandemonium.combat.superboss.white_knight import combat_white_knight
                     result = combat_white_knight(player, floor)
 
                 if result == "victory":

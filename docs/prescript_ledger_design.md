@@ -127,7 +127,7 @@ Guild flow (`facilities/guild.py`):
 | `character.py` | `ensure_player_fields`: `bounties_completed`, `prescript_ledger_claimed` |
 | `facilities/guild.py` | Bounty counter increment; two-reward `_legendary_rewards` |
 | `combat/combat_engine.py` | Reset (combat start), issue (round start), evaluate + death signal (round end), reset in `_end_combat_with_result` |
-| `combat/superboss_common.py` | Same four points (superboss loop) |
+| `combat/superboss/superboss_common.py` | Same four points (superboss loop) |
 | `combat/player_actions.py`, `combat/ally.py` | Handler-entry `mark_acted`; `report_skill/item/defend` in the action branches (workshops/brush count as skill) |
 | `combat/skills.py`, `combat/ally_skills.py`, `combat/weapon/black_silence_gloves.py`, `combat/weapon/palette_brush.py` | Clash empowerment hook (`get_clash_bonus`) at the 4 skill-class damage sites |
 | `combat/combat_ui.py` | `GRC×N` / `KRM×N` wearer tags, `📜TGT` mark tag (auto-surfaces GUI via `buff_tags`) |

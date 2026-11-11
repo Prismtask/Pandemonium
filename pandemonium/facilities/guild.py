@@ -382,7 +382,7 @@ def _legendary_rewards(player, city_id):
     claim = claims[choice]
 
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     if claim == "sky":
         if sky_progress < sky_required:
@@ -428,7 +428,7 @@ def _legendary_moon_claim(player, moon_required, moon_progress):
         term.pause()
         return
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
     item = build_item("moonlight_greatsword", "unique")
     add_item_to_inventory(player, item)
     player["moonlight_greatsword_claimed"] = True
@@ -450,7 +450,7 @@ def _traveling_merchant(player, city_id):
     from pandemonium.resources.trade_goods import (
         roll_cargo_good, build_cargo, cargo_merchant_stock_price,
     )
-    from pandemonium.inventory.inventory import add_item_to_inventory
+    from pandemonium.inventory.core import add_item_to_inventory
 
     term.clear()
     term.print("=== TRAVELING MERCHANT ===")
@@ -525,7 +525,7 @@ def _merchant_sell(player, city_id=None):
     """Sell items to the guild-hall traveling merchant at road rates."""
     from pandemonium.facilities.travel_events import _sell_price, _item_stat_line
     from pandemonium.resources.trade_goods import cargo_merchant_sell_price
-    from pandemonium.inventory.inventory import remove_item_by_reference, is_sellable_item
+    from pandemonium.inventory.core import remove_item_by_reference, is_sellable_item
     from pandemonium.combat.weapon.wedding_specials import is_wedding_item_soulbound
     from pandemonium.resources.items import is_unique_item
 

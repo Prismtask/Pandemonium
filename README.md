@@ -1140,7 +1140,7 @@ s     Swap party member (when an ally has fallen)
 ## Technical Info
 
 - **Language:** Python 3 (developed on 3.14). One runtime dependency: **PyYAML**; the GUI uses tkinter, which is bundled with Python.
-- **Entry Point:** `launcher.py` (GUI; the PyInstaller target). Build to `.exe` with `make_exe.py`.
+- **Entry Point:** `launcher.py` (GUI; the PyInstaller target), or `python -m pandemonium`. Build to `.exe` with `make_exe.py`.
 - **Saves:** Stored in the `savefile/` folder as JSON. Multiple save slots supported; delete option available from main menu.
 - **Data:** Enemy and skill data are loaded from YAML files in `pandemonium/resources/` for easy modding. Family scene dialogue lives in `pandemonium/resources/family_scenes.yaml`.
 - **Modular Design:** Easy to extend with new cities, enemies, items, superbosses, skills, or facilities.

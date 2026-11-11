@@ -197,7 +197,7 @@ def set_skill_cooldown(player, skill_id):
             if not reduction_msg:
                 reduction_msg = f"Haste cooldown reduced by {haste_cd}!"
         # Pandemonium: Mana Drain curse increases cooldowns
-        from pandemonium.world.pandemonium_curses import get_cooldown_increase
+        from pandemonium.world.curse_pandemonium import get_cooldown_increase
         cooldown += get_cooldown_increase(player)
         
         # Wonderland: White Rabbit's Haste reduces cooldowns
@@ -672,7 +672,7 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         dmg += apply_wedding_attack_bonus_procs(player, target, dmg, is_first)
         dmg = max(0, dmg)
         # Pandemonium: Weakened Resolve curse — skills deal less damage too
-        from pandemonium.world.pandemonium_curses import apply_damage_dealt_multiplier
+        from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
         dmg = apply_damage_dealt_multiplier(player, dmg)
         # Event Horizon trophies: Old Dopo Robe + Chance and Choice
         from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier

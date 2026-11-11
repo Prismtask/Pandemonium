@@ -120,7 +120,7 @@ class ItemCard(tk.Frame):
             ).pack(fill=tk.X, padx=8, pady=(0, 2))
 
         # Scaling line — which attribute boosts this weapon's damage
-        from pandemonium.inventory.inventory import format_scaling_stat
+        from pandemonium.inventory.core import format_scaling_stat
         scale_txt = format_scaling_stat(item)
         if scale_txt:
             tk.Label(

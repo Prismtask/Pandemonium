@@ -4,7 +4,7 @@ import random
 
 import pandemonium.progression.karma as karma
 from pandemonium.combat.stats import get_effective_attribute
-from pandemonium.inventory.inventory import remove_item_by_reference
+from pandemonium.inventory.core import remove_item_by_reference
 
 def is_monster_girl(enemy):
     """Check the explicit monster_girl flag set in monster_girls.yaml."""

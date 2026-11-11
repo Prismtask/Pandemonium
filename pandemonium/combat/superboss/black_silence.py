@@ -1,4 +1,4 @@
-# combat/black_silence.py
+# combat/superboss/black_silence.py
 """The Black Silence — Superboss encounter.
 
 Three-phase fight with 9 workshop attacks, revival mechanic, and Furioso.
@@ -9,7 +9,7 @@ import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.player_actions import handle_player_turn
 from pandemonium.combat.combat_ui import format_enemy_status_line, print_superboss_header, print_combat_hud
-from pandemonium.combat.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.combat.combat_io import c_print, c_input
@@ -568,7 +568,7 @@ def combat_black_silence(player, floor=None, enemies=None):
 
             # Grant loot
             from pandemonium.resources.items import build_item
-            from pandemonium.inventory.inventory_ui import prompt_acquire_item
+            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             gloves = build_item("certain_someone_black_gloves", rarity="unique")
             c_print(f"\n  🎁 Received: {gloves['name']}!")
             prompt_acquire_item(player, gloves)

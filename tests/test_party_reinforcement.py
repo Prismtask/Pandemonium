@@ -3,7 +3,7 @@ living bench ally at the start of every combat round.
 
 Applies to both combat loops:
   * ``combat/combat_engine.py`` (``_combat_inner``) — city/wild/EH/travel fights
-  * ``combat/superboss_common.py`` (``superboss_combat_loop``) — superbosses
+  * ``combat/superboss/superboss_common.py`` (``superboss_combat_loop``) — superbosses
     incl. the Event Horizon Boss Rush
 
 Run: c:/Code/Pandemonium/.venv/Scripts/python.exe -m pytest tests/test_party_reinforcement.py

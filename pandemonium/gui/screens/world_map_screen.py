@@ -36,7 +36,7 @@ from pandemonium.facilities.travel_events import (
     _discovery_rarity, _merchant_stock_rarity,
     _merchant_price, _sell_price, _item_stat_line, _charisma_discount,
 )
-from pandemonium.inventory.inventory import add_item_to_inventory, remove_item_by_reference, is_sellable_item
+from pandemonium.inventory.core import add_item_to_inventory, remove_item_by_reference, is_sellable_item
 from pandemonium.combat.stats import get_effective_attribute
 from pandemonium.core.utils import get_difficulty_multiplier_from_time
 from pandemonium.core.character import player_max_hp

@@ -7,7 +7,7 @@ but counts against the player's mount cargo capacity and slows travel.
 Full design: docs/cargo_trade_design.md
 """
 
-from pandemonium.inventory.inventory import get_cargo_items
+from pandemonium.inventory.core import get_cargo_items
 
 # ── Themes: what kind of market a good appeals to ──────────────────────────
 THEMES = ("mountain", "sea", "exotic", "luxury", "common")

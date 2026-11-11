@@ -6,7 +6,7 @@ Status: **IMPLEMENTED 2026-10-04** — module, F40 override, reward, and global 
 
 **One-line pitch:** a three-phase accuracy-denial duelist that punishes every attack the party throws — basic, skill, or ally — with ripostes that strip armor (Expose), a per-target execution clock at 6 stacks, and a P3 skill-dodge state, all telegraphed so the counterplay is decision discipline rather than RNG.
 
-**Placement:** Pandemonium Floor 40 special override — the second Pandemonium-exclusive superboss after Chrysalis (F20). Identifiers: module `combat/white_knight.py`, enemy key `white_knight`.
+**Placement:** Pandemonium Floor 40 special override — the second Pandemonium-exclusive superboss after Chrysalis (F20). Identifiers: module `combat/superboss/white_knight.py`, enemy key `white_knight`.
 
 ---
 
@@ -253,7 +253,7 @@ flowchart LR
 
 ### 6.1 Why a rapier
 
-- **Boss fit:** parry–riposte–lunge is literally fencing vocabulary; a duelist boss with a rapier reads instantly. In-world precedent already exists: Zephyr Rapier (`resources/items.py`), Captain Hook's rapier (`combat/wl_floor_bosses.py`).
+- **Boss fit:** parry–riposte–lunge is literally fencing vocabulary; a duelist boss with a rapier reads instantly. In-world precedent already exists: Zephyr Rapier (`resources/items.py`), Captain Hook's rapier (`combat/superboss/wl_floor_bosses.py`).
 - **Reward fit:** there is **no unique rapier** and no DEX-precision unique in the lineup (Abyss Fang = STR/DEX, Cutlass = STR, Gloves = STR/DEX/LER, Brush = WIS/LER). This fills a real endgame gap.
 - **Thematic loop:** DEX is the dodge/accuracy stat — you beat the evasion master and earn the precision blade.
 
@@ -289,7 +289,7 @@ flowchart LR
 
 | File | Purpose |
 |---|---|
-| `combat/white_knight.py` | Boss module (`combat_white_knight(player, floor=None, enemies=None)`) using `superboss_combat_loop`; all state in `context` |
+| `combat/superboss/white_knight.py` | Boss module (`combat_white_knight(player, floor=None, enemies=None)`) using `superboss_combat_loop`; all state in `context` |
 | `combat/weapon/last_oath.py` | Reward passive — Expose-on-hit (actor-based) |
 | `tests/_diag_white_knight.py` | Manual diagnostic harness (context-only: phases, stacks, burst math, caps) |
 
@@ -306,7 +306,7 @@ flowchart LR
 | `combat/skills.py`, `combat/ally_skills.py` | Roll skill dodge (boss field-gated; 50%, once per activation, all skill sources) |
 | `combat/player_actions.py` | Fire hit hook from skill/workshop/brush paths; thread `attacker` |
 | `combat/ally.py` | Fire hit hook from ally basic + ally skill paths; thread `attacker` |
-| `combat/superboss_common.py` | Pass hit hook through to ally turns; extend wrapper with `attacker` |
+| `combat/superboss/superboss_common.py` | Pass hit hook through to ally turns; extend wrapper with `attacker` |
 | 6 existing boss modules | Add `attacker=None` (or `**kwargs`) to `on_player_hit_hook` signatures — mechanical, signature-compatible update |
 | `combat/combat_ui.py` | Custom HUD via module hook (state countdown, per-unit Expose, burst warning); buff tags already render `DGE`/`DMG+`; party `expose_stacks` renders `EXP×N` |
 | `gui/screens/changelog_screen.py` | Changelog bullets when implemented (current version v0.1.8.0 unless bumped) |
