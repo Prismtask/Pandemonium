@@ -40,6 +40,7 @@ savefiles/
 saves/
 save/
 dist/
+docs/
 *.sav
 *.save
 *.dat
