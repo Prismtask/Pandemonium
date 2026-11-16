@@ -105,6 +105,11 @@ tmp/
 temp/
 *.tmp
 
+# ── Local-only content (never pushed) ────────────────────────
+.github/
+savefile/*
+tests/*
+
 # ── Game-specific (uncomment if needed) ──────────────────────
 # maps/backups/
 # assets/raw/
