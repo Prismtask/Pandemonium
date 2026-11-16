@@ -1,0 +1,9 @@
+# Development / build dependencies. Installs the runtime deps too.
+-r requirements.txt
+
+# Builds the Windows executable (used by make_exe.py).
+# 6.16+ is the first release with Python 3.14 support.
+pyinstaller>=6.16
+
+# Test suite (config lives in pyproject.toml -> [tool.pytest.ini_options]).
+pytest>=7.0

@@ -1,0 +1,3 @@
+# Runtime dependencies for Pandemonium (the game itself).
+# tkinter is bundled with the python.org Windows installer — not listed here.
+PyYAML>=6.0.2

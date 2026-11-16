@@ -6,6 +6,11 @@ Usage:
     cd C:\\Code\\Pandemonium
     .venv\\Scripts\\python.exe make_exe.py
 
+Requirements (first time only):
+    python -m pip install -r requirements-dev.txt
+    (tkinter + PyYAML are needed to run the game at all; PyInstaller is
+     only needed for this build script. See DEVELOPMENT.md.)
+
 This creates a clean distribution in dist/Pandemonium/ that you can zip
 and share with your friend. Your friend just unzips and runs Pandemonium.exe.
 
@@ -27,6 +32,30 @@ BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
 
 APP_NAME = "Pandemonium"                       # exe / output folder name
 WIKI_DIR = os.path.join(PROJECT_ROOT, "wiki")  # local web wiki source
+
+
+def check_build_requirements():
+    """
+    Fail fast if PyInstaller is missing from the interpreter running this script.
+
+    PyInstaller is invoked as `sys.executable -m PyInstaller`, so it must be
+    installed for THIS interpreter - not just for some other Python on PATH.
+    Checking before clean_old_builds() means a missing dependency no longer
+    wipes an existing dist/ folder on the way to failing.
+    """
+    try:
+        import PyInstaller  # noqa: F401  (import probe only)
+    except ImportError:
+        print("=" * 60)
+        print("  [FAIL] PyInstaller is not installed for this Python:")
+        print(f"         {sys.executable}")
+        print("=" * 60)
+        print("\n  Install the build dependencies, then re-run:")
+        print(f'    "{sys.executable}" -m pip install -r requirements-dev.txt')
+        print("\n  ...or run this script through the project venv instead:")
+        print("    .\\.venv\\Scripts\\python.exe make_exe.py")
+        print("\n  Full setup notes: DEVELOPMENT.md\n")
+        sys.exit(1)
 
 
 def clean_old_builds():
@@ -112,6 +141,7 @@ def build():
     print("  Pandemonium Executable Builder")
     print("=" * 60)
 
+    check_build_requirements()
     clean_old_builds()
     datas = collect_data_files()
 
