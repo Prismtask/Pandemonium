@@ -80,10 +80,10 @@
       "max_floor": 30
     }
   },
-  "current_hp": 232,
+  "current_hp": 153,
   "level": 50,
   "level_cap": 50,
-  "exp": 90911,
+  "exp": 94858,
   "level_hp_bonus": 196,
   "inventory": [
     {
@@ -110,7 +110,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 33,
+      "count": 34,
       "power": 0,
       "fixed_flee": true
     },
@@ -140,7 +140,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 21,
+      "count": 22,
       "power": 30,
       "cooldown_reduce": 1
     },
@@ -171,7 +171,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 62,
+      "count": 63,
       "power": 28,
       "shock_damage": 5,
       "shock_duration": 3
@@ -182,7 +182,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 25,
+      "count": 26,
       "power": 180
     },
     {
@@ -210,7 +210,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 74,
+      "count": 75,
       "power": 0,
       "expose_armor": 2
     },
@@ -220,7 +220,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 66,
+      "count": 67,
       "power": 20,
       "expose_armor": 2
     },
@@ -230,7 +230,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 14,
+      "count": 15,
       "power": 40,
       "buff_fire_resist": 0.2,
       "buff_duration": 2
@@ -252,7 +252,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 52,
+      "count": 53,
       "power": 25,
       "bonus_vs": "Undead"
     },
@@ -273,7 +273,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 28,
+      "count": 32,
       "power": 40,
       "cleanse_burn_poison": true
     },
@@ -567,19 +567,19 @@
       "enhance": 0,
       "slot": "armor",
       "mods": {
-        "Constitution": 13,
-        "Dexterity": 9
+        "Constitution": 15,
+        "Dexterity": 8
       },
       "special": "dopo_robe",
       "unique": true,
       "drop_source": "event_horizon",
       "drop_rarity": "unique",
       "elemental_res": {
-        "physical": 1.1,
         "wind": 1.1
       },
       "description": "A robe worn by a commoner from a far-away land. Despite the look, it is quite formidable — and very easy to move in. Its threads remember a schoolyard where everyone held a wooden sword, and everyone won.",
-      "count": 1
+      "count": 1,
+      "primary_element": "wind"
     },
     {
       "id": "monocle",
@@ -648,9 +648,9 @@
       "enhance": 5,
       "slot": "accessory",
       "mods": {
-        "Dexterity": 19,
-        "Strength": 16,
-        "Constitution": 16
+        "Dexterity": 10,
+        "Strength": 8,
+        "Constitution": 8
       },
       "special": "vileheart_venom",
       "unique": true,
@@ -660,10 +660,10 @@
         "dark": 1.15
       },
       "elemental_res": {
-        "earth": 1.2,
         "dark": 1.2
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "dark"
     },
     {
       "id": "solmere_porcelain",
@@ -684,9 +684,9 @@
       "enhance": 0,
       "slot": "weapon",
       "mods": {
-        "Dexterity": 20,
-        "Wisdom": 10,
-        "Learning": 8
+        "Dexterity": 11,
+        "Wisdom": 4,
+        "Learning": 2
       },
       "special": "last_oath",
       "unique": true,
@@ -696,11 +696,12 @@
         "Dexterity"
       ],
       "elemental_dmg": {
-        "physical": 1.3,
-        "light": 1.2
+        "physical": 1.35
       },
       "weapon_type": "rapier",
-      "count": 1
+      "count": 1,
+      "primary_element": "physical",
+      "trait_tier": 2
     },
     {
       "id": "sapphire_engagement_ring",
@@ -710,14 +711,14 @@
       "enhance": 0,
       "slot": "accessory",
       "mods": {
-        "Wisdom": 14
+        "Wisdom": 21
       },
       "unique": true,
       "elemental_dmg": {
-        "magical": 1.1,
         "water": 1.1
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "water"
     },
     {
       "id": "amethyst_engagement_ring",
@@ -727,14 +728,14 @@
       "enhance": 0,
       "slot": "accessory",
       "mods": {
-        "Charisma": 14
+        "Charisma": 21
       },
       "unique": true,
       "elemental_dmg": {
-        "magical": 1.1,
         "dark": 1.1
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "dark"
     },
     {
       "id": "wedding_wonderland_dorothy",
@@ -744,21 +745,20 @@
       "enhance": 0,
       "slot": "accessory",
       "mods": {
-        "Constitution": 17,
-        "Charisma": 17,
-        "Wisdom": 11
+        "Constitution": 5,
+        "Charisma": 4,
+        "Wisdom": 2
       },
       "special": "homeward_locket",
       "unique": true,
       "elemental_dmg": {
-        "fire": 1.15,
         "light": 1.2
       },
       "elemental_res": {
-        "physical": 1.1,
         "light": 1.15
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "light"
     },
     {
       "id": "flail",
@@ -813,17 +813,17 @@
       "enhance": 0,
       "slot": "accessory",
       "mods": {
-        "Wisdom": 20,
-        "Charisma": 17,
-        "Learning": 11
+        "Wisdom": 5,
+        "Charisma": 4,
+        "Learning": 2
       },
       "special": "seraph_light",
       "unique": true,
       "elemental_dmg": {
-        "light": 1.4,
-        "wind": 1.2
+        "light": 1.4
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "light"
     },
     {
       "id": "wedding_lich_queen_avatar",
@@ -833,17 +833,17 @@
       "enhance": 0,
       "slot": "accessory",
       "mods": {
-        "Learning": 23,
-        "Charisma": 14,
-        "Wisdom": 11
+        "Learning": 6,
+        "Charisma": 3,
+        "Wisdom": 2
       },
       "special": "lich_grasp",
       "unique": true,
       "elemental_dmg": {
-        "dark": 1.4,
-        "thunder": 1.2
+        "dark": 1.4
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "dark"
     },
     {
       "id": "wedding_wonderland_alice",
@@ -853,18 +853,17 @@
       "enhance": 0,
       "slot": "accessory",
       "mods": {
-        "Learning": 20,
-        "Wisdom": 14,
-        "Dexterity": 11
+        "Learning": 6,
+        "Wisdom": 3,
+        "Dexterity": 2
       },
       "special": "rabbit_time",
       "unique": true,
       "elemental_dmg": {
-        "magical": 1.15,
-        "thunder": 1.3,
-        "light": 1.1
+        "thunder": 1.3
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "thunder"
     },
     {
       "id": "orb",
@@ -932,7 +931,7 @@
       "slot": "accessory",
       "mods": {
         "Dexterity": 15,
-        "Charisma": 13
+        "Charisma": 11
       },
       "special": "chance_and_choice",
       "unique": true,
@@ -2386,6 +2385,99 @@
       "special": "celestial_access",
       "drop_source": "floor_30_milestone",
       "description": "A silver sigil recovered from the thirtieth depth of a dungeon. Its etched rings turn slowly, and its light always points north — toward Celestia, the city beneath the aurora."
+    },
+    {
+      "id": "cracked_mirror",
+      "name": "Cracked Mirror",
+      "type": "key_item",
+      "rarity": "unique",
+      "enhance": 0,
+      "count": 1,
+      "power": 0,
+      "special": "sylvana_mirror",
+      "unique": true,
+      "drop_source": "queen_of_mirrors_sylvana",
+      "description": "A palm-sized shard of the Queen of Mirrors' glass. A woman's silhouette moves behind the cracks, watching you. The edges are warm. Perhaps it can be mended somewhere safe — at home, perhaps."
+    },
+    {
+      "id": "frostlotus",
+      "name": "Frostlotus",
+      "type": "crafting_material",
+      "rarity": "common",
+      "enhance": 0,
+      "count": 9,
+      "description": "A lotus that blooms on black ice. Its chill never melts, even beside an open forge.",
+      "flower_element": "water"
+    },
+    {
+      "id": "warden_signet",
+      "name": "Warden's Signet",
+      "type": "equipment",
+      "rarity": "unique",
+      "enhance": 0,
+      "slot": "accessory",
+      "mods": {
+        "Dexterity": 9,
+        "Wisdom": 7
+      },
+      "special": "long_day_signet",
+      "unique": true,
+      "drop_source": "warden_long_day",
+      "drop_rarity": "unique",
+      "primary_element": "light",
+      "elemental_res": {
+        "light": 1.1
+      },
+      "form": "signet",
+      "description": "A band of hour-iron, still warm. The Warden wore it while it counted the hours the world owed — and it still counts. Damage rises with the sun: nothing at dawn, more at noon, most at night.",
+      "count": 1
+    },
+    {
+      "id": "long_day",
+      "name": "Long Day's Edge",
+      "type": "equipment",
+      "rarity": "unique",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Strength": 15,
+        "Dexterity": 7
+      },
+      "special": "long_day_blade",
+      "unique": true,
+      "drop_source": "warden_long_day",
+      "drop_rarity": "unique",
+      "scaling_stat": "Strength",
+      "primary_element": "fire",
+      "elemental_dmg": {
+        "fire": 1.35
+      },
+      "weapon_type": "sword",
+      "description": "The blade of the hour that would not end. It remembers every round it has been swung, growing heavier and surer by the moment — until dawn empties it again.",
+      "trait_tier": 2,
+      "count": 1
+    },
+    {
+      "id": "echo_mantle",
+      "name": "Echo Mantle",
+      "type": "equipment",
+      "rarity": "unique",
+      "enhance": 0,
+      "slot": "armor",
+      "mods": {
+        "Constitution": 15,
+        "Wisdom": 8
+      },
+      "special": "echo_mantle",
+      "unique": true,
+      "drop_source": "warden_long_day",
+      "drop_rarity": "unique",
+      "primary_element": "physical",
+      "elemental_res": {
+        "physical": 1.12
+      },
+      "description": "Layered hours, stitched into a cloak. What strikes you arrives older and slower, and the dark hours cushion the hardest. At night it is almost kind.",
+      "count": 1
     }
   ],
   "equipped": {
@@ -2397,9 +2489,9 @@
       "enhance": 5,
       "slot": "weapon",
       "mods": {
-        "Strength": 22,
-        "Dexterity": 22,
-        "Learning": 19
+        "Strength": 11,
+        "Dexterity": 11,
+        "Learning": 10
       },
       "primary_element": "dark",
       "scaling_stat": [
@@ -2408,13 +2500,14 @@
         "Learning"
       ],
       "elemental_dmg": {
-        "dark": 1.5
+        "dark": 1.35
       },
       "special": "black_silence_gloves",
       "unique": true,
       "drop_source": "black_silence",
       "drop_rarity": "unique",
-      "count": 1
+      "count": 1,
+      "trait_tier": 2
     },
     "armor": {
       "id": "tarnished_jade",
@@ -2424,22 +2517,19 @@
       "enhance": 5,
       "slot": "armor",
       "mods": {
-        "Constitution": 25,
-        "Wisdom": 22,
-        "Strength": 19
+        "Constitution": 13,
+        "Wisdom": 11,
+        "Strength": 9
       },
       "special": "tarnished_jade",
       "unique": true,
       "drop_source": "heaven_banished_dragon_yinglong",
       "drop_rarity": "unique",
       "elemental_res": {
-        "physical": 1.1,
-        "magical": 1.1,
-        "light": 1.3,
-        "thunder": 1.2,
-        "fire": 1.1
+        "light": 1.3
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "light"
     },
     "accessory1": {
       "id": "wedding_wonderland_red_hood",
@@ -2449,17 +2539,17 @@
       "enhance": 5,
       "slot": "accessory",
       "mods": {
-        "Strength": 25,
-        "Dexterity": 19,
-        "Constitution": 16
+        "Strength": 11,
+        "Dexterity": 8,
+        "Constitution": 7
       },
       "special": "huntsman_oath",
       "unique": true,
       "elemental_dmg": {
-        "physical": 1.3,
-        "light": 1.15
+        "physical": 1.3
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "physical"
     },
     "accessory2": {
       "id": "wedding_ninetales_fox",
@@ -2469,17 +2559,17 @@
       "enhance": 5,
       "slot": "accessory",
       "mods": {
-        "Charisma": 25,
-        "Wisdom": 19,
-        "Learning": 16
+        "Charisma": 11,
+        "Wisdom": 8,
+        "Learning": 7
       },
       "special": "legendary_flame",
       "unique": true,
       "elemental_dmg": {
-        "fire": 1.4,
-        "light": 1.3
+        "fire": 1.4
       },
-      "count": 1
+      "count": 1,
+      "primary_element": "fire"
     },
     "accessory3": {
       "id": "piece_of_relationship",
@@ -2489,8 +2579,8 @@
       "enhance": 5,
       "slot": "accessory",
       "mods": {
-        "Charisma": 16,
-        "Wisdom": 14
+        "Charisma": 15,
+        "Wisdom": 11
       },
       "special": "piece_of_relationship",
       "unique": true,
@@ -2511,16 +2601,23 @@
     },
     {
       "type": "damage_boost",
-      "value": 0.15,
+      "value": 0.5,
+      "remaining": 1,
+      "_tick_grace": true
+    },
+    {
+      "type": "evasion",
+      "source": "crystal_atelier",
+      "value": 0.1,
       "remaining": 1,
       "_tick_grace": true
     }
   ],
   "save_slot": 1,
   "dungeon_time": 0,
-  "gold": 254243,
-  "time_minutes": 540,
-  "location": "celestia",
+  "gold": 267684,
+  "time_minutes": 1380,
+  "location": "greyharbor",
   "superboss_seed": 82186,
   "allies": [
     {
@@ -2626,16 +2723,16 @@
           "enhance": 5,
           "slot": "accessory",
           "mods": {
-            "Dexterity": 22,
-            "Wisdom": 13
+            "Dexterity": 18,
+            "Wisdom": 8
           },
           "special": "tailwind",
           "unique": true,
           "elemental_res": {
-            "physical": 1.05,
             "wind": 1.3
           },
-          "count": 1
+          "count": 1,
+          "primary_element": "wind"
         }
       },
       "active_buffs": [
@@ -2648,7 +2745,7 @@
         },
         {
           "type": "damage_boost",
-          "value": 0.15,
+          "value": 0.5,
           "remaining": 1,
           "_tick_grace": true
         }
@@ -2694,7 +2791,7 @@
         "earth": 1.0499999999999998,
         "light": 1.2000000000000002,
         "dark": 0.7,
-        "physical": 1.9000000000000004,
+        "physical": 0.8500000000000001,
         "magical": 1.35
       },
       "elemental_dmg": {
@@ -2723,7 +2820,7 @@
       "tarnished_jade_weakened": false,
       "parrot_target": false,
       "floor": 56,
-      "dungeon_region": "magical",
+      "dungeon_region": "tundra",
       "nickname": "",
       "growth_applied": 0,
       "awakened": false,
@@ -2742,7 +2839,11 @@
       "is_trueborn": false,
       "no_romance": false,
       "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "moonlight_cooldown": 0,
+      "long_day_stacks": 0,
+      "day": 335,
+      "_map_boss_clock_blocks": 16,
+      "_combat_started_alive": true
     },
     {
       "name": "Lich Queen Avatar",
@@ -2791,16 +2892,16 @@
           "enhance": 5,
           "slot": "accessory",
           "mods": {
-            "Charisma": 19,
-            "Constitution": 16
+            "Charisma": 15,
+            "Constitution": 11
           },
           "special": "bloom_regen",
           "unique": true,
           "elemental_res": {
-            "magical": 1.1,
             "earth": 1.2
           },
-          "count": 1
+          "count": 1,
+          "primary_element": "earth"
         },
         "accessory2": null
       },
@@ -2821,7 +2922,7 @@
         },
         {
           "type": "damage_boost",
-          "value": 0.15,
+          "value": 0.5,
           "remaining": 1,
           "_tick_grace": true
         }
@@ -2867,7 +2968,7 @@
         "light": 0.7,
         "dark": 1.2999999999999998,
         "physical": 1.1,
-        "magical": 1.1
+        "magical": 1.0
       },
       "elemental_dmg": {
         "fire": 0.8999999999999999,
@@ -2889,7 +2990,7 @@
       "tarnished_jade_weakened": false,
       "defending_this_turn": false,
       "floor": 56,
-      "dungeon_region": "magical",
+      "dungeon_region": "tundra",
       "nickname": "",
       "growth_applied": 0,
       "awakened": false,
@@ -2912,7 +3013,11 @@
       ],
       "stress": 0,
       "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "moonlight_cooldown": 0,
+      "long_day_stacks": 0,
+      "day": 335,
+      "_map_boss_clock_blocks": 16,
+      "_combat_started_alive": true
     },
     {
       "name": "Ninetales Fox",
@@ -2961,20 +3066,18 @@
           "enhance": 5,
           "slot": "armor",
           "mods": {
-            "Dexterity": 19,
-            "Wisdom": 16,
-            "Learning": 16
+            "Dexterity": 13,
+            "Wisdom": 10,
+            "Learning": 10
           },
           "special": "chronoweave",
           "unique": true,
           "drop_source": "entangled_chrysalis",
           "drop_rarity": "unique",
           "elemental_res": {
-            "fire": 1.2,
-            "dark": 1.2,
-            "light": 1.2,
-            "physical": 1.1
-          }
+            "light": 1.2
+          },
+          "primary_element": "light"
         },
         "accessory1": {
           "id": "pendant",
@@ -3034,12 +3137,23 @@
         },
         {
           "type": "damage_boost",
-          "value": 0.15,
+          "value": 0.5,
           "remaining": 1,
           "_tick_grace": true
         }
       ],
-      "active_debuffs": [],
+      "active_debuffs": [
+        {
+          "type": "frostbite",
+          "damage": 2,
+          "remaining": 2,
+          "source": "map_boss_frostbite"
+        },
+        {
+          "type": "slow",
+          "remaining": 2
+        }
+      ],
       "stunned": false,
       "frozen": false,
       "cursed": false,
@@ -3065,26 +3179,26 @@
       ],
       "learning": null,
       "skill_cooldowns": {
-        "judgment": 3,
-        "sunfire_breath": 1
+        "sunfire_breath": 1,
+        "nine_tails_strike": 1
       },
       "skill_mastery": {
-        "sunfire_breath": 491,
-        "nine_tails_strike": 402,
-        "aura_of_despair": 135,
-        "judgment": 57
+        "sunfire_breath": 499,
+        "nine_tails_strike": 418,
+        "aura_of_despair": 138,
+        "judgment": 58
       },
       "max_hp": 241,
-      "current_hp": 241,
+      "current_hp": 191,
       "elemental_res": {
-        "fire": 1.2000000000000002,
+        "fire": 1.0,
         "water": 1.0,
         "thunder": 1.0,
         "wind": 1.1,
         "earth": 1.2000000000000002,
         "light": 2.0,
-        "dark": 2.0,
-        "physical": 1.2000000000000002,
+        "dark": 1.1,
+        "physical": 1.1,
         "magical": 2.0
       },
       "elemental_dmg": {
@@ -3106,7 +3220,7 @@
       "tarnished_jade_pins": 0,
       "tarnished_jade_weakened": false,
       "floor": 56,
-      "dungeon_region": "magical",
+      "dungeon_region": "tundra",
       "defending_this_turn": false,
       "nickname": "Ran Yakumo",
       "growth_applied": 0,
@@ -3124,7 +3238,7 @@
       "_author_favor_wisdom": 0,
       "_author_favor_learning": 0,
       "_author_favor_charisma": 0,
-      "slowed": false,
+      "slowed": true,
       "pregnant": false,
       "conceived_day": 0,
       "due_day": 0,
@@ -3135,7 +3249,12 @@
       "is_trueborn": false,
       "no_romance": false,
       "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "moonlight_cooldown": 0,
+      "long_day_stacks": 0,
+      "day": 335,
+      "_map_boss_clock_blocks": 16,
+      "_combat_started_alive": true,
+      "_map_boss_frost_stacks": 1
     },
     {
       "name": "Seraph Ascendant",
@@ -3165,7 +3284,7 @@
         },
         {
           "type": "damage_boost",
-          "value": 0.15,
+          "value": 0.5,
           "remaining": 1,
           "_tick_grace": true
         }
@@ -3229,7 +3348,7 @@
       "tarnished_jade_pins": 0,
       "tarnished_jade_weakened": false,
       "floor": 56,
-      "dungeon_region": "magical",
+      "dungeon_region": "tundra",
       "nickname": "",
       "growth_applied": 0,
       "awakened": false,
@@ -3249,7 +3368,11 @@
       "is_trueborn": false,
       "no_romance": false,
       "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "moonlight_cooldown": 0,
+      "long_day_stacks": 0,
+      "day": 335,
+      "_map_boss_clock_blocks": 16,
+      "_combat_started_alive": true
     },
     {
       "name": "Alice",
@@ -3263,7 +3386,7 @@
         "Learning": 10,
         "Charisma": 11
       },
-      "current_hp": 342,
+      "current_hp": 337,
       "max_hp": 342,
       "equipped": {
         "weapon": {
@@ -3274,8 +3397,8 @@
           "enhance": 5,
           "slot": "weapon",
           "mods": {
-            "Strength": 32,
-            "Dexterity": 24
+            "Strength": 18,
+            "Dexterity": 14
           },
           "special": "vorpal_blade",
           "unique": true,
@@ -3286,11 +3409,11 @@
             "Dexterity"
           ],
           "elemental_dmg": {
-            "physical": 1.4,
-            "light": 1.5,
-            "wind": 1.2
+            "light": 1.35
           },
-          "count": 1
+          "count": 1,
+          "primary_element": "light",
+          "trait_tier": 2
         },
         "armor": {
           "id": "battle_harness",
@@ -3372,12 +3495,23 @@
         },
         {
           "type": "damage_boost",
-          "value": 0.15,
+          "value": 0.5,
           "remaining": 1,
           "_tick_grace": true
         }
       ],
-      "active_debuffs": [],
+      "active_debuffs": [
+        {
+          "type": "frostbite",
+          "damage": 2,
+          "remaining": 1,
+          "source": "map_boss_frostbite"
+        },
+        {
+          "type": "slow",
+          "remaining": 1
+        }
+      ],
       "stunned": false,
       "frozen": false,
       "cursed": false,
@@ -3388,7 +3522,7 @@
       "engaged": true,
       "married": true,
       "monster_girl": false,
-      "exp": 25579,
+      "exp": 41338,
       "level_hp_bonus": 300,
       "level_cap": 99,
       "defeated": false,
@@ -3404,14 +3538,17 @@
         "multi_hit"
       ],
       "learning": null,
-      "skill_cooldowns": {},
+      "skill_cooldowns": {
+        "multi_hit": 2,
+        "vorpal_edge": 0
+      },
       "skill_mastery": {
         "curious_inquiry": 2,
         "try_me": 1,
-        "vorpal_edge": 601,
-        "snicker_snack": 89,
-        "frabjous_day": 154,
-        "multi_hit": 31
+        "vorpal_edge": 617,
+        "snicker_snack": 91,
+        "frabjous_day": 160,
+        "multi_hit": 32
       },
       "race": "Fey",
       "elemental_res": {
@@ -3429,11 +3566,11 @@
         "fire": 1.0,
         "water": 1.0,
         "thunder": 1.0,
-        "wind": 1.4,
+        "wind": 1.2000000000000002,
         "earth": 1.0,
-        "light": 1.7999999999999998,
+        "light": 1.6500000000000004,
         "dark": 1.0,
-        "physical": 1.4,
+        "physical": 1.0,
         "magical": 1.2999999999999998
       },
       "defending_this_turn": false,
@@ -3451,18 +3588,18 @@
       ],
       "_alice_vorpal_upgraded": true,
       "floor": 56,
-      "dungeon_region": "magical",
+      "dungeon_region": "tundra",
       "nickname": "",
       "growth_applied": 0,
       "awakened": false,
       "awakened_name": "",
       "awakened_skills": [],
-      "_last_element_hit": "dark",
+      "_last_element_hit": "physical",
       "upgrade_skills": [
         "frabjous_day"
       ],
       "silenced": false,
-      "slowed": false,
+      "slowed": true,
       "blinded": false,
       "stress": 0,
       "pregnant": false,
@@ -3475,19 +3612,24 @@
       "is_trueborn": false,
       "no_romance": false,
       "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "moonlight_cooldown": 0,
+      "long_day_stacks": 0,
+      "day": 335,
+      "_map_boss_clock_blocks": 16,
+      "_combat_started_alive": true,
+      "_map_boss_frost_stacks": 2
     },
     {
       "name": "Dorothy",
       "key": "wonderland_dorothy",
-      "level": 75,
+      "level": 76,
       "attributes": {
         "Strength": 11,
         "Constitution": 12,
         "Dexterity": 12,
         "Wisdom": 14,
         "Learning": 12,
-        "Charisma": 36
+        "Charisma": 37
       },
       "equipped": {
         "weapon": {
@@ -3553,17 +3695,17 @@
           "enhance": 5,
           "slot": "accessory",
           "mods": {
-            "Dexterity": 19,
-            "Charisma": 19
+            "Dexterity": 13,
+            "Charisma": 13
           },
           "special": "ruby_slippers",
           "unique": true,
           "drop_rarity": "unique",
           "elemental_res": {
-            "magical": 1.2,
             "light": 1.3
           },
-          "count": 1
+          "count": 1,
+          "primary_element": "light"
         },
         "accessory2": {
           "id": "authors_pen",
@@ -3573,20 +3715,19 @@
           "enhance": 5,
           "slot": "accessory",
           "mods": {
-            "Charisma": 20,
-            "Learning": 17,
-            "Wisdom": 14
+            "Charisma": 9,
+            "Learning": 9,
+            "Wisdom": 8
           },
           "special": "authors_pen",
           "unique": true,
           "drop_source": "mary_sue",
           "drop_rarity": "unique",
           "elemental_dmg": {
-            "magical": 1.3,
-            "light": 1.3,
-            "dark": 1.3
+            "magical": 1.3
           },
-          "count": 1
+          "count": 1,
+          "primary_element": "magical"
         }
       },
       "active_buffs": [
@@ -3606,7 +3747,7 @@
         },
         {
           "type": "damage_boost",
-          "value": 0.15,
+          "value": 0.5,
           "remaining": 1,
           "_tick_grace": true
         }
@@ -3623,8 +3764,8 @@
       "engaged": true,
       "married": true,
       "monster_girl": false,
-      "exp": 28815,
-      "level_hp_bonus": 296,
+      "exp": 2603,
+      "level_hp_bonus": 300,
       "level_cap": 99,
       "defeated": false,
       "passive_skill": "human_passive",
@@ -3638,17 +3779,18 @@
       ],
       "learning": null,
       "skill_cooldowns": {
-        "fates_favor": 4
+        "emerald_citys_light": 3,
+        "cyclones_call": 3
       },
       "skill_mastery": {
-        "emerald_citys_light": 54,
-        "heart_of_tin": 57,
-        "cyclones_call": 121,
+        "emerald_citys_light": 59,
+        "heart_of_tin": 61,
+        "cyclones_call": 130,
         "radiant_rebirth": 3,
-        "fates_favor": 23
+        "fates_favor": 25
       },
-      "max_hp": 347,
-      "current_hp": 347,
+      "max_hp": 351,
+      "current_hp": 342,
       "elemental_res": {
         "fire": 1.0,
         "water": 1.0,
@@ -3658,7 +3800,7 @@
         "light": 1.2999999999999998,
         "dark": 1.15,
         "physical": 1.0,
-        "magical": 2.0
+        "magical": 1.0499999999999998
       },
       "elemental_dmg": {
         "fire": 1.25,
@@ -3666,8 +3808,8 @@
         "thunder": 1.0,
         "wind": 1.0,
         "earth": 1.0,
-        "light": 1.2999999999999998,
-        "dark": 1.2999999999999998,
+        "light": 1.0,
+        "dark": 1.0,
         "physical": 1.0,
         "magical": 2.0
       },
@@ -3687,9 +3829,9 @@
       "tarnished_jade_pins": 0,
       "tarnished_jade_weakened": false,
       "floor": 56,
-      "dungeon_region": "magical",
+      "dungeon_region": "tundra",
       "defending_this_turn": false,
-      "_push_initiative_flag": false,
+      "_push_initiative_flag": true,
       "nickname": "",
       "growth_applied": 0,
       "awakened": false,
@@ -3719,16 +3861,21 @@
         "playful"
       ],
       "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "moonlight_cooldown": 0,
+      "long_day_stacks": 0,
+      "day": 335,
+      "_map_boss_clock_blocks": 16,
+      "_combat_started_alive": true,
+      "_map_boss_frost_stacks": 2
     },
     {
       "name": "Red Hood",
       "key": "wonderland_red_hood",
-      "level": 75,
+      "level": 76,
       "attributes": {
         "Strength": 14,
         "Constitution": 12,
-        "Dexterity": 37,
+        "Dexterity": 38,
         "Wisdom": 9,
         "Learning": 10,
         "Charisma": 11
@@ -3742,8 +3889,8 @@
           "enhance": 5,
           "slot": "weapon",
           "mods": {
-            "Strength": 32,
-            "Dexterity": 24
+            "Strength": 18,
+            "Dexterity": 14
           },
           "special": "grandmothers_axe",
           "unique": true,
@@ -3753,10 +3900,11 @@
             "Dexterity"
           ],
           "elemental_dmg": {
-            "physical": 1.4,
-            "light": 1.3
+            "physical": 1.35
           },
-          "count": 1
+          "count": 1,
+          "primary_element": "physical",
+          "trait_tier": 2
         },
         "armor": {
           "id": "elven_mail",
@@ -3849,7 +3997,7 @@
         },
         {
           "type": "damage_boost",
-          "value": 0.15,
+          "value": 0.5,
           "remaining": 1,
           "_tick_grace": true
         }
@@ -3867,8 +4015,8 @@
       "engaged": true,
       "married": true,
       "monster_girl": false,
-      "exp": 28815,
-      "level_hp_bonus": 296,
+      "exp": 2603,
+      "level_hp_bonus": 300,
       "level_cap": 99,
       "defeated": false,
       "passive_skill": "beast_passive",
@@ -3887,8 +4035,8 @@
         "what_big_teeth": 254,
         "shadow_dance": 38
       },
-      "max_hp": 347,
-      "current_hp": 347,
+      "max_hp": 351,
+      "current_hp": 351,
       "elemental_res": {
         "fire": 1.1,
         "water": 1.0,
@@ -3906,9 +4054,9 @@
         "thunder": 1.0,
         "wind": 1.0,
         "earth": 1.0,
-        "light": 1.2999999999999998,
+        "light": 1.0,
         "dark": 1.0,
-        "physical": 1.7000000000000002,
+        "physical": 1.6500000000000004,
         "magical": 1.0
       },
       "race": "Beast",
@@ -3927,7 +4075,7 @@
       "tarnished_jade_pins": 0,
       "tarnished_jade_weakened": false,
       "floor": 56,
-      "dungeon_region": "magical",
+      "dungeon_region": "tundra",
       "defending_this_turn": false,
       "nickname": "",
       "growth_applied": 0,
@@ -3955,7 +4103,11 @@
         "tender"
       ],
       "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "moonlight_cooldown": 0,
+      "long_day_stacks": 0,
+      "day": 335,
+      "_map_boss_clock_blocks": 16,
+      "_combat_started_alive": true
     }
   ],
   "skills": [
@@ -3984,15 +4136,15 @@
   "passive_unlocked": true,
   "ascension_notified": {},
   "elemental_res": {
-    "fire": 1.1,
+    "fire": 1.0,
     "water": 1.0,
-    "thunder": 1.2000000000000002,
+    "thunder": 1.0,
     "wind": 1.1,
     "earth": 1.2000000000000002,
     "light": 1.2999999999999998,
     "dark": 1.0,
-    "physical": 1.2000000000000002,
-    "magical": 1.1
+    "physical": 1.1,
+    "magical": 1.0
   },
   "elemental_dmg": {
     "fire": 1.4,
@@ -4000,8 +4152,8 @@
     "thunder": 1.0,
     "wind": 1.2999999999999998,
     "earth": 1.1,
-    "light": 2.0,
-    "dark": 1.5,
+    "light": 1.0,
+    "dark": 1.35,
     "physical": 1.5,
     "magical": 1.0
   },
@@ -4009,7 +4161,7 @@
   "inventory_upgrade": 12,
   "berserk_turns": 0,
   "bloodlust_turns": 0,
-  "day": 334,
+  "day": 335,
   "shop_stock_solmere": [
     [
       {
@@ -4163,8 +4315,8 @@
     ]
   ],
   "last_shop_day_solmere": 275,
-  "dungeon_region": "magical",
-  "origin_city": "skylume",
+  "dungeon_region": "tundra",
+  "origin_city": "greyharbor",
   "floor": 56,
   "abyss_triple_actions": 0,
   "shop_stock_skylume": [
@@ -4662,7 +4814,18 @@
     ]
   ],
   "last_shop_day_cinderpeak": 178,
-  "active_debuffs": [],
+  "active_debuffs": [
+    {
+      "type": "frostbite",
+      "damage": 2,
+      "remaining": 2,
+      "source": "map_boss_frostbite"
+    },
+    {
+      "type": "slow",
+      "remaining": 2
+    }
+  ],
   "favor": {
     "irondeep": 15,
     "solmere": 53,
@@ -6397,8 +6560,8 @@
           "enhance": 5,
           "slot": "weapon",
           "mods": {
-            "Strength": 25,
-            "Dexterity": 19
+            "Strength": 19,
+            "Dexterity": 13
           },
           "special": "captain_cutlass",
           "unique": true,
@@ -6406,11 +6569,11 @@
           "drop_rarity": "unique",
           "scaling_stat": "Strength",
           "elemental_dmg": {
-            "physical": 1.3,
-            "water": 1.3,
-            "dark": 1.2
+            "water": 1.35
           },
-          "count": 1
+          "count": 1,
+          "primary_element": "water",
+          "trait_tier": 2
         },
         {
           "id": "woodcutters_broken_axe",
@@ -6420,8 +6583,8 @@
           "enhance": 0,
           "slot": "weapon",
           "mods": {
-            "Strength": 20,
-            "Dexterity": 14
+            "Strength": 14,
+            "Dexterity": 8
           },
           "special": "woodcutter_broken",
           "unique": true,
@@ -6431,10 +6594,12 @@
             "Dexterity"
           ],
           "elemental_dmg": {
-            "physical": 1.2
+            "physical": 1.35
           },
           "wonderland_only": true,
-          "count": 1
+          "count": 1,
+          "primary_element": "physical",
+          "trait_tier": 2
         }
       ],
       "last_income_day": 332,
@@ -8763,7 +8928,9 @@
     ]
   ],
   "last_shop_day_sunreach": 141,
-  "daily_effects": {},
+  "daily_effects": {
+    "difficulty_mod": -0.1
+  },
   "girl_talk_today": {},
   "girl_gift_today": {},
   "girl_daily_last_day": 327,
@@ -8814,7 +8981,7 @@
     }
   ],
   "bounty_refresh_day_ashkara": 142,
-  "tarnished_jade_pins": 0,
+  "tarnished_jade_pins": 2,
   "tarnished_jade_weakened": false,
   "cutlass_high_tide_stacks": 0,
   "cutlass_rally_cooldown": 0,
@@ -10581,6 +10748,146 @@
         "name": "Title unlocked — First Blood",
         "desc": "+1% XP · The first ten are the ones you remember.",
         "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Curiouser",
+        "desc": "+1% XP · The book closes behind you. Wonderland does not.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Tea-Party Guest",
+        "desc": "+3% rest healing · There is always room at the Hatter's table — and always another cup.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Heartsbane",
+        "desc": "+3% dungeon gold · Her card soldiers still leave extra coin where you walk.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Wolf-Hunter",
+        "desc": "+1 Strength · The woods are quieter now. Your stride is not.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Witch-Breaker",
+        "desc": "+6% XP · You have learned the grammar of endings.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Vorpal Hand",
+        "desc": "+4% damage · Snicker-snack. The echo stays in your hands.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Author's Bane",
+        "desc": "+2 Learning · +4% XP · You have read the last page. She has not.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Title unlocked — Happily Ever After",
+        "desc": "+1 all attributes · Three stories chose their own endings. They chose you with them.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "A Warden Notices",
+        "desc": "Floor 20 is cleared. The Winter Warden stirs near Greyharbor.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "The Season Turns",
+        "desc": "The Warden of the Last Light has surfaced near Greyharbor. Echo 0 (Lv 20). The season ends on Day 361.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Warden Felled — Winter Echo 0",
+        "desc": "Warden of the Last Light broken at Echo 0 (Lv 20). +400 gold, +600 XP per hero. Trophy: Warden's Signet.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "The Warden Reforms",
+        "desc": "Warden of the Last Light returns as Echo 1 (Lv 40) at the same site. New mechanic: Freeze.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Warden Felled — Winter Echo 1",
+        "desc": "Warden of the Last Light broken at Echo 1 (Lv 40). +1000 gold, +1550 XP per hero.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 334,
+        "name": "Warden Felled — Winter Echo 2",
+        "desc": "Warden of the Last Light broken at Echo 2 (Lv 60). +2000 gold, +2500 XP per hero. Trophy: Long Day's Edge.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 335,
+        "name": "Peaceful Skies",
+        "desc": "An unnatural calm settles over the land. Monsters are 10% weaker today.",
+        "tag": "[RANDOM]",
+        "fixed": false
+      },
+      {
+        "day": 335,
+        "name": "Warden Felled — Winter Echo 3",
+        "desc": "Warden of the Last Light broken at Echo 3 (Lv 80). +2750 gold, +3450 XP per hero.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 335,
+        "name": "The Warden Reforms",
+        "desc": "Warden of the Last Light returns as Echo 4 (Lv 80) at the same site. New mechanic: Ice Armor Cap +1.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 335,
+        "name": "Title unlocked — Trailblazer",
+        "desc": "−2% travel time · You have learned where the road bends before it bends.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 335,
+        "name": "Warden Felled — Winter Echo 4",
+        "desc": "Warden of the Last Light broken at Echo 4 (Lv 80). +2300 gold, +3600 XP per hero.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 335,
+        "name": "Warden Felled — Winter Echo 5",
+        "desc": "Warden of the Last Light broken at Echo 5 (Lv 80). +3000 gold, +3750 XP per hero. Trophy: Echo Mantle.",
+        "tag": "[MAP BOSS]",
         "fixed": false
       }
     ],
@@ -15993,13 +16300,13 @@
   "eh_trophy_piece_of_relationship": true,
   "eh_root_125": true,
   "eh_root_150": true,
-  "slowed": false,
+  "slowed": true,
   "eh_root_175": true,
   "eh_root_200": true,
   "eh_root_225": true,
   "eh_root_250": true,
   "eh_root_275": true,
-  "day_blocks": 3,
+  "day_blocks": 17,
   "fatigue_stacks": 1,
   "time_blocks_migrated": true,
   "_combat_solo": false,
@@ -16217,161 +16524,6 @@
   ],
   "item_formula_version": 4,
   "family_enabled": true,
-  "_dungeon_log": [
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Legendary Eye [legendary]!",
-    "You drop the Legendary Eye.",
-    "An enemy drops: Acid Flask [common]!",
-    "You acquired the Acid Flask!",
-    "\nYou catch your breath and recover 52 HP.",
-    "  Alraune Fledger recovers 8 HP.",
-    "  Lich Queen Avatar recovers 17 HP.",
-    "  Ran Yakumo recovers 13 HP.",
-    "  Seraph Ascendant recovers 13 HP.",
-    "  Alice recovers 11 HP.",
-    "  Dorothy recovers 14 HP.",
-    "  Red Hood recovers 13 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Emberbloom [common]!",
-    "You acquired the Emberbloom!",
-    "\nYou catch your breath and recover 49 HP.",
-    "  Alraune Fledger recovers 6 HP.",
-    "  Lich Queen Avatar recovers 16 HP.",
-    "  Ran Yakumo recovers 13 HP.",
-    "  Seraph Ascendant recovers 15 HP.",
-    "  Alice recovers 10 HP.",
-    "  Dorothy recovers 15 HP.",
-    "  Red Hood recovers 14 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Superior Healing Potion [common]!",
-    "You acquired the Superior Healing Potion!",
-    "\nYou catch your breath and recover 52 HP.",
-    "  Alraune Fledger recovers 6 HP.",
-    "  Lich Queen Avatar recovers 16 HP.",
-    "  Ran Yakumo recovers 12 HP.",
-    "  Seraph Ascendant recovers 13 HP.",
-    "  Alice recovers 12 HP.",
-    "  Dorothy recovers 15 HP.",
-    "  Red Hood recovers 13 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Epic Crown [epic]!",
-    "You drop the Epic Crown.",
-    "An enemy drops: Holy Water [common]!",
-    "You acquired the Holy Water!",
-    "An enemy drops: Epic Scepter [epic]!",
-    "You drop the Epic Scepter.",
-    "\nYou catch your breath and recover 49 HP.",
-    "  Alraune Fledger recovers 8 HP.",
-    "  Lich Queen Avatar recovers 17 HP.",
-    "  Ran Yakumo recovers 13 HP.",
-    "  Seraph Ascendant recovers 15 HP.",
-    "  Alice recovers 10 HP.",
-    "  Dorothy recovers 15 HP.",
-    "  Red Hood recovers 14 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Rare Pendant [rare]!",
-    "You drop the Rare Pendant.",
-    "\nYou catch your breath and recover 49 HP.",
-    "  Alraune Fledger recovers 8 HP.",
-    "  Lich Queen Avatar recovers 17 HP.",
-    "  Ran Yakumo recovers 13 HP.",
-    "  Seraph Ascendant recovers 14 HP.",
-    "  Alice recovers 10 HP.",
-    "  Dorothy recovers 15 HP.",
-    "  Red Hood recovers 15 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Acid Flask [common]!",
-    "You acquired the Acid Flask!",
-    "\nYou catch your breath and recover 51 HP.",
-    "  Alraune Fledger recovers 6 HP.",
-    "  Lich Queen Avatar recovers 15 HP.",
-    "  Ran Yakumo recovers 12 HP.",
-    "  Seraph Ascendant recovers 15 HP.",
-    "  Alice recovers 10 HP.",
-    "  Dorothy recovers 14 HP.",
-    "  Red Hood recovers 14 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Epic Tongue Dagger [epic]!",
-    "Discarded Epic Volt Chakram. Acquired Epic Tongue Dagger!",
-    "You acquired the Epic Tongue Dagger!",
-    "An enemy drops: Epic Pendant [epic]!",
-    "Discarded Epic Zephyr Rapier. Acquired Epic Pendant!",
-    "You acquired the Epic Pendant!",
-    "An enemy drops: Acid Flask [common]!",
-    "You acquired the Acid Flask!",
-    "An enemy drops: Emberbloom [common]!",
-    "You acquired the Emberbloom!",
-    "\nYou catch your breath and recover 53 HP.",
-    "  Alraune Fledger recovers 7 HP.",
-    "  Lich Queen Avatar recovers 15 HP.",
-    "  Ran Yakumo recovers 12 HP.",
-    "  Seraph Ascendant recovers 14 HP.",
-    "  Alice recovers 12 HP.",
-    "  Dorothy recovers 13 HP.",
-    "  Red Hood recovers 14 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  --- Combat Chamber ---",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "\nYou catch your breath and recover 51 HP.",
-    "  Alraune Fledger recovers 8 HP.",
-    "  Lich Queen Avatar recovers 16 HP.",
-    "  Ran Yakumo recovers 11 HP.",
-    "  Seraph Ascendant recovers 13 HP.",
-    "  Alice recovers 11 HP.",
-    "  Dorothy recovers 14 HP.",
-    "  Red Hood recovers 14 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  💎  Treasure Vault",
-    "══════════════════════════════════════════════════",
-    "\n==================================================",
-    "💎  A forgotten hoard gleams in the torchlight!",
-    "Someone — or something — left these treasures here long ago.",
-    "==================================================",
-    "\nYou found: Rare Orb  [Weapon | Lea +3, Cha +1] | Focused: +8% magical damage  ▸ Scales: LEA",
-    "Discarded Epic Blaze Band. Acquired Rare Orb!",
-    "Tucked among the coins: Stormlily (tempering flower).",
-    "You also found 301 gold in a small chest!",
-    "\n══════════════════════════════════════════════════",
-    "  *** BOSS ROOM ***",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Epic Staff [epic]!",
-    "Discarded Epic Gale Leathers. Acquired Epic Staff!",
-    "You acquired the Epic Staff!",
-    "An enemy drops: Emberbloom [common]!",
-    "You acquired the Emberbloom!",
-    "\nYou catch your breath and recover 50 HP.",
-    "  Alraune Fledger recovers 8 HP.",
-    "  Lich Queen Avatar recovers 17 HP.",
-    "  Ran Yakumo recovers 13 HP.",
-    "  Seraph Ascendant recovers 14 HP.",
-    "  Alice recovers 10 HP.",
-    "  Dorothy recovers 13 HP.",
-    "  Red Hood recovers 14 HP.",
-    "Current time: 04:00 | Gold: 125250"
-  ],
   "cutlass_high_tide_floor": null,
   "house_stories": {
     "seen": {
@@ -16662,23 +16814,30 @@
       ]
     },
     "abomination_end_bringer": {
-      "defeated": 1,
+      "defeated": 3,
       "captured": 0,
       "regions": [
         "magical"
       ]
     },
     "beast_kaiju_alpha": {
-      "defeated": 4,
+      "defeated": 9,
       "captured": 0,
       "regions": [
         "magical"
+      ]
+    },
+    "warden_winter_light": {
+      "defeated": 6,
+      "captured": 0,
+      "regions": [
+        "tundra"
       ]
     }
   },
   "children": [],
   "family_births_pending": [],
-  "stress": 0,
+  "stress": 50,
   "dreams": {
     "seen": {},
     "last_day": 0,
@@ -16732,16 +16891,53 @@
     "first_blood": {
       "day": 333,
       "seen": false
+    },
+    "curiouser": {
+      "day": 334,
+      "seen": false
+    },
+    "tea_party_guest": {
+      "day": 334,
+      "seen": false
+    },
+    "heartsbane": {
+      "day": 334,
+      "seen": false
+    },
+    "wolf_hunter": {
+      "day": 334,
+      "seen": false
+    },
+    "witch_breaker": {
+      "day": 334,
+      "seen": false
+    },
+    "vorpal_hand": {
+      "day": 334,
+      "seen": false
+    },
+    "authors_bane": {
+      "day": 334,
+      "seen": false
+    },
+    "happily_ever_after": {
+      "day": 334,
+      "seen": false
+    },
+    "trailblazer": {
+      "day": 335,
+      "seen": false
     }
   },
   "title_active": "abyss_walker",
   "title_stats": {
     "gold_spent_shops": 0,
-    "travel_segments": 5,
+    "travel_segments": 10,
     "casino_hands_won": 2,
     "casino_biggest_win": 2500,
     "casino_cheats_unseen": 2,
-    "casino_cheats_caught": 0
+    "casino_cheats_caught": 0,
+    "wonderland_shadows_taken": 0
   },
   "titles_version": 1,
   "wonderland_guests": {
@@ -16753,5 +16949,127 @@
   "heroine_gear_tier_version": 2,
   "_show_title_beside_name": true,
   "moonlight_turns": 0,
-  "moonlight_cooldown": 0
+  "moonlight_cooldown": 0,
+  "map_boss": {
+    "unlocked_day": 334,
+    "season": "winter",
+    "echo": 6,
+    "active": {
+      "id": "warden_winter_6",
+      "season": "winter",
+      "season_name": "Winter",
+      "warden_name": "Warden of the Last Light",
+      "glyph": "❄",
+      "mechanic": "frostbite",
+      "mechanic_name": "Frostbite",
+      "stack_tag": "FROST",
+      "signature_status": "slow",
+      "add_name": "Frostling",
+      "echo": 6,
+      "level": 80,
+      "biome": "tundra",
+      "element": "water",
+      "weakness": "fire",
+      "seed_city": "stormhold",
+      "nearest_city": "greyharbor",
+      "position": [
+        90,
+        226
+      ],
+      "spawn_day": 335,
+      "expire_day": 361,
+      "max_hp": 7691,
+      "hp": 7691,
+      "str": 99,
+      "armor": 24,
+      "elemental_res": {
+        "fire": 0.7,
+        "water": 1.69,
+        "thunder": 1.42,
+        "wind": 1.42,
+        "earth": 1.42,
+        "light": 1.42,
+        "dark": 1.42,
+        "physical": 1.42,
+        "magical": 1.42
+      },
+      "status_res": 0.68,
+      "mechanic_tier": 7,
+      "mechanic_rank": 3,
+      "mechanic_effects": [
+        "frostbite_round",
+        "frost_freeze",
+        "ice_armor",
+        "night_extra_target",
+        "ice_cap_up",
+        "frozen_vuln",
+        "frost_damage_up"
+      ],
+      "mechanic_labels": [
+        "Frostbite",
+        "Freeze",
+        "Ice Armor",
+        "Night Chills",
+        "Ice Armor Cap +1",
+        "Brittle",
+        "Bitter Cold"
+      ],
+      "attempts": 0,
+      "last_fought_day": null,
+      "defeated": false,
+      "cache_preview": {
+        "item_id": "vestments",
+        "rarity": "rare"
+      },
+      "consumables": [
+        "frostward_tonic",
+        "stoneblood_vial"
+      ],
+      "flower": "frostlotus"
+    },
+    "defeated_total": 6,
+    "unique_grants": [
+      "warden_signet",
+      "long_day",
+      "echo_mantle"
+    ],
+    "best_echo": 5,
+    "season_defeats": {
+      "winter": 6
+    },
+    "last_spawn_day": 334,
+    "last_result": "victory",
+    "depth_declined_season": null
+  },
+  "sylvana_mirror_repair": 0,
+  "sylvana_mirror_fixed": false,
+  "sylvana_recruited": false,
+  "sylvana_mirror_obtained": true,
+  "long_day_stacks": 0,
+  "_authors_pen_hp_snapshot": {
+    "0": 172,
+    "1907036657856": {
+      "name": "Dorothy",
+      "hp": 338
+    },
+    "1907036653184": {
+      "name": "Alice",
+      "hp": 339
+    },
+    "1907038936768": {
+      "name": "Ninetales Fox",
+      "hp": 193
+    }
+  },
+  "_gloves_cac_state": {
+    "rolled": false,
+    "mult": 1.0
+  },
+  "wedding_first_attack_done": true,
+  "gloves_first_strike_active": false,
+  "gloves_workshop_used": [
+    8,
+    2
+  ],
+  "gloves_furioso_available": false
 }

@@ -1257,7 +1257,10 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
     action = c_input(f"  ({display_name(ally)}) Choose action: ").strip().lower()
     while action not in valid_actions:
         c_print(f"  Invalid choice. Available: {', '.join(valid_actions)}")
-        action = c_input("  Choose: ").strip().lower()
+        # Re-prompt WITH the ally's name: a bare "Choose:" is parsed as the
+        # player's turn, so the GUI would redraw the player's menu (and its
+        # ally-only keys like [S] Switch) mid-ally-turn.
+        action = c_input(f"  ({display_name(ally)}) Choose action: ").strip().lower()
 
     # ----- SWITCH (ally swaps with a reserve ally, costs their turn) -----
     if action == "s":
@@ -1637,6 +1640,10 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
         from pandemonium.combat.weapon.captain_cutlass import get_high_tide_attack_bonus, get_rally_attack_bonus
         final_dmg += get_high_tide_attack_bonus(ally, final_dmg)
         final_dmg += get_rally_attack_bonus(ally, final_dmg)
+
+        # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
+        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+        final_dmg = apply_long_day_damage(ally, final_dmg)
         final_dmg = max(0, final_dmg)
 
         # Pandemonium: Weakened Resolve curse — allies deal less damage too
@@ -1801,7 +1808,7 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
             for display_idx, (_, itm) in enumerate(combat_items):
                 qty = itm.get("count", 1)
                 qty_str = f" x{qty}" if qty > 1 else ""
-                c_print(f"  {display_idx+1}. {itm['name']}{qty_str} ({itm['type']})")
+                c_print(f"  {display_idx+1:>2}. {itm['name']}{qty_str} ({itm['type']})")
 
         try:
             choice = int(c_input("  Use which item? (0 to cancel): ")) - 1

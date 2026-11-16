@@ -673,7 +673,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         # duplicated by the enemy cards + target badges.
         if not c_renders_menus():
             for i, e in enumerate(live):
-                c_print(f"    {i+1}. {e['name']} (HP: {e['hp']}/{e['max_hp']})")
+                c_print(f"    {i+1:>2}. {e['name']} (HP: {e['hp']}/{e['max_hp']})")
         try:
             choice = int(c_input("  Select target number: ")) - 1
             if 0 <= choice < len(live):
@@ -699,7 +699,7 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 hp = m.get("current_hp", 0)
                 max_hp = player_max_hp(m) if m is player else m.get("max_hp", 1)
                 status = " [FALLEN]" if m.get("current_hp", 1) <= 0 else ""
-                c_print(f"    {i+1}. {name} ({hp}/{max_hp}){status}")
+                c_print(f"    {i+1:>2}. {name} ({hp}/{max_hp}){status}")
         try:
             choice = int(c_input("  Choice: ")) - 1
             if 0 <= choice < len(party):
@@ -807,6 +807,9 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         # Father's Legacy (Orc child): +7.5% damage below 50% HP
         from pandemonium.progression.family import father_legacy_damage_mult
         dmg = int(dmg * father_legacy_damage_mult(ally))
+        # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
+        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+        dmg = apply_long_day_damage(ally, dmg)
         return dmg, did_crit
 
     # ── Determine Target ──

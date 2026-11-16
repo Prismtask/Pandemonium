@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dungeon Screen — Layout Reference</title>
+<style>
+  /* Colors mirror pandemonium/gui/theme.py (Theme.BG_DARK, BG_MID, BORDER, ACCENT, TEXT, TEXT_DIM) */
+  :root{
+    --bg-dark:#1a1a2e;
+    --bg-mid:#16213e;
+    --bg-light:#0f3460;
+    --bg-card:#1e1e3f;
+    --accent:#e94560;
+    --text:#eaeaea;
+    --text-dim:#a0a0a0;
+    --border:#2d3436;
+    --font:"Consolas", "Menlo", "DejaVu Sans Mono", monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  body{
+    background:#0e0e17;
+    color:var(--text);
+    font-family:var(--font);
+    font-size:13px;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-height:100vh;
+  }
+
+  /* ── The emulated game window ─────────────────────────────────────────── */
+  .window{
+    background:var(--bg-dark);
+    border:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    height:calc(100vh - 90px);
+    min-height:660px;
+    overflow:hidden;
+  }
+
+  /* ── Region label chips (annotation only — not part of the real UI) ───── */
+  .tag{
+    display:inline-block;
+    font-size:10px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--bg-dark);
+    background:var(--accent);
+    padding:1px 6px;
+    border-radius:2px;
+    margin-bottom:6px;
+    white-space:nowrap;
+  }
+  .tag.quiet{
+    background:transparent;
+    color:var(--accent);
+    border:1px solid var(--accent);
+  }
+
+  /* ── 1. Top bar ───────────────────────────────────────────────────────── */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background:var(--bg-mid);
+    border-bottom:1px solid var(--border);
+    padding:6px 12px;
+    flex:0 0 auto;
+  }
+  .topbar-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:.04em;
+  }
+  .topbar-title strong{color:var(--text);font-weight:bold}
+  .topbar-gear{
+    color:var(--text-dim);
+    font-size:14px;
+    border:1px solid var(--border);
+    background:var(--bg-dark);
+    padding:1px 7px;
+    line-height:1.4;
+  }
+
+  /* ── 2. Header block ──────────────────────────────────────────────────── */
+  .header{
+    text-align:center;
+    padding:10px 10px 0;
+    flex:0 0 auto;
+  }
+  .header .dungeon-name{
+    font-size:16px;
+    font-weight:bold;
+    letter-spacing:.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+  }
+  .header .subtitle{
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+  .header .craft-hint{
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:2px;
+  }
+
+  /* ── 3. Main two-column area ──────────────────────────────────────────── */
+  .main{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    grid-template-columns:minmax(240px, 1fr) 3fr;
+    gap:5px;
+    padding:10px;
+  }
+
+  .left-col{
+    display:grid;
+    grid-template-rows:2fr 3fr;   /* Map smaller, Party Status bigger */
+    gap:6px;
+    min-height:0;
+  }
+
+  /* tkinter LabelFrame look */
+  fieldset.panel{
+    border:1px solid var(--border);
+    padding:6px;
+    min-height:0;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg-dark);
+  }
+  fieldset.panel > legend{
+    font-size:12px;
+    font-weight:bold;
+    color:var(--text);
+    padding:0 5px;
+    white-space:nowrap;
+  }
+  fieldset.panel.party > legend{color:var(--accent)}
+  fieldset.panel.choices{border-style:solid}
+
+  .panel-body{
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    gap:4px;
+  }
+
+  /* Empty slot = where real content renders. Dashed so it reads as a placeholder. */
+  .slot{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:auto;
+    border:1px dashed #33334d;
+    padding:10px 12px;
+    color:var(--text-dim);
+    font-size:11.5px;
+    line-height:1.6;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    gap:8px;
+  }
+  .slot .what{
+    color:var(--text);
+    font-size:11.5px;
+    font-weight:bold;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .slot ul{margin:0;padding-left:16px}
+  .slot li{margin:1px 0}
+
+  /* Narrow left column: tighten annotation text so it stays inside the box */
+  .left-col .slot{font-size:11px;line-height:1.5;padding:8px 10px}
+  .left-col .slot .what{font-size:10.5px}
+
+  /* Scrollbar gutter mimic */
+  .gutter{
+    flex:0 0 14px;
+    background:var(--bg-mid);
+    border:1px solid var(--border);
+    display:flex;
+    justify-content:center;
+    padding:2px 0;
+  }
+  .gutter::before{
+    content:"";
+    width:6px;
+    height:34%;
+    background:#3c3c58;
+    border-radius:3px;
+  }
+
+  /* ── 4. Choice / command area ─────────────────────────────────────────── */
+  .bottom{
+    flex:0 0 auto;
+    padding:0 10px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .prompt-line{
+    color:var(--accent);
+    font-weight:bold;
+    font-size:12px;
+    letter-spacing:.02em;
+  }
+
+  .choice-row{
+    display:flex;
+    gap:4px;
+    min-height:0;
+  }
+  .choice-list{
+    flex:1 1 auto;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    max-height:150px;
+    overflow:auto;
+    padding:2px;
+    border:1px dashed #33334d;
+  }
+  /* One button-shaped placeholder — repeated per menu option at runtime */
+  .choice-btn{
+    background:var(--bg-mid);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    text-align:left;
+    padding:7px 10px;
+    font-family:var(--font);
+    font-size:12px;
+  }
+
+  .hint{
+    font-size:10.5px;
+    color:#6d6d85;
+    letter-spacing:.03em;
+  }
+
+  /* Alternate text-command input row */
+  .input-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .input-label{
+    flex:0 0 auto;
+    min-width:110px;
+    color:var(--accent);
+    font-weight:bold;
+    font-size:11.5px;
+  }
+  .input-field{
+    flex:1 1 auto;
+    background:var(--bg-mid);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    padding:6px 8px;
+    font-family:var(--font);
+    font-size:12px;
+  }
+  .btn{
+    background:var(--bg-mid);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--font);
+    font-size:12px;
+    padding:6px 14px;
+  }
+  .btn.accent{border-color:var(--accent);color:var(--accent)}
+
+  /* ── 5. Action bar (bottom-left) ──────────────────────────────────────── */
+  .actionbar{
+    flex:0 0 auto;
+    padding:0 10px 10px;
+  }
+
+  /* ── Page note ────────────────────────────────────────────────────────── */
+  .note{
+    font-size:11px;
+    color:#6d6d85;
+    line-height:1.6;
+  }
+  .note b{color:#9a9ab5}
+</style>
+</head>
+<body>
+
+<div class="window">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       1. TOP BAR  (shared ShellManager widget — the only element outside the
+          dungeon screen's own frame; refreshed by _update_top_bar)
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="topbar">
+    <div class="topbar-title">
+      <span class="tag">Top bar</span>
+      <strong>[ dungeon name — floor / room ]</strong>
+      <span>· live location line, updates on descent, resume and clock tick</span>
+    </div>
+    <div class="topbar-gear" title="Settings">⚙</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       2. HEADER  (header_frame + _subtitle_label in dungeon_screen.py)
+       ══════════════════════════════════════════════════════════════════════ -->
+  <header class="header">
+    <div class="dungeon-name">[ Header — dungeon name, uppercase ]</div>
+    <div class="subtitle">[ Header — subtitle: "{Region} Region · Floor {n}"  /  "Boss Rush {felled}/{total}"  /  "Room {n} · ◎ {motes} Motes" ]</div>
+    <div class="craft-hint">[ Header — regional craft hint: "Local crafts favour &lt;forms&gt;" (hidden during Event Horizon runs) ]</div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       3. MAIN GRID  container row 0 — columns 1 : 3
+       ══════════════════════════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- Left column: Map (top, 2fr) over Party Status (bottom, 3fr) -->
+    <div class="left-col">
+
+      <!-- 3a. MAP PANEL — relabled "Rift" during Event Horizon runs -->
+      <fieldset class="panel">
+        <legend>Map</legend>
+        <div class="panel-body">
+          <div class="slot">
+            <div class="what">Map panel</div>
+            <ul>
+              <li>Read-only ASCII map of explored rooms</li>
+              <li>Current room highlighted</li>
+              <li>Title becomes "Rift" in Event Horizon runs</li>
+            </ul>
+          </div>
+          <div class="gutter"></div>
+        </div>
+      </fieldset>
+
+      <!-- 3b. PARTY STATUS PANEL (accent title) -->
+      <fieldset class="panel party">
+        <legend>Party Status</legend>
+        <div class="panel-body">
+          <div class="slot">
+            <div class="what">Party status panel</div>
+            <ul>
+              <li>One card per member</li>
+              <li>Name, level, HP bar, MP, statuses</li>
+              <li>Fallen / defending / buff flags</li>
+              <li>Scrollable, grows with party</li>
+            </ul>
+          </div>
+          <div class="gutter"></div>
+        </div>
+      </fieldset>
+
+    </div>
+
+    <!-- 3c. DUNGEON LOG PANEL (right, 3x width) -->
+    <fieldset class="panel">
+      <legend>Dungeon Log</legend>
+      <div class="panel-body">
+        <div class="slot">
+          <div class="what">Dungeon log panel</div>
+          <ul>
+            <li>Word-wrapped scrolling narrative output for the whole run</li>
+            <li>Room text, event cards, choices, combat lines and their results</li>
+            <li>Persisted to <em>player["_dungeon_log"]</em> (last 500 lines), restored on re-entry</li>
+            <li>Colour-coded lines (accent headers, dim metadata, heroine reactions)</li>
+            <li>Auto-scrolls to newest line</li>
+          </ul>
+        </div>
+        <div class="gutter"></div>
+      </div>
+    </fieldset>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       4. CHOICE AREA  container row 1 — spans both columns
+          (_button_frame: the default mode for rooms / events / menus)
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="bottom">
+
+    <div class="prompt-line">[ Prompt label — e.g. "Choose an option:" ]</div>
+
+    <div class="choice-row">
+      <div class="choice-list">
+        <button class="choice-btn" type="button">[ Choice button — one per menu option; disabled once picked ]</button>
+        <button class="choice-btn" type="button">[ Choice button — long labels wrap, list scrolls ]</button>
+        <div class="hint">↑ scrollable button list — replaces the text input while a menu is open</div>
+      </div>
+      <div class="gutter"></div>
+    </div>
+
+    <div class="hint">[ Optional Cancel button row — only shown for cancellable prompts (e.g. targeting) ]</div>
+
+    <!-- Alternate mode: free-text command input, shown instead of the button list -->
+    <div class="input-row">
+      <div class="input-label">[ Prompt label ]</div>
+      <div class="input-field">[ Text input — free-form commands / numbers, Enter submits ]</div>
+      <button class="btn" type="button">Continue</button>
+    </div>
+    <div class="hint">↑ alternate input row (<em>input_frame</em>) — used when a prompt wants typed text instead of buttons</div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       5. ACTION BAR  container row 2
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="actionbar">
+    <button class="btn accent" type="button">+  Flee to City</button>
+  </div>
+
+</div>
+
+<p class="note">
+  <b>Layout reference only — every panel is intentionally empty.</b>
+  Boxes show where runtime content is drawn; the text inside them describes what belongs there.
+  Proportions follow <em>pandemonium/gui/screens/dungeon_screen.py</em>: main grid 1 : 3 (left column : log),
+  left column 2 : 3 (map : party status), then prompt + choice list, then the action bar.
+</p>
+
+</body>
+</html>

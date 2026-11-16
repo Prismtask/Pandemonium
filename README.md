@@ -25,6 +25,7 @@ You start as a fresh adventurer in the city of **Solmere** and gradually unlock 
 - [Superboss System](#superboss-system)
 - [Pandemonium Dungeon (Endgame)](#pandemonium-dungeon-endgame)
 - [Event Horizon (Endless Rift)](#event-horizon-endless-rift)
+- [Seasonal Map Boss (Wardens of the Long Day)](#seasonal-map-boss--the-wardens-of-the-long-day)
 - [Wonderland System](#wonderland-system)
 - [Combat System](#combat-system)
 - [Unique Equipment](#unique-equipment)
@@ -69,7 +70,7 @@ You begin in **Solmere**, the central hub city. The city menu lists all availabl
 1. **Open your Inventory** (`[V]iew Stats / Inventory`) — check your starting weapon and armor. Equip anything that isn't already equipped.
 2. **Visit the Shop** — spend your starting gold on **3–5 Healing Potions** and optionally a capture net. Don't blow all your gold on equipment yet; dungeon drops will outclass shop gear quickly.
 3. **Visit the Guild** (optional) — grab a bounty if one is available. Bounties give bonus gold for killing specific enemies in that city's dungeon.
-4. **Check the Skill Book** — see what skills your class unlocks at Levels 3, 5, 8, 10, 12, and 15, then a second wave at 20, 26, and 32, and a capstone at 40 — so you know what to look forward to.
+4. **Open Inventory → Skills** — see what skills your class unlocks at Levels 3, 5, 8, 10, 12, and 15, then a second wave at 20, 26, and 32, and a capstone at 40 — so you know what to look forward to.
 
 ### Step 3 — Enter the Dungeon
 
@@ -219,7 +220,7 @@ Each city offers a subset of the following services:
 | **Arcane Tower** | Magical services: identify items, arcane training. In Veilholt, also the gateway to **Wonderland**. |
 | **Black Market** | Rare and dangerous goods. Sells items not found in normal shops. Higher prices, unique stock; prices scale with your progress. |
 | **Gift Shop** | Buy affection gifts and **engagement rings** (Ruby, Sapphire, Emerald, Topaz, Amethyst, Diamond) for monster girls. |
-| **Skill Book** | View and manage your unlocked class skills and their mastery levels. |
+| **Inventory → Skills** | View every class skill's full description, mastery bonuses, and cooldown — and tick which skills enter combat in the Battle Loadout. |
 | **Your House** | *(Only if you own one)* Manage storage, collect passive income, rest with bed buffs, and house monster girls. |
 | **View Stats / Inventory** | Inspect your character, allies, equipment, and manage items. |
 | **Travel** | Journey to connected cities by land. |
@@ -470,6 +471,87 @@ A consumable trophy: give one to a **single actor** (your character or one ally)
 
 ---
 
+## Seasonal Map Boss — The Wardens of the Long Day
+
+Clear **Floor 20** once and the calendar itself becomes an opponent. One **Warden** appears on the world map each **season** (90 days), and every time it dies a **stronger Echo** of the same Warden reforms on the same spot. It is the one enemy in Pandemonium that grows with the date instead of growing with you.
+
+### How it works
+- **Unlock** — clear Floor 20 (`max_floor > 20`, the same gate as the Event Horizon). The current season's Warden appears at **Echo 0** and announces itself in your **Journal** (`[MAP BOSS] A Warden Notices`).
+- **Travel** — the marker sits off-road; travel follows the same route, cargo and ferry rules as a wild ruin. Arriving offers **start at proven depth**: begin at the highest Echo you have *ever beaten* (only ever upward — a cleared Echo is never re-fought and never re-healed).
+- **One arena, no floors** — a single encounter, no trash, no floor-clear windows. **Fleeing is always allowed**, even at 1% HP, and keeps the current Echo's HP. **Dying** keeps it too (gold penalty only). **Only a kill** advances the ladder.
+- **Echo loop** — a kill reforms the next Echo **immediately, at full HP**, at the same site: +20 levels (to 80), more HP, one more mechanic effect and rising resistances.
+- **Season rotation** — on days **1 / 91 / 181 / 271** the Warden is replaced by the **next season's** Warden at Echo 0: a new name, glyph, element, weakness, mechanic and site.
+- **Time** — every combat round costs **one block (one hour)**. The arena clock is *projected* during the fight and committed once when you leave, so days, seasons and daily events roll over cleanly afterwards instead of mid-battle.
+- **Not a superboss** — no `defeated_superbosses` entry, no superboss pool, no awakening shards, no bounty, quest or title progress, and no Pandemonium multiplier. Its loot is its own.
+
+### The four Wardens
+
+| Season | Warden | Deals | Weak to | Mechanic | Adds | Preferred site |
+|---|---|---|---|---|---|---|
+| 🌱 Spring | **Warden of the First Bloom** | Earth | Fire | **Bloom** | Bloomling | Forest / Temperate |
+| 🔥 Summer | **Warden of the Long Noon** | Fire | Water | **Heat** | Cinderling | Desert / Volcanic / Savanna |
+| 🍂 Autumn | **Warden of the Falling Crown** | Wind | Thunder | **Harvest** | Huskling | Savanna / Forest / Temperate |
+| ❄ Winter | **Warden of the Last Light** | Water | Fire | **Frostbite** | Frostling | Tundra / Mountain |
+
+The **weakness never scales** (always ×0.70 damage taken): a water party hits Summer hard at every Echo. Every other resistance climbs with the Echo and stops at a cap.
+
+### The four mechanics
+Each Warden runs a ten-effect ladder — **Echo N unlocks effect N+1**, so every kill hands you a visibly new problem. Past Echo 10 the ladder is complete and the numbers keep scaling.
+
+- **Bloom (Spring)** — Bloom stacks buff the Warden (+damage, +armor); at the cap it consumes them to heal and, from Echo 2, to **Poison** you. Later tiers poison the whole party, summon Bloomlings and finally turn the cap-heal into an AoE Overbloom.
+- **Heat (Summer)** — Heat stacks raise damage and initiative; at the cap the Warden vents them as **Solar Flare**, AoE fire that later ignores armour and eventually fires **twice** (Second Sun). From Echo 2 its attacks **Burn**.
+- **Harvest (Autumn)** — attacks apply **Bleed**, and each bleeding hero who acts feeds the Warden. At cap it spends the stacks on **Reap** (heavy single-target, lifesteal) — and the final tier turns Reap into a party-wide **Final Harvest**.
+- **Frostbite (Winter)** — Frostbite is applied to a random hero every round (−DEX, water damage); three stacks **Freeze**. It also builds **Ice Armor**: fire damage strips a layer, so a fire party is doing two jobs at once (and later **Shatter** punishes the hero who melts a layer).
+
+### The arena clock
+Every round = 1 block, and the Warden's behaviour follows the projected hour:
+
+| Phase | Blocks | Behaviour |
+|---|---|---|
+| ☀ **Morning** | 0–7 | **Dormant** — reduced damage, no extra actions |
+| 🌤 **Noon** | 8–15 | **Stirs** — ×1.10 damage, and **2 adds** join the fight |
+| 🌙 **Night** | 16–23 | **Rampages** — ×1.30 damage, **2 actions per round**, **4 adds** |
+| 🌅 **Dawn** | rolling to 0 | **Dawn Lull** — ×0.85 damage and −20% armour for 2 rounds, adds cleared |
+
+Standard enemy rules apply: two accessory slots per actor, elemental weakness is worth more than raw stats, and the unique trophies below work for **allies** as well as your character.
+
+### Echo curve
+
+| Echo | Level | HP | STR | Armour | Mechanic | Gold | XP (per hero) |
+|---|---|---|---|---|---|---|---|
+| 0 | 20 | 1,000 | 30 | 12 | 1 effect | 400 | 600 |
+| 1 | 40 | 2,424 | 49 | 15 | 2 effects | 1,000 | 1,550 |
+| 2 | 60 | 4,107 | 70 | 19 | 3 effects | 1,600 | 2,500 |
+| 3 | 80 | 6,063 | 92 | 22 | 4 effects | 2,200 | 3,450 |
+| 5 | 80 | 7,130 | 97 | 23 | 6 effects | 2,400 | 3,750 |
+| 10 | 80 | 10,120 | 109 | 26 | 10 effects (max) | 2,900 | 4,500 |
+| 20 | 80 | 17,480 | 134 | 31 | ranks only | 3,900 | 6,000 |
+
+Levels stop at 80; HP, damage, armour and mechanic rank keep climbing, so deep Echoes are a pure endurance test.
+
+### Loot — every kill
+- **Gold** — `400 + 25 × (level − 20) + 100 × Echo`, plus your daily gold bonus and title gold-find. **+25% if the killing blow lands at Night.**
+- **XP** — `600 + 40 × (level − 20) + 150 × Echo` to you **and every living ally**.
+- **Warden's Cache** — one piece of equipment at the Warden's level, themed to the arena biome. Rare or better; the epic chance climbs +10% per Echo (always epic from Echo 9) and from **Echo 10** there is a **30% legendary** chance.
+- **Two consumables** — tier 3 at Echo 0–1, tier 4 from Echo 2, element-themed first.
+- **One flower** of the Warden's element — **two on a Night kill**.
+
+Fleeing, dying, an interrupted fight or a season expiring all grant **nothing**: no partial loot, and the Echo's HP simply stays where it was.
+
+### The four trophies
+Cumulative victories across **all** seasons unlock these once each — they are never duplicated:
+
+| Victories | Trophy | Slot | Effect |
+|---:|---|---|---|
+| 1 | **Warden's Signet** | Accessory | **Long Day** — +8% damage at Noon, +16% at Night, nothing in the Morning |
+| 3 | **Long Day's Edge** | Weapon (sword) | **Hour by Hour** — +3% damage per combat round, up to +30%; resets when the phase turns to Morning |
+| 6 | **Echo Mantle** | Armor | −12% damage taken, **−20% at Night** |
+| 10 | **Sundial Crown** | Accessory | **Rewind** — once per day, survive a killing blow at 1 HP with every debuff cleared |
+
+Own all four and the unique slot pays out a **second Warden's Cache** on every later kill. The Signet, Edge and Crown work on any actor — hand them to an ally and the bonus follows the wearer, reading the same clock the Warden does.
+
+---
+
 ## Wonderland System
 
 Hidden beyond the veil of reality, **Wonderland** is a secret hidden city and the game's most ambitious dungeon — a 50-floor storybook nightmare with its own superboss cadence, whimsical quirks, and a six-phase final boss.
@@ -535,26 +617,22 @@ Skills are the core of combat progression. Every class has its own skill tree, a
 
 - **Class skills** unlock automatically at specific levels — 3, 5, 8, 10, 12, 15, then a **second wave** at 20, 26, and 32, and a **capstone ultimate** at 40.
 - Each class has **10 active skills** and **1 passive skill** — plus **3 exclusive skills** and an **upgraded passive** from your chosen profession. Passives are always active once unlocked.
-- The **Battle Loadout** limits you to **9 equipped skills** in combat — unlocked skills you leave out stay visible in the Skill Book and keep their mastery. Manage the loadout from the Skill Book ("Manage Battle Loadout").
+- The **Battle Loadout** limits you to **9 equipped skills** in combat — unlocked skills you leave out stay visible in the Inventory's Skills tab and keep their mastery. Click a skill's ✓/– box in **Inventory → Skills** to manage the loadout.
 - After your **capstone** at Level 40, choose one of two **professions** at any Guild — a **permanent** choice that upgrades your class passive, grants a **signature skill** immediately, and unlocks two more skills at Levels 50 and 60. The other branch is locked out for that save.
 - Skills have **cooldowns** measured in combat rounds. After using a skill, you must wait the listed number of rounds before using it again. Cooldowns tick down by 1 at the end of each round.
 - Skills scale with your **primary attribute + Learning**, making them stronger than basic attacks as you invest in those stats.
 - **Silence** status prevents all skill usage — keep an eye out for enemies that can silence you.
 
-### Skill Book
+### Skills Tab & Battle Loadout
 
-Accessible from any city menu, the **Skill Book** shows:
+Open **Inventory → Skills** to see:
 
 - Your **class passive** — always active, no input needed.
-- Every **active skill** in your class tree, sorted by tier:
-  - **Tier 1 (Level 3–8):** Your first 3 skills.
-  - **Tier 2 (Level 10–15):** Your advanced 3 skills.
-  - **Tier 3 (Level 20–32):** Your second-wave skills, unlocked after the first ascensions.
-  - **Tier 4 (Level 40):** Your class capstone ultimate.
-- Your **Battle Loadout** — which skills are equipped (up to 9) — shown at the top.
-- Each skill's **unlock level**, **cooldown**, and description.
+- Every **active skill** in your class tree, sorted by unlock level, with its full description, cooldown, elemental profile, and mastery bonuses.
+- Your **Battle Loadout** — a ✓/– check beside each unlocked skill. Clicked checks equip/unequip the skill (up to 9) for combat.
 - Locked skills show `[LOCKED]`; skills on cooldown show `[CD: N]`.
-- **Ally skills** — every recruited monster girl's passive, innate skills, and learnable skills are also displayed.
+- The **profession branch you gave up** is listed as locked so you can see what the other path offered.
+- **Ally skills** live on each ally's page in the **Allies** tab — passive, innate, upgrade, and learned skills each show their description, cooldown, and target.
 
 ### Skill Mastery
 
@@ -566,7 +644,7 @@ Every time you use a skill in combat, its **mastery** increases by 1. Mastery pr
 | ★★ (Lv.2) | 40 | Power increase + cooldown reduction (-1 turn) |
 | ★★★ (Lv.3) | 100 | Maximum power + unique bonus effect |
 
-Mastery progress and bonuses are displayed in the Skill Book. The more you use a skill, the deadlier it becomes.
+Mastery progress and bonuses are displayed in the Inventory's **Skills** tab. The more you use a skill, the deadlier it becomes.
 
 ### Ally Learnable Skills
 
@@ -585,7 +663,7 @@ Allies can study **learnable skills** from three categories:
 
 - Your available skills appear as numbered options `[1]` through `[9]` in the action menu.
 - Skills on cooldown are hidden from the menu until they recharge.
-- The Skill Book cannot be opened during combat — plan your loadout before entering the dungeon.
+- The Inventory cannot be opened during combat — plan your loadout before entering the dungeon.
 
 ---
 
@@ -753,7 +831,7 @@ Every **5 points** in a base attribute grants a permanent passive bonus. These a
 ### Ally Skills
 - **Race Passive**: Each ally inherits a passive skill based on their monster girl race — every race's full kit (dodge, regeneration, elemental affinity, immunities, and more) is live in combat.
 - **2 Innate Skills**: Every monster girl has two unique innate combat skills.
-- **Late-Bloomer Growth**: Girls captured at a low base gain bonus attributes as they level in your party — a fully-raised Goblin Girl ends even with a Lich Queen in raw stats. Her Growth band (High / Medium / Low) is shown in the House Lounge and Skill Book.
+- **Late-Bloomer Growth**: Girls captured at a low base gain bonus attributes as they level in your party — a fully-raised Goblin Girl ends even with a Lich Queen in raw stats. Her Growth band (High / Medium / Low) is shown in the House Lounge and on her Inventory ally page.
 - **Awakening**: Twelve girls can be Awakened at the House Lounge (Lv 40 · cap 40 · affection **200** · 1 Awakening Sigil) — both innate skills upgraded, a new name, and a one-time scene. Sigils are scarce: 5 per save (first superboss, Mary Sue, or forged at the Arcane Tower from 4 Sigil Shards + 25,000g).
 - **Learnable Skills**: Allies can learn additional skills from three categories — Offensive, Defensive, and Support. One skill can be studied at a time; learning progresses via combat EXP.
 - **Skill Mastery**: As allies use their skills, their mastery improves, increasing effectiveness.
@@ -1027,7 +1105,7 @@ Each race also has a unique passive skill (separate from class passives) that un
 - **Tiefling**: Infernal Legacy — +15% fire & dark damage
 - **Dragonborn**: Draconic Ancestry — +10% all elemental damage
 
-> See the [Skill System](#skill-system) section above for a full breakdown of skills, mastery, cooldowns, the Skill Book, and ally learnable skills.
+> See the [Skill System](#skill-system) section above for a full breakdown of skills, mastery, cooldowns, the Skills tab, and ally learnable skills.
 
 ### Equipment & Items
 - **Rarity tiers**: Common → Uncommon → Rare → Epic → Legendary (5 tiers)
@@ -1182,7 +1260,7 @@ You lose **20% of your gold** (minimum 10g) and wake up in your last visited cit
 
 ### "My skill won't activate — it's greyed out!"
 Check for:
-- **Cooldown** — skills need N rounds to recharge after use. The Skill Book shows current cooldowns.
+- **Cooldown** — skills need N rounds to recharge after use. The Inventory's **Skills** tab shows current cooldowns.
 - **Silence** status — you cannot use any skills while Silenced.
 - **Level requirement** — you may have previewed a skill not yet unlocked for your level.
 
@@ -1203,6 +1281,9 @@ Superbosses are drawn from a shuffled pool of 8 — you'll face each one eventua
 
 ### "How do I unlock the Pandemonium dungeon?"
 Clear **Floor 40** in dungeons across at least **4 unique biomes** (e.g., Temperate, Swamp, Desert, Mountain). Once unlocked, travel to the **Isle of Glass** and enter Pandemonium from there.
+
+### "Where is the seasonal map boss?"
+The **Warden** appears once you have **cleared Floor 20**. Look for the seasonal marker on the world map (🌱 Spring, 🔥 Summer, 🍂 Autumn, ❄ Winter) — it sits off-road, so travel to it like a wild ruin. It changes season every **90 days**, and every kill reforms a stronger **Echo** on the same spot. See [Seasonal Map Boss](#seasonal-map-boss--the-wardens-of-the-long-day).
 
 ### "How do I find Wonderland?"
 Clear **Floor 20 in two different biomes**, buy a **Looking Glass Shard** from Veilholt's Black Market (5,000g), then visit the **Arcane Tower in Veilholt** and choose **"Investigate mysterious book."** The Journal side quest **The Looking-Glass Road** tracks these steps. Wonderland is a hidden city with its own 50-floor dungeon, unique superbosses, heroine quests, and the game's hardest boss — Mary Sue. See the [Wonderland System](#wonderland-system) section.

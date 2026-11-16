@@ -794,7 +794,11 @@ def try_consume_death_ward(actor):
         from pandemonium.world.event_horizon import try_emperor_save
     except Exception:
         return False
-    return try_emperor_save(actor)
+    if try_emperor_save(actor):
+        return True
+    # Seasonal map boss — Sundial Crown: hold at 1 HP once per day.
+    from pandemonium.combat.weapon.map_boss_uniques import try_sundial_crown_save
+    return try_sundial_crown_save(actor)
 
 
 # ---------------------------------------------------------------------------

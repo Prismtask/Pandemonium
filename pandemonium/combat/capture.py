@@ -292,14 +292,14 @@ def store_captured_girl(player, mg):
         slaver = int(round(standard * 1.6))
         karma_on = karma.is_enabled(player)
         if karma_on:
-            c_print(f"1. Sell her to a licensed broker — {standard} gold")
-            c_print(f"2. Sell her to a slaver — {slaver} gold (-5 Karma)")
-            c_print(f"3. Release her back to the wild (+1 Karma)")
-            c_print(f"4. Let her bond with your existing {existing.get('name', 'girl')} (+20 affection)")
+            c_print(f"  1. Sell her to a licensed broker — {standard} gold")
+            c_print(f"  2. Sell her to a slaver — {slaver} gold (-5 Karma)")
+            c_print(f"  3. Release her back to the wild (+1 Karma)")
+            c_print(f"  4. Let her bond with your existing {existing.get('name', 'girl')} (+20 affection)")
         else:
-            c_print(f"1. Sell her to a licensed broker — {standard} gold")
-            c_print(f"2. Release her back to the wild")
-            c_print(f"3. Let her bond with your existing {existing.get('name', 'girl')} (+20 affection)")
+            c_print(f"  1. Sell her to a licensed broker — {standard} gold")
+            c_print(f"  2. Release her back to the wild")
+            c_print(f"  3. Let her bond with your existing {existing.get('name', 'girl')} (+20 affection)")
         dup_choice = c_input("CAPTURE_DUPLICATE_CHOICE:").strip()
 
         if karma_on:

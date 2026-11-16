@@ -185,11 +185,11 @@ def main():
           f"{screen.item_listbox.size()} + {screen.item_listbox2.size()}")
     check("left column shows 1., 3., 5.",
           [screen.item_listbox.get(i) for i in range(3)]
-          == ["1. Health Potion x2", "3. Ether x3", "5. Smoke Bomb x5"],
+          == [" 1. Health Potion x2", " 3. Ether x3", " 5. Smoke Bomb x5"],
           str([screen.item_listbox.get(i) for i in range(3)]))
     check("right column shows 2., 4., blank",
           [screen.item_listbox2.get(i) for i in range(3)]
-          == ["2. Antidote", "4. Bomb", ""],
+          == [" 2. Antidote", " 4. Bomb", ""],
           str([screen.item_listbox2.get(i) for i in range(3)]))
 
     # Confirm mapping: right col row 0 = display 2, left col row 2 = display 5.

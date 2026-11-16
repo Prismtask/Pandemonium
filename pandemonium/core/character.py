@@ -538,6 +538,9 @@ def _ensure_time_event_fields(player):
     # Event Horizon (docs/event_horizon_design.md)
     from pandemonium.world.event_horizon import ensure_eh_state
     ensure_eh_state(player)
+    # Seasonal map boss (docs/map_boss_design.md)
+    from pandemonium.world.map_boss import ensure_map_boss_state
+    ensure_map_boss_state(player)
     # Beating Root — per-actor third accessory slot (Phase 5)
     player.setdefault("acc3_unlocked", False)
 

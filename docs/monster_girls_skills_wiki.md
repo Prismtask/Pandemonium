@@ -33,7 +33,7 @@ Covers player class skills, heroine skills, monster-girl innate & awakened skill
 
 ## Player Class Skills
 
-Every class has **1 passive skill** and **10 active skills**: the launch six unlock at levels 3, 5, 8, 10, 12 and 15, the **wave-2 skills** at 20, 26 and 32, and the class **capstone** at 40 — after which you choose a **profession** (see below). In combat your skills appear as numbered options (`1`–`9`) and you bring a **Battle Loadout** of up to 9 — the **Skill Book** in any city menu lists them with cooldowns and mastery.
+Every class has **1 passive skill** and **10 active skills**: the launch six unlock at levels 3, 5, 8, 10, 12 and 15, the **wave-2 skills** at 20, 26 and 32, and the class **capstone** at 40 — after which you choose a **profession** (see below). In combat your skills appear as numbered options (`1`–`9`) and you bring a **Battle Loadout** of up to 9 — the **Inventory → Skills** tab lists them with full descriptions, cooldowns and mastery.
 
 ### Warrior
 

@@ -11,6 +11,15 @@ import tkinter as tk
 
 from pandemonium.gui.theme import Theme
 
+# ── Standard dialog size ──────────────────────────────────────────────────
+# Fixed so the window never jumps around between drops. The width covers the
+# longest possible line at the default font: a 32-char name (e.g. "Legendary
+# Inferno Battle Harness") + slot tag (accessory) + the longest stat line (60
+# chars, Certain Someone Black Gloves) + rarity, with room for padding,
+# scrollbar, and borders. 440px fits the 12-row listbox plus header/buttons.
+DIALOG_WIDTH = 1062
+DIALOG_HEIGHT = 440
+
 
 def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
     """Show the inventory-full dialog and block until the player chooses.
@@ -52,7 +61,46 @@ def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
 
     result = [False]  # True = acquired, False = dropped
 
+    # ── Build the text up front so all rows share aligned columns ──────
+    header_text = (f"⚠️  Your {cat_name.lower()} bag is full! "
+                   f"({cur_count}/{cur_cap})")
+    rarity = item.get("rarity", "common")
+    rarity_color = Theme.RARITY_COLORS.get(rarity, Theme.TEXT)
+
+    item_text = f"New drop: {item['name']}"
+    if is_equip:
+        item_text += f"  {_format_equipment_stat_line(item)}"
+    item_text += f"  [{rarity}]"
+
+    hint_text = "Choose an item to discard, or drop the new item:"
+
+    rows = []
+    for itm in candidates:
+        count_str = (f" (x{itm.get('count', 1)})"
+                     if not is_equip and itm.get('count', 1) > 1 else "")
+        rows.append((
+            f"{itm['name']}{count_str}",
+            f"({itm['slot']})" if is_equip else f"({itm['type']})",
+            _format_equipment_stat_line(itm) if is_equip else "",
+        ))
+    name_w = max((len(r[0]) for r in rows), default=0)
+    tag_w = max((len(r[1]) for r in rows), default=0)
+    stat_w = max((len(r[2]) for r in rows), default=0)
+    row_labels = []
+    for idx, (itm, (name_part, tag_part, stat)) in enumerate(zip(candidates, rows)):
+        label = f"{idx + 1:>2}. {name_part:<{name_w}}  {tag_part:<{tag_w}}"
+        if stat_w:
+            label += f"  {stat:<{stat_w}}"
+        label += f"  [{itm.get('rarity', 'common')}]"
+        row_labels.append(label)
+
     root = screen_manager.root if screen_manager else parent.winfo_toplevel()
+
+    # Fixed standard size; the clamp only guards tiny screens so the dialog
+    # can never open partially off-screen.
+    dw = min(DIALOG_WIDTH, root.winfo_screenwidth() - 40)
+    dh = DIALOG_HEIGHT
+
     dialog = tk.Toplevel(root)
     dialog.title("Inventory Full")
     dialog.transient(root)
@@ -66,27 +114,16 @@ def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
     py = root.winfo_y()
     pw = root.winfo_width()
     ph = root.winfo_height()
-    dw = 520
-    dh = min(500, 120 + len(candidates) * 26)
     dialog.geometry(f"{dw}x{dh}+{px + (pw - dw)//2}+{py + (ph - dh)//2}")
 
     # Header
-    rarity = item.get("rarity", "common")
-    rarity_color = Theme.RARITY_COLORS.get(rarity, Theme.TEXT)
-
     tk.Label(
-        dialog,
-        text=f"⚠️  Your {cat_name.lower()} bag is full! ({cur_count}/{cur_cap})",
+        dialog, text=header_text,
         bg=Theme.BG_DARK, fg=Theme.ACCENT,
         font=Theme.FONT_BOLD,
     ).pack(pady=(12, 4))
 
     # New item info
-    item_text = f"New drop: {item['name']}"
-    if is_equip:
-        item_text += f"  {_format_equipment_stat_line(item)}"
-    item_text += f"  [{rarity}]"
-
     tk.Label(
         dialog, text=item_text,
         bg=Theme.BG_DARK, fg=rarity_color,
@@ -94,7 +131,7 @@ def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
     ).pack(pady=(0, 8))
 
     tk.Label(
-        dialog, text="Choose an item to discard, or drop the new item:",
+        dialog, text=hint_text,
         bg=Theme.BG_DARK, fg=Theme.TEXT_DIM,
         font=Theme.FONT_SMALL,
     ).pack(pady=(0, 4))
@@ -120,17 +157,10 @@ def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
     cand_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     scrollbar.config(command=cand_list.yview)
 
-    for idx, itm in enumerate(candidates):
-        extra = f" ({itm['slot']})" if is_equip else f" ({itm['type']})"
-        count_str = (f" (x{itm.get('count', 1)})"
-                     if not is_equip and itm.get('count', 1) > 1 else "")
-        stat = _format_equipment_stat_line(itm) if is_equip else ""
-        stat_part = f" {stat}" if stat else ""
-        label = (f"{idx + 1}. {itm['name']}{count_str}{extra}{stat_part} "
-                 f"[{itm.get('rarity', 'common')}]")
+    for label in row_labels:
         cand_list.insert(tk.END, label)
 
-    # Buttons
+    # Buttons — both anchored to the bottom right.
     btn_frame = tk.Frame(dialog, bg=Theme.BG_DARK)
     btn_frame.pack(fill=tk.X, padx=12, pady=(4, 12))
 
@@ -151,19 +181,32 @@ def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
         result[0] = False
         dialog.destroy()
 
+    # Packed first so it sits at the far right; the Discard button then
+    # lands to its left, keeping the original left/right order.
     tk.Button(
-        btn_frame, text="Discard Selected & Keep New",
-        command=_discard_selected,
-        bg=Theme.ACCENT, fg=Theme.TEXT_HEADER,
-        font=Theme.FONT_BOLD, width=26,
-    ).pack(side=tk.LEFT, padx=5)
-
-    tk.Button(
-        btn_frame, text=f"Drop {item['name']}",
+        btn_frame, text="Drop Item",
         command=_drop_new,
         bg="#5a3a5a", fg=Theme.BUTTON_FG,
-        font=Theme.FONT_BOLD, width=18,
-    ).pack(side=tk.RIGHT, padx=5)
+        font=Theme.FONT_BOLD, width=12,
+    ).pack(side=tk.RIGHT)
+
+    discard_btn = tk.Button(
+        btn_frame, text="Discard",
+        command=_discard_selected,
+        state=tk.DISABLED,
+        bg=Theme.ACCENT, fg=Theme.TEXT_HEADER,
+        disabledforeground=Theme.TEXT_DIM,
+        font=Theme.FONT_BOLD, width=12,
+    )
+    discard_btn.pack(side=tk.RIGHT, padx=(0, 6))
+
+    # Discard stays disabled until an item is actually selected.
+    def _on_list_select(_event=None):
+        discard_btn.config(
+            state=tk.NORMAL if cand_list.curselection() else tk.DISABLED
+        )
+
+    cand_list.bind("<<ListboxSelect>>", _on_list_select)
 
     # Double-click to discard
     cand_list.bind("<Double-Button-1>", lambda e: _discard_selected())

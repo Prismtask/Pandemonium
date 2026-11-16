@@ -32,7 +32,7 @@ from pandemonium.combat.ally import (
     get_alive_allies, get_active_allies, compute_ally_stats, handle_ally_turn,
     reinforce_fallen_allies,
 )
-from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.combat_io import c_print, c_input, c_clear, c_renders_menus
 from pandemonium.combat.combat_engine import prune_dead, roll_initiative
 from pandemonium.core.utils import display_name
 import random
@@ -92,9 +92,15 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                           player_action_override=None,
                           enemy_turn_hook=None,
                           post_round_hook=None,
-                          party_damage_hook=None):
+                          party_damage_hook=None,
+                          pre_round_hook=None):
     """
     Initiative‑based superboss combat loop with hooks for special mechanics.
+
+    ``pre_round_hook(context, enemies)`` runs once per round after pruning and
+    **before** the round header — the map boss arena uses it to advance its
+    projected clock and phase. It may return ``"dead"`` / ``"victory"`` to
+    end the fight. Existing superbosses pass ``None`` (unchanged behavior).
     """
     def _bestiary_and_boss_kill(target, elist):
         from pandemonium.progression.bestiary import record_defeat
@@ -117,6 +123,12 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
     player.pop("wedding_mirror_locket_used", None)
     clear_captain_cutlass_state(player)
     clear_moonlight_state(player)
+    # Seasonal map boss uniques (Signet / Long Day's Edge / Echo Mantle)
+    from pandemonium.combat.weapon.map_boss_uniques import (
+        begin_map_boss_uniques, clear_map_boss_unique_state,
+    )
+    clear_map_boss_unique_state(player)
+    begin_map_boss_uniques(player)
     # Stun never crosses an encounter boundary (stale save / previous fight).
     clear_stun(player)
 
@@ -207,6 +219,18 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
 
         p_str, p_con, p_dex, p_ler, p_wis, p_cha = compute_player_stats(player)
 
+        # ── Optional pre-round hook (map boss arena clock) ────────────
+        # Runs after pruning and BEFORE the round header so a projected
+        # clock can label the round it belongs to (§7.2).
+        if pre_round_hook:
+            context["round"] = round_num
+            hook_result = pre_round_hook(context, enemies)
+            if hook_result in ("dead", "victory"):
+                return hook_result
+            enemies[:] = prune_dead(enemies, player)
+            if not enemies:
+                return "victory"
+
         c_clear()
 
         # Same header as the standard engine — the GUI's top bar reads floor /
@@ -238,6 +262,12 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         # Prescript Ledger — issue this round's Prescripts and mark the Target
         from pandemonium.combat.weapon.prescript_ledger import issue_prescripts
         issue_prescripts(player, enemies)
+
+        # Warden of the Long Day — Echo Mantle follows the clock each round
+        from pandemonium.combat.weapon.map_boss_uniques import refresh_echo_mantle
+        refresh_echo_mantle(player)
+        for ally in get_alive_allies(player):
+            refresh_echo_mantle(ally)
 
         if custom_hud_hook:
             custom_hud_hook(context, enemies)
@@ -368,7 +398,10 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                                     on_hit_fn(e, live_enemies, player)
                     if result != "retry":
                         break
-                    c_print("[A]ttack  [D]efend  [F]lee  [U]se item")
+                    # Console only: the GUI redraws its own action panel, so
+                    # the legacy key list would just be noise in the log.
+                    if not c_renders_menus():
+                        c_print("[A]ttack  [D]efend  [F]lee  [U]se item")
 
                 if result == "continue":
                     if new_def:
@@ -551,9 +584,11 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         tick_captain_cutlass(player, prefix="")
         tick_moonlight(player, prefix="")
 
-        # Author's Pen: round-end damage tracking + cooldown
-        compute_last_round_damage(player)
-        tick_authors_pen_cooldown(player, prefix="")
+        # Warden uniques: Long Day's Edge stacks
+        from pandemonium.combat.weapon.map_boss_uniques import tick_long_day
+        tick_long_day(player)
+        for ally in get_alive_allies(player):
+            tick_long_day(ally)
 
         # Tick ally weapon specials (Abyss Fang, Captain's Cutlass, Abyssal Tempo)
         from pandemonium.combat.weapon.captain_cutlass import _tick_captain_cutlass_actor

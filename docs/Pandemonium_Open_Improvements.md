@@ -110,7 +110,7 @@
 | Medium | **Naval encounters expansion** | Ships already exist and pirates are travel events — expand into sea-monster/pirate battles and ship upgrades. Blackwake adjacency. |
 | Medium | **Landmarks & discovery** | Discoverable world-map points granting small permanent bonuses. The world-map canvas exists. |
 | Medium | **Seasonal festivals** | Multi-day scheduled festivals with unique shops/enemies/buffs. Builds on the daily event system. |
-| Low | **World event layer** | "A dragon has been spotted near Elderfen" → temporary special dungeon or roaming world boss. |
+| 📝 Design only | **World event layer / Map Boss** | "A dragon has been spotted near Elderfen" → temporary special dungeon or roaming world boss. Design prepared: **The Wardens of the Long Day** — wild-dungeon-style map site unlocked after Floor 20 is cleared; four seasonal Wardens (Spring/Summer/Autumn/Winter) with unique names, elements and mechanics; every death reforms a stronger Echo (+20 levels each) until the season turns; 1 round = 1 time block; flee with HP persistence; full drop/unique table. `docs/map_boss_design.md` (2026-11-13). |
 | 📝 Proposed | **Crime & guards** | Expanded into the Karma system: crimes lower global Karma; low Karma triggers gate fees, guard confrontations, and jail; high Karma lowers prices and taxes. See `docs/karma_system_design.md` (2026-10-29). |
 
 ## 8. Economy & Trade

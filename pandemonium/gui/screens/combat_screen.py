@@ -46,6 +46,15 @@ class GUICombatIO(BaseCombatIO):
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
         self._active = True
+        # Only answer an OPEN prompt: `_prompt_open` is set while the engine
+        # sits in input() and cleared the moment it consumes the answer, so a
+        # click/keypress during another actor's turn (or while the engine is
+        # resolving one) is dropped instead of being eaten by the next prompt.
+        # `_answer_pending` then limits the open prompt to ONE answer, so a
+        # double click cannot leak either. Together they stop the arena's
+        # "override action '<key>' is not available" self-inflicted errors.
+        self._prompt_open = False
+        self._answer_pending = False
         # Presentation pacing (docs/combat_plan_phase_design.md §7): the pacer
         # sleeps on THIS (engine) thread so text, HP bars and flashes stay in
         # lockstep — the HUD poller reads live state.
@@ -69,17 +78,28 @@ class GUICombatIO(BaseCombatIO):
         self.output_queue.put(("OUTPUT", text))
         self.pacer.after_print(text)
 
-    def input(self, prompt=""):
+    def begin_prompt(self, prompt=""):
+        """Open a prompt: from now on the next send_input() is accepted."""
         if not self._active:
             raise _CombatAborted()
         self.pacer.before_input()
+        self._prompt_open = True
         self.output_queue.put(("INPUT_NEEDED", prompt))
+
+    def wait_answer(self):
+        """Block until the GUI answers the open prompt."""
         value = self.input_queue.get()
+        self._prompt_open = False
+        self._answer_pending = False
         if not self._active:
             # Screen was torn down while we were waiting for input.
             raise _CombatAborted()
         self.pacer.mark_input_received()
         return value
+
+    def input(self, prompt=""):
+        self.begin_prompt(prompt)
+        return self.wait_answer()
 
     def clear(self):
         if not self._active:
@@ -87,7 +107,15 @@ class GUICombatIO(BaseCombatIO):
         self.output_queue.put(("CLEAR", None))
 
     def send_input(self, text: str):
-        """Called by GUI thread to provide input."""
+        """Called by GUI thread to provide input.
+
+        Ignored unless a prompt is open, and only one answer is accepted per
+        prompt — so neither a premature keypress (someone else's turn) nor a
+        double click can be consumed by the following prompt.
+        """
+        if not self._prompt_open or self._answer_pending:
+            return
+        self._answer_pending = True
         self.input_queue.put(text)
 
     def stop(self):
@@ -163,6 +191,8 @@ class CombatScreen(BaseScreen):
             self.sm.update_top_bar("Combat | On the Road")
         elif self.combat_context == "training":
             self.sm.update_top_bar("⚔ Sparring | Training Dummy")
+        elif self.combat_context == "map_boss":
+            self.sm.update_top_bar(self._map_boss_top_bar())
         elif self.combat_context == "city_guard":
             self.sm.update_top_bar("⚔ City Gate | Non-lethal Guard Fight")
         else:
@@ -452,6 +482,8 @@ class CombatScreen(BaseScreen):
             top = "Combat | On the Road"
         elif self.combat_context == "training":
             top = "⚔ Sparring | Training Dummy"
+        elif self.combat_context == "map_boss":
+            top = self._map_boss_top_bar()
         else:
             eh_run = bool(self.player and self.player.get("_eh_in_run"))
             if eh_run:
@@ -471,6 +503,31 @@ class CombatScreen(BaseScreen):
                 if qs:
                     top += f" | {qs}"
         self.sm.update_top_bar(top)
+
+    def _map_boss_top_bar(self):
+        """`⚔ Warden of the Long Noon | Summer Echo II | HP 63% | ☀ Morning …`.
+
+        The phase track is the arena's *projected* clock (1 round = 1 block),
+        published by the combat module as ``_combat_time_label``.
+        """
+        from pandemonium.world import map_boss as mb
+        from pandemonium.combat.combat_ui import current_time_label
+        site = mb.get_active_boss(self.player or {}) or {}
+        if not site:
+            return "⚔ The Warden's Arena"
+        try:
+            hp = int(site.get("hp", 0) or 0)
+            max_hp = max(1, int(site.get("max_hp", 1) or 1))
+        except (TypeError, ValueError):
+            hp, max_hp = 1, 1
+        pct = max(0, min(100, int(round(100.0 * hp / max_hp))))
+        top = (f"⚔ {site.get('warden_name', 'The Warden')} | "
+               f"{site.get('season_name', '')} Echo "
+               f"{mb.echo_label(site.get('echo', 0))} | HP {pct}%")
+        track = current_time_label(self.player) if self.player else ""
+        if track:
+            top += f" | {track}"
+        return top
 
     # ── Keyboard bindings ────────────────────────────────────────────────────
 
@@ -572,8 +629,12 @@ class CombatScreen(BaseScreen):
         else:
             return
 
-        # Check if this action is currently available
-        if mapped in self.action_panel._buttons:
+        # Check if this action is currently available — the button must exist
+        # AND be enabled. `disable_all()` runs the moment an answer is sent, so
+        # a shortcut pressed while the engine is resolving (or during someone
+        # else's turn) must be ignored instead of queueing a stray action.
+        button = self.action_panel._buttons.get(mapped)
+        if button is not None and str(button.cget("state")) != "disabled":
             self._on_action_click(mapped)
 
     def handle_escape(self):
@@ -1512,7 +1573,7 @@ class CombatScreen(BaseScreen):
         self._item_entry_count = len(entries)
         for display_idx, (true_idx, item, label) in enumerate(entries):
             box = self.item_listbox if display_idx % 2 == 0 else self.item_listbox2
-            box.insert(tk.END, f"{display_idx + 1}. {label}")
+            box.insert(tk.END, f"{display_idx + 1:>2}. {label}")
             self._item_refs.append((true_idx, item))
         # Odd item count: the right column would otherwise have one fewer
         # row. Its yview range was shorter, so scrolling clamped it while
@@ -1801,7 +1862,7 @@ class CombatScreen(BaseScreen):
     # get swept away by the next actor's damage line. Add new tags here as
     # content appears — the check is an explicit allow-list, not a regex.
     _GIMMICK_TAGS = (
-        "[gimmick]", "[final form]", "[phase 2]", "[phase 3]",
+        "[gimmick]", "[final form]", "[phase 2]", "[phase 3]", "[phase]",
         "[crack fades]", "[core]", "[truth]",
     )
 

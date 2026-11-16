@@ -50,9 +50,9 @@ def _tmenu(options, prompt="Choose an option:", allow_cancel=False, cancel_label
         return t.menu(options, prompt=prompt, allow_cancel=allow_cancel, cancel_label=cancel_label)
     else:
         for i, opt in enumerate(options):
-            print(f"{i+1}. {opt}")
+            print(f"  {i+1:>2}. {opt}")
         if allow_cancel:
-            print(f"0. {cancel_label}")
+            print(f"  {0:>2}. {cancel_label}")
         try:
             choice = input(prompt + " ").strip()
             idx = int(choice) - 1
@@ -146,6 +146,15 @@ def apply_death_penalty(player):
     player.pop("_combat_floor_label", None)
     for key in ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index"):
         player.pop(key, None)
+
+    # Seasonal map boss: transients only — the Warden (and its Echo HP)
+    # survives a death (docs/map_boss_design.md §11).
+    player.pop("_map_boss_site", None)
+    player.pop("_map_boss_in_fight", None)
+    player.pop("_map_boss_prev_floor", None)
+    player.pop("_map_boss_clock_blocks", None)
+    player.pop("_map_boss_victory", None)
+    player.pop("_combat_time_label", None)
 
     # Clear any lingering combat state
     if "abyss_triple_actions" in player:

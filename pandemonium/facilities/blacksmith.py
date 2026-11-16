@@ -387,7 +387,7 @@ def infuse_item(player, dialogues, city_id):
             where_tag = f" (equipped: {display_name(owner) if owner is not player else 'you'})"
         options.append(f"{item['name']}{where_tag} — {_infusion_summary(item)}")
         styles.append(_rarity_style(item))
-        term.print(f"{len(options)}. {options[-1]}")
+        term.print(f"  {len(options):>2}. {options[-1]}")
 
     choice = term.menu(options, prompt="Choose equipment:", allow_cancel=True, styles=styles)
     if choice < 0:
@@ -475,7 +475,7 @@ def strip_element(player, dialogues, city_id):
             where_tag = f" (equipped: {display_name(owner) if owner is not player else 'you'})"
         options.append(f"{item['name']}{where_tag} — {_infusion_summary(item)}")
         styles.append(_rarity_style(item))
-        term.print(f"{len(options)}. {options[-1]}")
+        term.print(f"  {len(options):>2}. {options[-1]}")
 
     choice = term.menu(options, prompt="Choose equipment:", allow_cancel=True, styles=styles)
     if choice < 0:
@@ -491,7 +491,7 @@ def strip_element(player, dialogues, city_id):
     slot_labels = []
     for idx, inf in enumerate(infusions):
         refund = infusion_flowers_invested(item, idx) // STRIP_REFUND_RATIO
-        slot_labels.append(f"{idx + 1}. {inf['element'].title()} — "
+        slot_labels.append(f"{idx + 1:>2}. {inf['element'].title()} — "
                            f"{_infusion_slot_text(item, inf)} "
                            f"({refund} flower{'s' if refund != 1 else ''} back)")
     if len(slot_labels) > 1:

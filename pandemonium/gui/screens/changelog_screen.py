@@ -99,6 +99,92 @@ class ChangelogScreen(BaseScreen):
         # _add_version() block ABOVE this one and update version.py. The
         # newest header here must always match version.py's VERSION_DISPLAY.
         # Checked by tests/_diag_version_consistency.py.
+        self._add_version("v0.1.9.1 — The Family We Choose")
+
+        self._add_section("New Feature — The Wardens of the Long Day")
+        self._add_bullet("A **seasonal world boss** now appears on the world map once you have "
+                         "**cleared Floor 20**. One Warden per season — 🌱 **Warden of the First "
+                         "Bloom**, 🔥 **Warden of the Long Noon**, 🍂 **Warden of the Falling "
+                         "Crown**, ❄ **Warden of the Last Light** — each with its own element, "
+                         "weakness and signature mechanic.")
+        self._add_bullet("Travel to it like a **wild ruin** (off-road, same cargo and ferry rules). "
+                         "The arena is a **single encounter — no floors**. On arrival you may "
+                         "**start at the highest Echo you have ever beaten** instead of re-climbing "
+                         "from Echo 0.")
+        self._add_bullet("**Every round costs one time block (1 hour).** The Warden is **Dormant** "
+                         "in the Morning, **Stirs** at Noon (×1.10 damage, 2 adds) and **Rampages** "
+                         "at Night (×1.30 damage, two actions, 4 adds) — then a **Dawn Lull** "
+                         "clears the arena and softens it for two rounds.")
+        self._add_bullet("**Every kill reforms a stronger Echo** on the same spot: +20 levels (to "
+                         "80), more HP, one more mechanic effect and rising resistances. **Fleeing "
+                         "is always allowed** and keeps the Echo's HP; **death** keeps it too "
+                         "(gold penalty only). Only a kill advances the ladder.")
+        self._add_bullet("Four ten-effect mechanic ladders — **Bloom** (stacks, poison, cap heals), "
+                         "**Heat** (Solar Flare, burns), **Harvest** (bleed, Reap lifesteal) and "
+                         "**Frostbite** (freeze, Ice Armor that fire melts). Echo N unlocks "
+                         "effect N+1, and seasonal adds (**Bloomling / Cinderling / Huskling / "
+                         "Frostling**) join at Noon and Night.")
+        self._add_bullet("At every season boundary (days **1 / 91 / 181 / 271**) the current Warden "
+                         "is replaced by the **next season's** Warden at Echo 0.")
+        self._add_section("The Wardens — Loot & Trophies")
+        self._add_bullet("Every kill pays **gold** (`400 + 25 × (level − 20) + 100 × Echo`, **+25% "
+                         "on a Night kill**), **XP to you and every living ally**, a **Warden's "
+                         "Cache** (rare+, epic chance +10%/Echo, **30% legendary from Echo 10**), "
+                         "**two element-themed consumables** and **one element flower** (two at "
+                         "Night). Fleeing or dying grants nothing.")
+        self._add_bullet("Four **unique trophies** at 1 / 3 / 6 / 10 lifetime victories: **Warden's "
+                         "Signet** (+8% damage at Noon, +16% at Night), **Long Day's Edge** (+3% "
+                         "damage per round, up to +30%, reset at dawn), **Echo Mantle** (−12% "
+                         "damage taken, −20% at Night) and **Sundial Crown** (once a day, survive a "
+                         "killing blow at 1 HP with every debuff cleared).")
+        self._add_bullet("All four trophies work on **any actor**, so an ally can wear one and get "
+                         "the same effect. Once you own all four, further kills pay a **second "
+                         "Warden's Cache** instead of a duplicate.")
+        self._add_bullet("The Wardens and their trophies are **not superboss content**: no "
+                         "superboss record, no pool, no awakening shards, no bounty, quest or title "
+                         "progress. Their beats appear in the Journal under `[MAP BOSS]`.")
+
+        self._add_section("Combat — Stray Input")
+        self._add_bullet("Fixed a **double click / repeated Enter** on the combat controls queueing a "
+                         "second answer that the *next* prompt consumed. In the arena it surfaced as "
+                         "`Internal error: override action '' is not available.` followed by the old "
+                         "`[A]ttack  [D]efend  [F]lee  [U]se item` line in the log.")
+        self._add_bullet("The input bridge now delivers **one answer per prompt** (extra clicks are "
+                         "dropped), a stray or stale key re-opens the action panel with "
+                         "*\"That action is no longer available — choose again.\"*, and the legacy key "
+                         "list is console-only — the GUI draws its own buttons.")
+        self._add_bullet("Clicks and keyboard shortcuts are **ignored unless a prompt is actually "
+                         "waiting for you** — pressing a button while an ally is acting (or while "
+                         "the engine resolves the previous action) no longer queues a keystroke for "
+                         "the next turn. Keyboard shortcuts also respect the greyed-out state.")
+        self._add_bullet("An ally's **invalid-choice re-prompt** now keeps the ally's name, so the "
+                         "action panel can no longer switch to the player's menu mid-ally-turn.")
+
+        self._add_section("Calendar — A 360-Day Year")
+        self._add_bullet("The calendar is now a **twelve-month year** of 30-day months "
+                         "(**360 days**). Dates read `dd/mm` and the month now wraps "
+                         "**1–12** (`13/04 · Summer`) instead of the old four-month reset.")
+        self._add_bullet("Each **season now spans three consecutive months (90 days)** — "
+                         "Spring M1–M3, Summer M4–M6, Autumn M7–M9, Winter M10–M12. The "
+                         "yearly weather mix is unchanged; seasons simply arrive as long "
+                         "stretches instead of a monthly flicker.")
+        self._add_bullet("Monthly bills (the 1st), the day-of-month festivals (New Moon, "
+                         "Full Moon, Month-End) and every weekly cycle (wild ruins, bounty "
+                         "refresh) are untouched — a season is now three of those months.")
+        self._add_bullet("No save migration: the season is derived from the day counter, so "
+                         "old saves keep their exact day.")
+
+        self._add_section("Dungeon — Gold Drops")
+        self._add_bullet("Fixed **enemy gold drops**: kill rewards were rolled and scaled, but the "
+                         "restructure accidentally dropped the step that credited the player's "
+                         "purse, so rooms showed item drops only. Gold is now added and shown as "
+                         "**+N gold** again.")
+
+        self._add_section("Inventory — Ally Personal Information")
+        self._add_bullet("Ally **Overview** pages now show a **Personal Information** box like the "
+                         "player's: the given name (nickname/awakened name), the species name and "
+                         "the race — replacing the player-only Race/Class line.")
+
         self._add_version("v0.1.9.0 — The Family We Choose")
 
         self._add_section("Blacksmith — Element Stripping")

@@ -17,10 +17,15 @@ class DeathScreen(BaseScreen):
     def __init__(self, parent, screen_manager,
                  floor=None, city_id="solmere",
                  on_continue=None, on_quit=None,
-                 death_type="dungeon", **kwargs):
+                 death_type="dungeon",
+                 boss_name=None, boss_season=None, boss_echo=None,
+                 **kwargs):
         self.death_floor = floor
         self.death_city = city_id
         self.death_type = death_type
+        self.death_boss = boss_name
+        self.death_boss_season = boss_season
+        self.death_boss_echo = boss_echo
         self.on_continue = on_continue
         self.on_quit = on_quit
         super().__init__(parent, screen_manager, **kwargs)
@@ -51,6 +56,13 @@ class DeathScreen(BaseScreen):
         elif self.death_type == "event_horizon":
             detail = (f"You were slain in the Event Horizon — "
                       f"room {self.death_floor or '?'}.")
+        elif self.death_type == "map_boss":
+            from pandemonium.world.map_boss import echo_label
+            echo_lbl = echo_label(self.death_boss_echo or 0)
+            season = self.death_boss_season or ""
+            boss = self.death_boss or "the Warden"
+            detail = (f"You were slain by the {boss} — {season} Echo "
+                      f"{echo_lbl}.")
         else:
             detail = f"You were slain on Floor {self.death_floor or '?'} of {city_name}."
         tk.Label(

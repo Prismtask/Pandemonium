@@ -18,6 +18,7 @@ from pandemonium.gui.theme import Theme
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 from pandemonium.gui.screens.city_screen import CityScreen
 from pandemonium.core.utils import strip_ansi, display_name
+from pandemonium.world.map_boss import echo_label as map_boss_echo_label
 
 
 class DungeonScreen(FacilityScreen):
@@ -37,7 +38,8 @@ class DungeonScreen(FacilityScreen):
             from pandemonium.world.dungeon import explore_dungeon
             return explore_dungeon(self.player, combat_override=self._gui_combat,
                                    superboss_override=self._gui_superboss,
-                                   floor_clear_override=self._gui_floor_clear)
+                                   floor_clear_override=self._gui_floor_clear,
+                                   map_boss_override=self._gui_map_boss)
 
         super().__init__(
             parent,
@@ -64,6 +66,7 @@ class DungeonScreen(FacilityScreen):
         region = self.player.get("dungeon_region", "temperate")
         self._wild_dungeon = None
         self._eh_run = False
+        self._map_boss = None
         if self.player.get("_eh_in_run") and (self.player.get("event_horizon") or {}).get("run_active"):
             # Event Horizon: endless rooms (docs/event_horizon_design.md §8)
             import pandemonium.world.event_horizon as eh
@@ -83,6 +86,26 @@ class DungeonScreen(FacilityScreen):
                 subtitle = (f"Space-Time Distortion · Room {floor}"
                             f" · ◎ {motes} Motes")
                 top_line = f"{dungeon_name} — Room {floor} · ◎ {motes}"
+        elif self.player.get("_map_boss_site"):
+            # Seasonal map boss: one arena, no floors (docs/map_boss_design.md)
+            from pandemonium.world import map_boss as mb
+            site = mb.get_active_boss(self.player)
+            self._map_boss = site
+            if site:
+                dungeon_name = site.get("warden_name", "The Warden")
+                region = site.get("biome", region)
+                floor = int(site.get("echo", 0) or 0)
+                max_floor = None
+                echo_lbl = mb.echo_label(floor)
+                subtitle = (f"{site.get('season_name', '')} · Echo {echo_lbl} "
+                            f"· Lv {site.get('level', '?')} "
+                            f"· {site.get('mechanic_name', '')}")
+                top_line = self._map_boss_top_line(site)
+            else:
+                dungeon_name = "The Warden"
+                floor, max_floor = 1, None
+                subtitle = "The arena is empty"
+                top_line = "Warden — the arena is empty"
         elif self.player.get("wild_dungeon_id"):
             from pandemonium.world.wild_dungeons import get_wild_dungeon
             wild = get_wild_dungeon(self.player, self.player["wild_dungeon_id"])
@@ -141,7 +164,7 @@ class DungeonScreen(FacilityScreen):
 
         # Regional craft signature — favoured forms drop 3x as often here.
         craft_hint = ""
-        if not self._eh_run:
+        if not self._eh_run and self._map_boss is None:
             from pandemonium.resources.item_generation import biome_craft_hint
             forms = biome_craft_hint(region)
             if forms:
@@ -161,6 +184,11 @@ class DungeonScreen(FacilityScreen):
         if self._eh_run:
             self.sm.log(f"Entering {dungeon_name} — Room {floor} "
                         f"(The Distortion)", category="info")
+        elif self._map_boss is not None:
+            echo_lbl = map_boss_echo_label(self._map_boss.get("echo", 0))
+            self.sm.log(f"Entering the arena — {dungeon_name} "
+                        f"({self._map_boss.get('season_name', '')} "
+                        f"Echo {echo_lbl})", category="info")
         else:
             self.sm.log(f"Entering {dungeon_name} — Floor {floor} ({region.title()} Region)", category="info")
 
@@ -184,9 +212,12 @@ class DungeonScreen(FacilityScreen):
         left_frame.config(width=left_width)
 
         # ── Top: Map panel (relabeled "Rift" during Event Horizon runs) ────
+        map_panel_title = (" Rift " if self._eh_run
+                           else " Arena " if self._map_boss is not None
+                           else " Map ")
         map_frame = tk.LabelFrame(
             left_frame,
-            text=(" Rift " if self._eh_run else " Map "),
+            text=map_panel_title,
             bg=Theme.BG_DARK,
             fg=Theme.TEXT,
             font=Theme.FONT_BOLD,
@@ -216,6 +247,17 @@ class DungeonScreen(FacilityScreen):
         map_scroll = tk.Scrollbar(map_frame, command=self.map_text.yview, bg=Theme.BG_MID)
         map_scroll.grid(row=0, column=1, sticky="ns")
         self.map_text.config(yscrollcommand=map_scroll.set)
+
+        if self._map_boss is not None:
+            # A single arena node — there is nowhere to walk.
+            self._set_map(""
+                          "\n"
+                          "        \u2694\n"
+                          "   \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n"
+                          "   \u2502 ARENA \u2502\n"
+                          "   \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n"
+                          "\n"
+                          " The Warden waits.")
 
         # ── Bottom: Party Status panel (modern GUI with HP bars) ──────────
         self._party_frame = tk.LabelFrame(
@@ -402,6 +444,7 @@ class DungeonScreen(FacilityScreen):
         self.back_btn = self.styled_button(
             action_frame,
             text=("\u2190 Leave Rift" if self._eh_run
+                  else "\u2190 Leave Arena" if self._map_boss is not None
                   else "\u2190 Flee to City"),
             command=self._on_flee,
             width=16,
@@ -436,6 +479,20 @@ class DungeonScreen(FacilityScreen):
         except tk.TclError:
             pass  # Screen torn down
 
+    @staticmethod
+    def _map_boss_top_line(site):
+        """`\u2744 Winter Echo II \u00b7 HP 63%` — the arena's top-bar segment."""
+        glyph = site.get("glyph", "\u23f3")
+        season = site.get("season_name", "")
+        echo_lbl = map_boss_echo_label(site.get("echo", 0))
+        try:
+            hp = int(site.get("hp", 0) or 0)
+            max_hp = max(1, int(site.get("max_hp", 1) or 1))
+        except (TypeError, ValueError):
+            hp, max_hp = 1, 1
+        pct = max(0, min(100, int(round(100.0 * hp / max_hp))))
+        return f"{glyph} {season} Echo {echo_lbl} \u00b7 HP {pct}%"
+
     def _update_top_bar(self):
         """Refresh the dungeon header (time spends / screen builds)."""
         p = self.player
@@ -465,6 +522,20 @@ class DungeonScreen(FacilityScreen):
             if track:
                 eh_top += f" | {track}"
             self.sm.update_top_bar(eh_top)
+            return
+        # Seasonal map boss: one arena, Echo HP in the header (docs §10.3)
+        if getattr(self, "_map_boss", None) is not None:
+            from pandemonium.world import map_boss as mb
+            site = mb.get_active_boss(p) or self._map_boss
+            echo_lbl = map_boss_echo_label(site.get("echo", 0))
+            self._set_subtitle(
+                f"{site.get('season_name', '')} \u00b7 Echo {echo_lbl} \u00b7 "
+                f"Lv {site.get('level', '?')} \u00b7 "
+                f"{site.get('mechanic_name', '')}")
+            boss_top = self._map_boss_top_line(site)
+            if track:
+                boss_top += f" | {track}"
+            self.sm.update_top_bar(boss_top)
             return
         # Wild ruin: floor progress lives on the dungeon record, not city_floors
         if getattr(self, "_wild_dungeon", None) is not None:
@@ -755,6 +826,33 @@ class DungeonScreen(FacilityScreen):
                 if self._stopped:
                     return "continue"
 
+    def _gui_map_boss(self, player, site, enemies):
+        """Host the Warden's arena in CombatScreen (shared enemy list).
+
+        ``explore_dungeon`` owns HP persistence and the single time commit;
+        this only presents the fight and returns its result.
+        """
+        result_queue = queue.Queue()
+
+        def start_combat():
+            from pandemonium.combat.map_boss import combat_map_boss
+            from pandemonium.gui.screens.combat_screen import CombatScreen
+            self.sm.push_overlay(
+                CombatScreen,
+                enemies=enemies,
+                floor=int(site.get("level", 20) or 20),
+                on_result=lambda r: result_queue.put(r),
+                is_overlay=True,
+                combat_func=combat_map_boss,
+                combat_context="map_boss",
+            )
+
+        try:
+            self.sm.root.after(0, start_combat)
+        except (tk.TclError, RuntimeError):
+            return None  # GUI gone — caller treats it as a flee
+        return self._await_combat_result(result_queue, "Warden combat")
+
     def _gui_superboss(self, tier, floor):
         """Callback passed to explore_dungeon as superboss_override.
 
@@ -980,6 +1078,24 @@ class DungeonScreen(FacilityScreen):
                 on_no=lambda: setattr(self, '_confirm_dialog_open', False),
                 yes_text="Save & Quit",
                 no_text="Keep Going",
+                focus_no=True,
+            )
+            return
+
+        if getattr(self, "_map_boss", None) is not None:
+            site = self._map_boss
+            warden = site.get("warden_name", "the Warden")
+            expire = site.get("expire_day", "?")
+            confirm_dialog(
+                parent=self,
+                title="Leave the Arena?",
+                message=(f"Leave the {warden}?\n\n"
+                         f"This Echo's HP is kept. The season ends on "
+                         f"Day {expire}."),
+                on_yes=_do_flee,
+                on_no=lambda: setattr(self, '_confirm_dialog_open', False),
+                yes_text="Leave Arena",
+                no_text="Keep Fighting",
                 focus_no=True,
             )
             return

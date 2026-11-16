@@ -165,7 +165,7 @@ def select_skill_from_category(player, ally_data, category):
         idx = len(options)
         skill_index_map[idx] = (sid, sdef)
         line = _format_tier_line(sdef, ally_data)
-        term.print(f"{idx + 1}.{line}")
+        term.print(f"  {idx + 1:>2}.{line}")
         
         # Build short option label for buttons
         name = sdef.get("name", "Unknown")

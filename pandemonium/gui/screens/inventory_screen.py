@@ -1,5 +1,5 @@
 """
-gui/screens/inventory_screen.py — Tabbed inventory, stats, skills, allies, and journal.
+gui/screens/inventory_screen.py — Tabbed inventory: characters (stats, gear, skills), bag, journal.
 
 Replaces the terminal-based inventory_ui.py with a full GUI using tkinter's Notebook.
 """
@@ -18,12 +18,11 @@ class InventoryScreen(BaseScreen):
     Tabbed inventory interface.
 
     Tabs:
-        1. Character (personal info, title, karma, stats, equipment)
+        1. Characters (sub-tab per character — You, then each ally — each
+           with an Overview view and a Skills view)
         2. Bag
-        3. Skills
-        4. Allies
-        5. Journal
-        6. Event Horizon (only while a run is active/suspended)
+        3. Journal
+        4. Event Horizon (only while a run is active/suspended)
 
     Constructor kwargs:
         is_overlay  — if True, this screen is shown via push_overlay (e.g. from
@@ -35,7 +34,11 @@ class InventoryScreen(BaseScreen):
         self.is_overlay = is_overlay
         self._equip_target_ally = None   # If set, bag "Equip" goes to this ally dict
         self._equip_target_slot = None   # Desired slot hint (weapon/armor/accessory1/accessory2)
-        self._ally_tab_index = 0         # Last-selected ally sub-tab (survives refreshes)
+        self._char_tab_index = 0         # Selected Characters sub-tab: 0 = you, 1.. = allies
+        self._char_view = "overview"     # "overview" | "skills" — shared by every character page
+        self._char_pages = []            # One dict per character sub-tab (see _refresh_characters_tab)
+        self._char_scroll = {}           # (id(character), view) -> last scroll fraction
+        self.char_notebook = None
         super().__init__(parent, screen_manager, **kwargs)
 
     def build_ui(self):
@@ -93,10 +96,8 @@ class InventoryScreen(BaseScreen):
         self.notebook.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
         # Create tabs
-        self._build_stats_tab()
+        self._build_characters_tab()
         self._build_bag_tab()
-        self._build_skills_tab()
-        self._build_allies_tab()
         self._build_journal_tab()
         # Event Horizon tab: live/suspended run or a quiet history stub
         if self._eh_tab_visible():
@@ -127,168 +128,789 @@ class InventoryScreen(BaseScreen):
         refresh_btn.pack(side=tk.RIGHT)
 
     # ═══════════════════════════════════════════════════════════════════════
-    #  TAB 1 — Character  (personal info, stats, equipment, milestones)
+    #  TAB 1 — Characters  (one sub-tab per character: You, then each ally)
+    #
+    #  Every character page has the same two views, picked with the
+    #  Overview | Skills buttons at the top of the page:
+    #      Overview — identity (you), vitals, attributes, equipment, milestones
+    #      Skills   — passive + skills (battle loadout for you, the kit for allies)
+    #  The chosen view is shared by all pages, so switching character keeps you
+    #  on the same view — handy for comparing skills across the party.
+    #  Pages are drawn lazily: only the visible one is built.
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _build_stats_tab(self):
-        self.stats_frame = tk.Frame(self.notebook, bg=Theme.BG_DARK)
-        self.notebook.add(self.stats_frame, text=" Character ")
-        self.stats_frame.grid_columnconfigure(0, weight=1)
-        self._refresh_stats_tab()
+    def _build_characters_tab(self):
+        self.characters_frame = tk.Frame(self.notebook, bg=Theme.BG_DARK)
+        self.notebook.add(self.characters_frame, text=" Characters ")
+        self.characters_frame.grid_rowconfigure(0, weight=1)
+        self.characters_frame.grid_columnconfigure(0, weight=1)
+        self._refresh_characters_tab()
 
-    def _refresh_stats_tab(self):
-        for w in self.stats_frame.winfo_children():
+    def _characters(self):
+        """Player first, then allies — the order of the Characters sub-tabs."""
+        if not self.player:
+            return []
+        return [self.player] + list(self.player.get("allies", []))
+
+    def _current_char_index(self):
+        """Index of the visible character sub-tab (falls back to the last known)."""
+        nb = self.char_notebook
+        if nb is not None:
+            try:
+                selected = nb.select()
+                if selected:
+                    return nb.index(selected)
+            except (tk.TclError, ValueError):
+                pass
+        return self._char_tab_index
+
+    def _refresh_characters_tab(self):
+        # Remember where the player was: which character, and scroll positions.
+        self._save_char_scroll()
+        self._char_tab_index = max(0, self._current_char_index())
+
+        for w in self.characters_frame.winfo_children():
             w.destroy()
+        self.char_notebook = None
+        self._char_pages = []
 
         if not self.player:
-            self.styled_label(self.stats_frame, text="No player data.").pack(pady=20)
+            self.styled_label(self.characters_frame, text="No player data.").pack(pady=20)
             return
 
-        scroll = tk.Scrollbar(self.stats_frame)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        chars = self._characters()
+        nb = ttk.Notebook(self.characters_frame, style="Ally.TNotebook")
+        nb.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.char_notebook = nb
 
-        canvas = tk.Canvas(self.stats_frame, bg=Theme.BG_DARK, highlightthickness=0)
+        for idx, char in enumerate(chars):
+            is_player = idx == 0
+            frame = tk.Frame(nb, bg=Theme.BG_DARK)
+            frame.grid_rowconfigure(1, weight=1)
+            frame.grid_columnconfigure(0, weight=1)
+            bar = tk.Frame(frame, bg=Theme.BG_DARK)          # Overview | Skills
+            bar.grid(row=0, column=0, sticky="ew", padx=4, pady=(4, 2))
+            body = tk.Frame(frame, bg=Theme.BG_DARK)         # scrollable content
+            body.grid(row=1, column=0, sticky="nsew")
+            label = " You " if is_player else f" {display_name(char) or 'Ally'} "
+            nb.add(frame, text=label)
+            self._char_pages.append({
+                "char": char, "is_player": is_player,
+                "bar": bar, "body": body,
+                "canvas": None,   # scroll canvas of the drawn view
+                "view": None,     # view currently drawn (None = not drawn yet)
+            })
+
+        # Restore the previously selected character (clamped if the party shrank).
+        index = min(self._char_tab_index, len(chars) - 1)
+        self._char_tab_index = index
+        nb.select(index)
+        nb.bind("<<NotebookTabChanged>>", self._on_char_tab_changed)
+        self._ensure_char_page(index)
+
+    # ── Lazy page drawing ────────────────────────────────────────────────────
+
+    def _on_char_tab_changed(self, _event=None):
+        """Draw a character's page the first time (or in a new view) it is shown."""
+        try:
+            index = self._current_char_index()
+            self._char_tab_index = index
+            self._ensure_char_page(index)
+        except tk.TclError:
+            pass
+
+    def _ensure_char_page(self, index):
+        """Draw the page at *index* unless it is already drawn in the current view."""
+        if not (0 <= index < len(self._char_pages)):
+            return
+        page = self._char_pages[index]
+        if page["view"] != self._char_view:
+            self._render_char_page(page)
+
+    def _rerender_current_char_page(self):
+        """Redraw just the visible page (scroll position is kept)."""
+        index = self._current_char_index()
+        if 0 <= index < len(self._char_pages):
+            self._render_char_page(self._char_pages[index])
+
+    def _set_char_view(self, view):
+        """Switch every character page between 'overview' and 'skills'."""
+        if view == self._char_view:
+            return
+        self._char_view = view
+        self._ensure_char_page(self._current_char_index())
+
+    def _render_char_page(self, page):
+        char, is_player = page["char"], page["is_player"]
+        self._save_page_scroll(page)          # keyed by the view being replaced
+
+        for w in page["bar"].winfo_children():
+            w.destroy()
+        for w in page["body"].winfo_children():
+            w.destroy()
+        page["canvas"] = None
+        page["view"] = self._char_view
+
+        if not is_player:
+            # Safety net: ensures innate/learned skills match the vorpal flags
+            # even if the load-time reconciliation in ensure_player_fields was
+            # missed.
+            from pandemonium.core.character import _reconcile_heroine_vorpal_skills
+            _reconcile_heroine_vorpal_skills(char, self.player)
+
+        self._render_view_toggle(page["bar"])
+
+        canvas, inner = self._make_scroll_area(page["body"])
+        page["canvas"] = canvas
+
+        if self._char_view == "skills":
+            self._render_character_skills(inner, char, is_player)
+        else:
+            self._render_character_overview(inner, char, is_player)
+
+        self._restore_page_scroll(page)
+
+    def _render_view_toggle(self, bar):
+        for key, label in (("overview", "Overview"), ("skills", "Skills")):
+            active = self._char_view == key
+            self.styled_button(
+                bar, text=label, width=12,
+                command=lambda k=key: self._set_char_view(k),
+                bg=Theme.BG_LIGHT if active else Theme.BG_MID,
+                fg=Theme.TEXT_HEADER if active else Theme.TEXT_DIM,
+            ).pack(side=tk.LEFT, padx=(0, 2))
+
+    def _make_scroll_area(self, parent):
+        """Vertical scroll container. Returns (canvas, inner_frame)."""
+        scroll = tk.Scrollbar(parent)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas = tk.Canvas(parent, bg=Theme.BG_DARK, highlightthickness=0)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll.config(command=canvas.yview)
         canvas.config(yscrollcommand=scroll.set)
 
         inner = tk.Frame(canvas, bg=Theme.BG_DARK)
-        canvas_window = canvas.create_window((0, 0), window=inner, anchor="nw")
-
-        def _on_configure(event):
-            canvas.itemconfig(canvas_window, width=event.width)
-            canvas.config(scrollregion=canvas.bbox("all"))
-
+        window = canvas.create_window((0, 0), window=inner, anchor="nw")
+        # Stretch the content to the canvas width so boxes fill the page.
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(window, width=e.width))
         inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
-        self.stats_frame.bind("<Configure>", _on_configure)
+        return canvas, inner
 
-        # ── Personal information (identity, title, karma) ───────────────────
-        self._render_personal_box(inner)
+    # ── Scroll memory (per character + view, survives refreshes) ─────────────
 
-        # ── Vitals ───────────────────────────────────────────────────────────
-        from pandemonium.core.character import player_max_hp
-        hp = f"{self.player.get('current_hp', 0)}/{player_max_hp(self.player)}"
-        info = f"HP: {hp}  |  Gold: {self.player.get('gold', 0)}"
-        self.styled_label(inner, text=info).pack(anchor=tk.W, padx=4, pady=(0, 8))
+    @staticmethod
+    def _page_scroll_key(page):
+        return (id(page["char"]), page["view"])
 
-        # ── Attributes ───────────────────────────────────────────────────────
+    def _save_page_scroll(self, page):
+        canvas = page.get("canvas")
+        if canvas is None or page.get("view") is None:
+            return
+        try:
+            if canvas.winfo_exists():
+                self._char_scroll[self._page_scroll_key(page)] = canvas.yview()[0]
+        except tk.TclError:
+            pass
+
+    def _save_char_scroll(self):
+        for page in self._char_pages:
+            self._save_page_scroll(page)
+
+    def _restore_page_scroll(self, page):
+        fraction = self._char_scroll.get(self._page_scroll_key(page), 0.0)
+        canvas = page["canvas"]
+        if fraction > 0 and canvas is not None:
+            self.after_idle(lambda c=canvas, y=fraction: self._scroll_canvas_to(c, y))
+
+    @staticmethod
+    def _scroll_canvas_to(canvas, fraction):
+        try:
+            # A freshly built canvas has no scroll region until geometry has
+            # settled; moving before that is a silent no-op (jumps to top).
+            canvas.update_idletasks()
+            canvas.config(scrollregion=canvas.bbox("all"))
+            canvas.yview_moveto(fraction)
+        except tk.TclError:
+            pass
+
+    # ── Overview view ────────────────────────────────────────────────────────
+
+    def _render_character_overview(self, inner, char, is_player):
+        """Identity/vitals, attributes + equipment side by side, milestones."""
+        if is_player:
+            self._render_personal_box(inner)
+            from pandemonium.core.character import player_max_hp
+            hp = f"{char.get('current_hp', 0)}/{player_max_hp(char)}"
+            info = f"HP: {hp}  |  Gold: {char.get('gold', 0)}"
+            self.styled_label(inner, text=info).pack(anchor=tk.W, padx=4, pady=(0, 8))
+        else:
+            self._render_ally_header(inner, char)
+
+        # Side by side so gear and the stat totals it feeds are visible
+        # together without scrolling. Milestones (below) stay full width.
+        columns = tk.Frame(inner, bg=Theme.BG_DARK)
+        columns.pack(fill=tk.X, pady=4, padx=4)
+        # 2 : 3 split — equipment rows carry more text than attribute rows.
+        columns.grid_columnconfigure(0, weight=2, uniform="char_cols")
+        columns.grid_columnconfigure(1, weight=3, uniform="char_cols")
+        columns.grid_rowconfigure(0, weight=1)
+
+        self._render_attributes_box(columns, char, is_player)
+        self._render_equipment_box(columns, char, is_player)
+        self._render_milestones_box(inner, char)
+
+    def _render_ally_header(self, inner, ally):
+        defeated = ally.get("defeated") or ally.get("current_hp", 0) <= 0
+        status_str = "  [INCAPACITATED]" if defeated else ""
+
+        # ── Personal Information — ally mirror of the player's box ──────────
+        # The player box lists Name / Race / Class. Allies have no class, so
+        # that slot becomes a second Name line: the given name (nickname or
+        # awakened name) first, then the species name, then the race.
+        personal = tk.LabelFrame(
+            inner, text=" Personal Information ", bg=Theme.BG_DARK,
+            fg=Theme.TEXT, font=Theme.FONT_BOLD, highlightthickness=1,
+            highlightbackground=Theme.BORDER,
+        )
+        personal.pack(fill=tk.X, pady=4, padx=4)
+
+        self.styled_label(
+            personal,
+            text=f"Name: {display_name(ally) or 'Ally'}   "
+                 f"Level: {ally.get('level', 1)}{status_str}",
+            fg=Theme.BUFF_NEGATIVE if defeated else Theme.ACCENT,
+            font=Theme.FONT_BOLD,
+        ).pack(anchor=tk.W, padx=6, pady=(4, 1))
+
+        species = ally.get("name") or "Unknown"
+        race = ally.get("race") or "Unknown"
+        self.styled_label(
+            personal, text=f"Name: {species}   Race: {race}",
+        ).pack(anchor=tk.W, padx=6, pady=(1, 3))
+
+        tk.Frame(personal, height=4, bg=Theme.BG_DARK).pack()
+
+        # ── Vitals ──────────────────────────────────────────────────────────
+        hp = ally.get("current_hp", 0)
+        max_hp = ally.get("max_hp", 1)
+        pct = max(0, min(100, int(100 * hp / max_hp))) if max_hp > 0 else 0
+        hp_color = Theme.HP_BAR_FILL if pct > 50 else (Theme.BUFF_NEUTRAL if pct > 25 else Theme.BUFF_NEGATIVE)
+        tk.Label(
+            inner, text=f"HP: {hp}/{max_hp}", bg=Theme.BG_DARK, fg=hp_color,
+            font=Theme.FONT_BOLD,
+        ).pack(anchor=tk.W, padx=4, pady=(0, 4))
+
+        # Late-bloomer growth band (previously shown in the Skill Book).
+        from pandemonium.combat.ally import get_growth_label
+        growth_label = get_growth_label(ally)
+        if growth_label and growth_label != "—":
+            tk.Label(
+                inner, text=f"Growth: {growth_label} (late bloomer)",
+                bg=Theme.BG_DARK, fg=Theme.BUFF_NEUTRAL,
+                font=Theme.FONT_SMALL,
+            ).pack(anchor=tk.W, padx=4, pady=(0, 8))
+        else:
+            tk.Frame(inner, bg=Theme.BG_DARK, height=4).pack()
+
+    def _render_attributes_box(self, parent, char, is_player):
         from pandemonium.inventory.core import get_total_equipment_mods
         from pandemonium.resources.races_classes import ATTRIBUTES
+        from pandemonium.combat.stat_milestones import format_milestone_label
+        from pandemonium.combat.stats import format_crit_summary
 
-        equip_mods = get_total_equipment_mods(self.player)
-        buff_mods = self._compute_buff_mods(self.player)
-        from pandemonium.progression.titles import combat_stat_bonus as _title_stat_bonus
+        equip_mods = get_total_equipment_mods(char)
+        buff_mods = self._compute_buff_mods(char)
+        if is_player:
+            from pandemonium.progression.titles import combat_stat_bonus as title_bonus
+            legend = "base + equipment (+ buff / title) = total"
+        else:
+            title_bonus = None          # allies carry no deed title
+            legend = "base + equipment (+ buff) = total"
 
         attr_frame = tk.LabelFrame(
-            inner, text=" Attributes ", bg=Theme.BG_DARK, fg=Theme.TEXT,
+            parent, text=" Attributes ", bg=Theme.BG_DARK, fg=Theme.TEXT,
             font=Theme.FONT_BOLD, highlightthickness=1,
             highlightbackground=Theme.BORDER,
         )
-        attr_frame.pack(fill=tk.X, pady=4, padx=4)
+        attr_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
+        self.styled_label(
+            attr_frame, text=legend, fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL,
+        ).pack(anchor=tk.W, padx=6, pady=(2, 3))
+
+        rows = []
         for attr in ATTRIBUTES:
-            base = self.player["attributes"][attr]
+            base = char["attributes"][attr]
             eq = equip_mods.get(attr, 0)
             bf = buff_mods.get(attr, 0)
-            tb = _title_stat_bonus(self.player, attr)
+            tb = title_bonus(char, attr) if title_bonus else 0
             total = base + eq + bf + tb
             short = attr[:3].upper()
+            rows.append((short, attr, base, eq, bf, tb, total))
 
-            if tb:
-                line = f"{short}: {base} + {eq}(eq) + {bf}(buff) + {tb}(title) = {total}"
-            elif bf > 0:
-                line = f"{short}: {base} + {eq}(eq) + {bf}(buff) = {total}"
-            else:
-                line = f"{short}: {base} + {eq} = {total}"
+        # Column widths so the numbers line up like a table:
+        #   STR: 22 + 16            = 38  [+4 dmg]
+        #   CON:  6 +  5            = 11
+        base_w  = max(len(str(r[2])) for r in rows)
+        eq_w    = max(len(str(r[3])) for r in rows)
+        buff_w  = max(len(str(r[4])) for r in rows)
+        title_w = max(len(str(r[5])) for r in rows)
+        total_w = max(len(str(r[6])) for r in rows)
+        any_buff  = any(r[4] for r in rows)
+        any_title = any(r[5] for r in rows)
+        blank_buff  = " " * len(f" + {0:>{buff_w}}(buff)")
+        blank_title = " " * len(f" + {0:>{title_w}}(title)")
 
-            from pandemonium.combat.stat_milestones import format_milestone_label
-            milestone = format_milestone_label(self.player, attr)
+        lines = []
+        for short, attr, base, eq, bf, tb, total in rows:
+            line = f"{short}: {base:>{base_w}} + {eq:>{eq_w}}"
+            if any_buff:
+                line += f" + {bf:>{buff_w}}(buff)" if bf else blank_buff
+            if any_title:
+                line += f" + {tb:>{title_w}}(title)" if tb else blank_title
+            line += f" = {total:>{total_w}}"
+            lines.append((line, format_milestone_label(char, attr)))
+
+        line_w = max(len(line) for line, _m in lines)
+        for line, milestone in lines:
             if milestone:
-                line += f"  [{milestone}]"
-
+                line = f"{line:<{line_w}}  [{milestone}]"
             self.styled_label(attr_frame, text=line).pack(anchor=tk.W, padx=6, pady=1)
 
         # ── Crit summary — chance + damage (includes overflow conversion) ──
-        from pandemonium.combat.stats import format_crit_summary
-        self.styled_label(
-            attr_frame, text=format_crit_summary(self.player, "player")
-        ).pack(anchor=tk.W, padx=6, pady=1)
+        if is_player:
+            crit_text = format_crit_summary(char, "player")
+        else:
+            from pandemonium.combat.ally import compute_ally_stats
+            _str, _con, dex, lrn, _wis, _cha = compute_ally_stats(char)
+            crit_text = format_crit_summary(char, "ally", dex=dex, lrn=lrn)
+        tk.Frame(attr_frame, height=1, bg=Theme.BORDER).pack(
+            fill=tk.X, padx=6, pady=(4, 3)
+        )
+        self.styled_label(attr_frame, text=crit_text).pack(
+            anchor=tk.W, padx=6, pady=(1, 4)
+        )
 
-        # ── Equipment ────────────────────────────────────────────────────────
+    def _render_equipment_box(self, parent, char, is_player):
         eq_frame = tk.LabelFrame(
-            inner, text=" Equipment ", bg=Theme.BG_DARK, fg=Theme.TEXT,
+            parent, text=" Equipment ", bg=Theme.BG_DARK, fg=Theme.TEXT,
             font=Theme.FONT_BOLD, highlightthickness=1,
             highlightbackground=Theme.BORDER,
         )
-        eq_frame.pack(fill=tk.X, pady=4, padx=4)
+        eq_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
+
+        def unequip_cmd(slot):
+            if is_player:
+                return lambda: self._unequip_slot(slot)
+            return lambda: self._unequip_ally_slot(char, slot)
+
+        def equip_cmd(slot):
+            if is_player:
+                return lambda: self._jump_to_bag_and_hint(slot)
+            return lambda: self._jump_to_bag_and_hint(slot, ally=char)
 
         eq_slots = ["weapon", "armor", "accessory1", "accessory2"]
-        if self.player.get("acc3_unlocked"):
+        if char.get("acc3_unlocked"):
             eq_slots.append("accessory3")
-        for slot in eq_slots:
-            item = self.player.get("equipped", {}).get(slot)
+
+        # Column widths: slot prefixes are padded so every item name starts
+        # in the same column, and the mods cell is padded so the gold
+        # ▸ Scales tag lands in one column too.
+        slot_w = max(len(f"{_slot_display_name(s)}:") for s in eq_slots)
+        mods_w = 0
+        for s in eq_slots:
+            worn = char.get("equipped", {}).get(s)
+            if worn:
+                mods_w = max(mods_w, len(", ".join(
+                    f"{k[:3]} {'+' if v >= 0 else ''}{v}"
+                    for k, v in worn.get("mods", {}).items()
+                )))
+
+        for slot_idx, slot in enumerate(eq_slots):
+            item = char.get("equipped", {}).get(slot)
             slot_name = _slot_display_name(slot)
 
-            row = tk.Frame(eq_frame, bg=Theme.BG_DARK)
-            row.pack(fill=tk.X, padx=6, pady=2)
+            if slot_idx:
+                tk.Frame(eq_frame, height=1, bg=Theme.BORDER).pack(
+                    fill=tk.X, padx=6, pady=0
+                )
 
+            # Left: item text (name line + detail line). Right: buttons.
+            row = tk.Frame(eq_frame, bg=Theme.BG_DARK)
+            row.pack(fill=tk.X, padx=(6, 10), pady=3)
+            row.grid_columnconfigure(0, weight=1)
+
+            text_col = tk.Frame(row, bg=Theme.BG_DARK)
+            text_col.grid(row=0, column=0, sticky="w")
+            btn_col = tk.Frame(row, bg=Theme.BG_DARK)
+            btn_col.grid(row=0, column=1, sticky="e", padx=(8, 0))
+
+            prefix = f"{slot_name + ':':<{slot_w}}"
             if item:
                 rarity = item.get("rarity", "common")
                 color = Theme.RARITY_COLORS.get(rarity, Theme.TEXT)
-                name = item["name"]
                 mods = item.get("mods", {})
                 mod_txt = ", ".join(
                     f"{k[:3]} {'+' if v >= 0 else ''}{v}" for k, v in mods.items()
                 )
-                txt = f"{slot_name}: {name}"
-                if mod_txt:
-                    txt += f"  ({mod_txt})"
-                lbl = tk.Label(
-                    row, text=txt, bg=Theme.BG_DARK, fg=color,
-                    font=Theme.FONT, anchor=tk.W,
-                )
-                lbl.pack(side=tk.LEFT)
+                tk.Label(
+                    text_col, text=f"{prefix} {item['name']}",
+                    bg=Theme.BG_DARK, fg=color, font=Theme.FONT, anchor=tk.W,
+                ).pack(anchor=tk.W)
 
+                detail = tk.Frame(text_col, bg=Theme.BG_DARK)
+                detail.pack(anchor=tk.W)
+                # Spacer aligns the detail line under the item-name column.
+                tk.Label(
+                    detail, text="", width=slot_w + 1, bg=Theme.BG_DARK,
+                    font=Theme.FONT,
+                ).pack(side=tk.LEFT)
+                tk.Label(
+                    detail, text=mod_txt, width=mods_w, bg=Theme.BG_DARK,
+                    fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL, anchor=tk.W,
+                ).pack(side=tk.LEFT)
                 scale_txt = format_scaling_stat(item)
                 if scale_txt:
                     tk.Label(
-                        row, text=f"  {scale_txt}", bg=Theme.BG_DARK,
-                        fg=Theme.RARITY_LEGENDARY, font=Theme.FONT_SMALL,
+                        detail, text=f"  {scale_txt}",
+                        bg=Theme.BG_DARK, fg=Theme.RARITY_LEGENDARY,
+                        font=Theme.FONT_SMALL,
                     ).pack(side=tk.LEFT)
 
-                self.styled_button(
-                    row, text="Unequip", width=8,
-                    command=lambda s=slot: self._unequip_slot(s),
-                ).pack(side=tk.RIGHT)
                 # Every worn piece is examinable — affinity and effect without
                 # a trip to the blacksmith.
                 self.styled_button(
-                    row, text="Examine", width=9,
+                    btn_col, text="Examine", width=9,
                     command=lambda it=item: self._examine_item(it),
-                ).pack(side=tk.RIGHT, padx=2)
-            else:
-                self.styled_label(row, text=f"{slot_name}: (empty)").pack(side=tk.LEFT)
-                # Allow quick jump to Bag to equip an item into this empty slot
+                ).pack(side=tk.LEFT, padx=(0, 2))
                 self.styled_button(
-                    row, text="Equip", width=6,
-                    command=lambda s=slot: self._jump_to_bag_and_hint(s),
-                ).pack(side=tk.RIGHT)
+                    btn_col, text="Unequip", width=8,
+                    command=unequip_cmd(slot),
+                ).pack(side=tk.LEFT)
+            else:
+                self.styled_label(
+                    text_col, text=f"{prefix} (empty)", fg=Theme.TEXT_DIM,
+                ).pack(anchor=tk.W)
+                # Quick jump to the Bag to equip an item into this empty slot
+                self.styled_button(
+                    btn_col, text="Equip", width=6,
+                    command=equip_cmd(slot),
+                ).pack(side=tk.LEFT)
 
-        # ── Milestones ───────────────────────────────────────────────────────
+    def _render_milestones_box(self, parent, char):
         from pandemonium.combat.stat_milestones import format_milestone_bonuses
-        mb = format_milestone_bonuses(self.player)
-        if mb:
-            mb_frame = tk.LabelFrame(
-                inner, text=" Milestones ", bg=Theme.BG_DARK, fg=Theme.TEXT,
-                font=Theme.FONT_BOLD, highlightthickness=1,
-                highlightbackground=Theme.BORDER,
-            )
-            mb_frame.pack(fill=tk.X, pady=4, padx=4)
+        mb = format_milestone_bonuses(char)
+        if not mb:
+            return
+        mb_frame = self._section_box(parent, "Milestones")
+        tk.Label(
+            mb_frame, text=mb,
+            bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
+            wraplength=600, justify=tk.LEFT,
+        ).pack(anchor=tk.W, padx=6, pady=4)
+
+    # ── Skills view ──────────────────────────────────────────────────────────
+    #
+    #  The two sides have different mechanics (you curate a loadout and unlock
+    #  by level; allies have a fixed kit and learn with EXP), so each keeps its
+    #  own sections — but they share the section frames, the passive box and
+    #  the skill card below, so a skill looks the same whoever owns it.
+
+    def _section_box(self, parent, title, fg=None):
+        """A titled box, packed into *parent*."""
+        frame = tk.LabelFrame(
+            parent, text=f" {title} ", bg=Theme.BG_DARK, fg=fg or Theme.TEXT,
+            font=Theme.FONT_BOLD, highlightthickness=1,
+            highlightbackground=Theme.BORDER,
+        )
+        frame.pack(fill=tk.X, pady=4, padx=4)
+        return frame
+
+    def _render_passive_box(self, parent, passive):
+        if not passive:
+            return
+        frame = self._section_box(parent, "Passive")
+        tk.Label(
+            frame, text=f"{passive['name']}: {passive['description']}",
+            bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
+            wraplength=600, justify=tk.LEFT,
+        ).pack(anchor=tk.W, padx=6, pady=4)
+
+    def _render_skill_card(self, parent, title, *, title_fg, marker=None,
+                           on_toggle=None, description="", meta=(),
+                           extra="", extra_fg=None):
+        """One skill block, shared by the player and ally pages.
+
+        marker: "on" / "off" → clickable ✓/– loadout box (calls *on_toggle*),
+                "locked"     → 🔒,
+                None         → no gutter (skills with nothing to toggle).
+        meta:   pieces joined with " · " on the small line under the description.
+        extra:  optional highlighted line (e.g. mastery bonuses).
+        """
+        indent = 32 if marker else 16
+        entry = tk.Frame(parent, bg=Theme.BG_DARK)
+        entry.pack(fill=tk.X, padx=6, pady=(3, 2))
+
+        top = tk.Frame(entry, bg=Theme.BG_DARK)
+        top.pack(fill=tk.X)
+
+        if marker in ("on", "off"):
+            on = marker == "on"
+            self.styled_button(
+                top, text="✓" if on else "–", width=2, command=on_toggle,
+                bg=Theme.BG_LIGHT if on else Theme.BG_MID,
+                fg=Theme.BUFF_POSITIVE if on else Theme.TEXT_DIM,
+            ).pack(side=tk.LEFT, anchor=tk.N)
+        elif marker == "locked":
             tk.Label(
-                mb_frame, text=mb,
-                bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
-                wraplength=600, justify=tk.LEFT,
-            ).pack(anchor=tk.W, padx=6, pady=4)
+                top, text="🔒", width=2, bg=Theme.BG_DARK,
+                fg=Theme.TEXT_DIM, font=Theme.FONT,
+            ).pack(side=tk.LEFT, anchor=tk.N)
+
+        self.styled_label(
+            top, text=title, fg=title_fg, font=Theme.FONT_BOLD,
+        ).pack(side=tk.LEFT, padx=(4, 0) if marker else 0, anchor=tk.N)
+
+        if description:
+            tk.Label(
+                entry, text=description, bg=Theme.BG_DARK, fg=Theme.TEXT_DIM,
+                font=Theme.FONT_SMALL, wraplength=620, justify=tk.LEFT,
+            ).pack(anchor=tk.W, padx=(indent, 4), pady=(1, 0))
+
+        if meta:
+            self.styled_label(
+                entry, text="  ·  ".join(meta),
+                fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL,
+            ).pack(anchor=tk.W, padx=(indent, 4))
+
+        if extra:
+            self.styled_label(
+                entry, text=extra, fg=extra_fg or Theme.BUFF_NEUTRAL,
+                font=Theme.FONT_SMALL,
+            ).pack(anchor=tk.W, padx=(indent, 4))
+
+    def _render_character_skills(self, inner, char, is_player):
+        if is_player:
+            self._render_player_skills(inner)
+        else:
+            self._render_ally_skills(inner, char)
+
+    def _render_player_skills(self, inner):
+        """Battle loadout, class passive, unlocked/locked skills, profession."""
+        p = self.player
+        from pandemonium.combat.skills import (
+            get_class_skill_map, format_mastery_label, get_equipped_skill_ids,
+            MAX_SKILL_LOADOUT, get_skill_mastery_level, get_mastery_bonuses,
+            get_passive_skill,
+        )
+        from pandemonium.resources.skill_loader import PROFESSIONS
+
+        skill_map = get_class_skill_map(p)
+        if not skill_map:
+            self.styled_label(inner, text="No skills available.").pack(pady=20)
+            return
+
+        unlocked = set(p.get("skills", []))
+        equipped = set(get_equipped_skill_ids(p))
+        level = p.get("level", 1)
+        cooldowns = p.get("skill_cooldowns", {})
+        mastery_uses = p.get("skill_mastery", {})
+
+        self.styled_label(
+            inner,
+            text=f"Battle Loadout: {len(equipped)}/{MAX_SKILL_LOADOUT} equipped — "
+                 "click a skill's ✓/– box to choose what you bring into combat.",
+            fg=Theme.ACCENT,
+        ).pack(anchor=tk.W, padx=6, pady=(6, 0))
+
+        profs = PROFESSIONS.get(p.get("class"), {})
+        if profs:
+            prof = p.get("profession")
+            prof_text = (f"Profession: {profs[prof]['name']}" if prof in profs
+                         else "Profession: none — choose at the Guild after the Lv-40 capstone")
+            self.styled_label(inner, text=prof_text, fg=Theme.TEXT_DIM).pack(
+                anchor=tk.W, padx=6, pady=(2, 0)
+            )
+
+        # ── Passive skill (class passive, upgraded by the chosen profession) ─
+        self._render_passive_box(inner, get_passive_skill(p))
+
+        def mastery_text(sid, mastery_lvl):
+            bonuses = get_mastery_bonuses(sid, mastery_lvl)
+            bits = []
+            if bonuses["power_mult"] > 1.0:
+                bits.append(f"+{int(round((bonuses['power_mult'] - 1) * 100))}% power")
+            if bonuses["cooldown_reduction"]:
+                bits.append(f"−{bonuses['cooldown_reduction']} turn cooldown")
+            if bonuses["status_mult"] > 1.0:
+                bits.append(f"effect potency ×{bonuses['status_mult']:g}")
+            if bonuses["duration_bonus"]:
+                bits.append(f"+{bonuses['duration_bonus']} turn duration")
+            if bonuses["extra_effect"]:
+                bits.append("bonus effect at ★★★")
+            if not bits:
+                return ""
+            uses = mastery_uses.get(sid, 0)
+            return f"Mastery Lv.{mastery_lvl} ({uses} uses): " + ", ".join(bits)
+
+        def add_card(parent, sid, sdef, is_unlocked_entry):
+            ul = sdef.get("unlock_level", 1)
+            cd = cooldowns.get(sid, 0)
+            mastery_lvl = get_skill_mastery_level(p, sid)
+            mastery_label = format_mastery_label(sid, p)
+            is_equipped = sid in equipped
+
+            title = sdef["name"]
+            if cd > 0:
+                title += f"  [CD: {cd}]"
+            if mastery_label:
+                title += f"  {mastery_label}"
+            if is_unlocked_entry and not is_equipped:
+                title += "  [not equipped]"
+            if not is_unlocked_entry:
+                title += "  [LOCKED]"
+            title_fg = (Theme.BUFF_POSITIVE if is_equipped
+                        else (Theme.TEXT if is_unlocked_entry else Theme.TEXT_DIM))
+
+            meta = [f"Unlock: Level {ul}", f"Cooldown: {sdef.get('cooldown', 0)} turns"]
+            if sdef.get("target"):
+                meta.append(f"Target: {sdef['target']}")
+            if sdef.get("elemental"):
+                meta.append(f"Element: {sdef['elemental']}")
+
+            if is_unlocked_entry:
+                marker = "on" if is_equipped else "off"
+            else:
+                marker = "locked"
+
+            self._render_skill_card(
+                parent, title, title_fg=title_fg, marker=marker,
+                on_toggle=lambda s=sid: self._toggle_skill_loadout(s),
+                description=sdef.get("description", ""), meta=meta,
+                extra=mastery_text(sid, mastery_lvl) if mastery_lvl > 0 else "",
+            )
+
+        by_unlock = lambda kv: (kv[1].get("unlock_level", 1), kv[1].get("name", ""))
+        unlocked_entries, locked_entries = [], []
+        for sid, sdef in sorted(skill_map.items(), key=by_unlock):
+            ul = sdef.get("unlock_level", 1)
+            if sid in unlocked and level >= ul:
+                unlocked_entries.append((sid, sdef))
+            else:
+                locked_entries.append((sid, sdef))
+
+        unlocked_frame = self._section_box(inner, "Unlocked", Theme.BUFF_POSITIVE)
+        for sid, sdef in unlocked_entries:
+            add_card(unlocked_frame, sid, sdef, True)
+        if not unlocked_entries:
+            self.styled_label(
+                unlocked_frame,
+                text="No skills unlocked yet — level up to learn your first skill.",
+                fg=Theme.TEXT_DIM,
+            ).pack(anchor=tk.W, padx=6, pady=2)
+
+        if locked_entries:
+            locked_frame = self._section_box(inner, "Locked", Theme.TEXT_DIM)
+            for sid, sdef in locked_entries:
+                add_card(locked_frame, sid, sdef, False)
+
+        # ── The profession branch you gave up (Skill Book parity) ─────────
+        chosen = p.get("profession")
+        if chosen in profs:
+            for pid, pdata in profs.items():
+                if pid == chosen:
+                    continue
+                branch = self._section_box(
+                    inner,
+                    f"{pdata['name']} — locked (you chose {profs[chosen]['name']})",
+                    Theme.TEXT_DIM,
+                )
+                for sid, sdef in sorted(pdata.get("skills", {}).items(), key=by_unlock):
+                    self._render_skill_card(
+                        branch,
+                        f"{sdef['name']}  — Lv.{sdef.get('unlock_level', '?')}",
+                        title_fg=Theme.TEXT_DIM, marker="locked",
+                        description=sdef.get("description", ""),
+                    )
+
+    @staticmethod
+    def _ally_passive(ally):
+        """Race passive, falling back to the stored id, then the enemy template."""
+        from pandemonium.combat.ally_skills import get_race_passive, get_passive_by_id
+        race = ally.get("race")
+        passive = get_race_passive(race) if race else None
+        if not passive and ally.get("passive_skill"):
+            passive = get_passive_by_id(ally["passive_skill"])
+        if not passive and ally.get("key"):
+            from pandemonium.resources.enemies import ENEMIES
+            template = ENEMIES.get(ally["key"], {})
+            template_race = template.get("race")
+            if template_race:
+                passive = get_race_passive(template_race)
+        return passive
+
+    def _render_ally_skills(self, inner, ally):
+        """Passive, then Innate / Upgrades / Learned, then learning progress."""
+        from pandemonium.combat.ally_skills import (
+            get_innate_skill_def, get_learnable_skill_def,
+            get_ally_skill_mastery_level, format_skill_learning_progress,
+            format_ally_mastery_label,
+        )
+
+        self._render_passive_box(inner, self._ally_passive(ally))
+
+        tier_labels = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
+        groups = (
+            ("Innate", "innate_skills", get_innate_skill_def),
+            ("Upgrades", "upgrade_skills", get_innate_skill_def),
+            ("Learned", "learned_skills", get_learnable_skill_def),
+        )
+        shown_any = False
+        for section_title, key, lookup in groups:
+            entries = []
+            for sid in ally.get(key, []):
+                sdef = lookup(sid)
+                if sdef:
+                    entries.append((sid, sdef))
+            if not entries:
+                continue
+            shown_any = True
+            frame = self._section_box(inner, section_title)
+            for sid, sdef in entries:
+                stars = format_ally_mastery_label(sid, ally)
+                cd = ally.get("skill_cooldowns", {}).get(sid, 0)
+                cd_str = f"  [CD: {cd}]" if cd > 0 else ""
+                mastery_lvl = get_ally_skill_mastery_level(ally, sid)
+
+                meta = [f"Cooldown: {sdef.get('cooldown', 0)} turns"]
+                if sdef.get("target"):
+                    meta.append(f"Target: {sdef['target']}")
+                if key == "learned_skills":
+                    meta.append(f"Tier {tier_labels.get(sdef.get('tier', 1), '?')}")
+                    meta.append(f"Cost: {sdef.get('exp_cost', 300)} EXP")
+                    if sdef.get("required_cap"):
+                        meta.append(f"Cap: {sdef['required_cap']}")
+                if mastery_lvl > 0:
+                    meta.append(f"Mastery Lv.{mastery_lvl}")
+
+                self._render_skill_card(
+                    frame, f"{sdef['name']}{cd_str}  {stars}".rstrip(),
+                    title_fg=Theme.TEXT,
+                    description=sdef.get("description", ""), meta=meta,
+                )
+
+        progress = format_skill_learning_progress(ally)
+        if progress and "Not learning" not in progress:
+            shown_any = True
+            frame = self._section_box(inner, "Learning")
+            self.styled_label(
+                frame, text=progress, fg=Theme.BUFF_NEUTRAL,
+            ).pack(anchor=tk.W, padx=6, pady=(2, 4))
+
+        if not shown_any:
+            self.styled_label(
+                inner, text="No skills yet.", fg=Theme.TEXT_DIM,
+            ).pack(anchor=tk.W, padx=6, pady=6)
 
     # ═══════════════════════════════════════════════════════════════════════
     #  TAB 2 — Bag
@@ -390,8 +1012,17 @@ class InventoryScreen(BaseScreen):
             self.styled_label(inner, text="Nothing here.").pack(pady=20)
             return
 
+        # Column widths: short names are padded so [slot]/(type), the stat
+        # list and the scale tag all start in the same column on every row.
+        parts = [self._bag_item_parts(i, is_equip, is_key) for i in items]
+        widths = (
+            max(len(p[0]) for p in parts),
+            max(len(p[1]) for p in parts),
+            max(len(p[2]) for p in parts),
+        )
         for item in items:
-            self._render_bag_item(inner, item, is_equip=is_equip, is_key=is_key)
+            self._render_bag_item(inner, item, is_equip=is_equip, is_key=is_key,
+                                  widths=widths)
 
     def _is_unique_item(self, item):
         """True if the item is unique (template fallback covers old saves)."""
@@ -403,35 +1034,50 @@ class InventoryScreen(BaseScreen):
         except Exception:
             return False
 
-    def _render_bag_item(self, parent, item, is_equip, is_key=False):
-        rarity = item.get("rarity", "common")
-        color = Theme.RARITY_COLORS.get(rarity, Theme.TEXT)
+    def _bag_item_parts(self, item, is_equip, is_key=False):
+        """Display columns for one bag row: (name + count, [slot]/(type), mods)."""
         count = item.get("count", 1)
         count_str = f" (x{count})" if count > 1 else ""
-        item_type = item.get("type", "?")
+        name_part = f"{item['name']}{count_str}"
 
         if is_equip:
             mods = item.get("mods", {})
             mod_txt = ", ".join(
                 f"{k[:3]} {'+' if v >= 0 else ''}{v}" for k, v in mods.items()
             )
-            slot = item.get("slot", "?")
-            text = f"{item['name']}{count_str}  [{slot}]"
-            if mod_txt:
-                text += f"  ({mod_txt})"
+            return (name_part, f"[{item.get('slot', '?')}]",
+                    f"({mod_txt})" if mod_txt else "")
+
+        from pandemonium.resources.item_generation import is_flower_item
+        item_type = item.get("type", "?")
+        if is_flower_item(item):
+            type_label = "Flower"
+        elif item_type == "crafting_material":
+            type_label = "Material"
+        elif item_type == "key_item":
+            type_label = "Key Item"
+        elif item_type == "cargo":
+            type_label = "Cargo"
         else:
-            from pandemonium.resources.item_generation import is_flower_item
-            if is_flower_item(item):
-                type_label = "Flower"
-            elif item_type == "crafting_material":
-                type_label = "Material"
-            elif item_type == "key_item":
-                type_label = "Key Item"
-            elif item_type == "cargo":
-                type_label = "Cargo"
-            else:
-                type_label = item_type
-            text = f"{item['name']}{count_str}  ({type_label})"
+            type_label = item_type
+        return name_part, f"({type_label})", ""
+
+    def _render_bag_item(self, parent, item, is_equip, is_key=False, widths=None):
+        rarity = item.get("rarity", "common")
+        color = Theme.RARITY_COLORS.get(rarity, Theme.TEXT)
+        name_part, tag_part, mods_part = self._bag_item_parts(item, is_equip, is_key)
+
+        # Column-aligned text: short names gain padding so [slot]/(type),
+        # stats and the ▸ Scales tag line up across the whole tab.
+        if widths:
+            name_w, tag_w, mods_w = widths
+            text = f"{name_part:<{name_w}}  {tag_part}"
+            if is_equip and mods_w:
+                text += f"  {mods_part:<{mods_w}}"
+        else:
+            text = f"{name_part}  {tag_part}"
+            if is_equip and mods_part:
+                text += f"  {mods_part}"
 
         # Living key items (the resonance blank) carry a fill-meter.
         meter = item.get("resonance_meter")
@@ -441,10 +1087,15 @@ class InventoryScreen(BaseScreen):
         row = tk.Frame(parent, bg=Theme.BG_DARK)
         row.pack(fill=tk.X, padx=6, pady=(2, 0))
 
-        tk.Label(
+        name_lbl = tk.Label(
             row, text=text, bg=Theme.BG_DARK, fg=color,
             font=Theme.FONT, anchor=tk.W,
-        ).pack(side=tk.LEFT)
+        )
+        if widths and is_equip:
+            # Fixed-width cell so the smaller gold ▸ Scales label lands in
+            # the same column even when this row's name is short.
+            name_lbl.configure(width=len(text))
+        name_lbl.pack(side=tk.LEFT)
 
         if is_equip:
             scale_txt = format_scaling_stat(item)
@@ -499,408 +1150,45 @@ class InventoryScreen(BaseScreen):
         sep.pack(fill=tk.X, padx=10, pady=0)
 
     # ═══════════════════════════════════════════════════════════════════════
-    #  TAB 3 — Skills
+    #  Skill loadout  (the ✓/– boxes on your character page → Skills view)
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _build_skills_tab(self):
-        self.skills_frame = tk.Frame(self.notebook, bg=Theme.BG_DARK)
-        self.notebook.add(self.skills_frame, text=" Skills ")
-        self.skills_frame.grid_columnconfigure(0, weight=1)
-        self._refresh_skills_tab()
-
-    def _refresh_skills_tab(self):
-        for w in self.skills_frame.winfo_children():
-            w.destroy()
-
-        if not self.player:
-            self.styled_label(self.skills_frame, text="No player data.").pack(pady=20)
+    def _toggle_skill_loadout(self, skill_id):
+        """Equip/unequip a class skill for combat from your Skills view."""
+        p = self.player
+        if not p or skill_id not in p.get("skills", []):
             return
 
-        from pandemonium.combat.skills import get_class_skill_map, format_mastery_label
-        from pandemonium.combat.skills import get_equipped_skill_ids, MAX_SKILL_LOADOUT
-
-        skill_map = get_class_skill_map(self.player)
-        if not skill_map:
-            self.styled_label(self.skills_frame, text="No skills available.").pack(pady=20)
-            return
-
-        unlocked = set(self.player.get("skills", []))
-        equipped = set(get_equipped_skill_ids(self.player))
-        level = self.player.get("level", 1)
-        cooldowns = self.player.get("skill_cooldowns", {})
-
-        scroll = tk.Scrollbar(self.skills_frame)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        canvas = tk.Canvas(self.skills_frame, bg=Theme.BG_DARK, highlightthickness=0)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll.config(command=canvas.yview)
-        canvas.config(yscrollcommand=scroll.set)
-
-        inner = tk.Frame(canvas, bg=Theme.BG_DARK)
-        canvas.create_window((0, 0), window=inner, anchor="nw")
-        inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
-
-        loadout_label = self.styled_label(
-            inner,
-            text=f"Battle Loadout: {len(equipped)}/{MAX_SKILL_LOADOUT} equipped "
-                 "(manage it at any Skill Book)",
-            fg=Theme.ACCENT,
+        from pandemonium.combat.skills import (
+            get_class_skill_map, get_equipped_skill_ids, MAX_SKILL_LOADOUT,
         )
-        loadout_label.pack(anchor=tk.W, padx=6, pady=(6, 0))
 
-        from pandemonium.resources.skill_loader import PROFESSIONS
-        profs = PROFESSIONS.get(self.player.get("class"), {})
-        if profs:
-            prof = self.player.get("profession")
-            prof_text = (f"Profession: {profs[prof]['name']}" if prof in profs
-                         else "Profession: none — choose at the Guild after the Lv-40 capstone")
-            prof_label = self.styled_label(inner, text=prof_text, fg=Theme.TEXT_DIM)
-            prof_label.pack(anchor=tk.W, padx=6, pady=(2, 0))
+        skill_map = get_class_skill_map(p)
+        name = skill_map.get(skill_id, {}).get("name", skill_id)
 
-        # ── Passive skill (class passive, upgraded by the chosen profession) ─
-        from pandemonium.combat.skills import get_passive_skill
-        passive = get_passive_skill(self.player)
-        if passive:
-            passive_frame = tk.LabelFrame(
-                inner, text=" Passive ", bg=Theme.BG_DARK, fg=Theme.TEXT,
-                font=Theme.FONT_BOLD, highlightthickness=1,
-                highlightbackground=Theme.BORDER,
+        # Materialise the implicit "everything unlocked" loadout before edits.
+        if p.get("skill_loadout") is None:
+            p["skill_loadout"] = list(get_equipped_skill_ids(p))
+        loadout = p["skill_loadout"]
+        equipped_now = [sid for sid in loadout if sid in p.get("skills", [])]
+
+        if skill_id in equipped_now:
+            loadout.remove(skill_id)
+            self.sm.log(f"{name} unequipped — it will not appear in combat.")
+        elif len(equipped_now) >= MAX_SKILL_LOADOUT:
+            self.sm.log(
+                f"Battle Loadout full ({MAX_SKILL_LOADOUT}/{MAX_SKILL_LOADOUT}) "
+                "— unequip a skill first."
             )
-            passive_frame.pack(fill=tk.X, pady=4, padx=4)
-            tk.Label(
-                passive_frame, text=f"{passive['name']}: {passive['description']}",
-                bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
-                wraplength=600, justify=tk.LEFT,
-            ).pack(anchor=tk.W, padx=6, pady=4)
+            return
+        else:
+            loadout.append(skill_id)
+            self.sm.log(f"{name} equipped — it will appear in combat.")
 
-        unlocked_frame = tk.LabelFrame(
-            inner, text=" Unlocked ", bg=Theme.BG_DARK, fg=Theme.BUFF_POSITIVE,
-            font=Theme.FONT_BOLD, highlightthickness=1,
-            highlightbackground=Theme.BORDER,
-        )
-        unlocked_frame.pack(fill=tk.X, pady=4, padx=4)
-
-        locked_frame = tk.LabelFrame(
-            inner, text=" Locked ", bg=Theme.BG_DARK, fg=Theme.TEXT_DIM,
-            font=Theme.FONT_BOLD, highlightthickness=1,
-            highlightbackground=Theme.BORDER,
-        )
-        locked_frame.pack(fill=tk.X, pady=4, padx=4)
-
-        for sid, sdef in skill_map.items():
-            ul = sdef["unlock_level"]
-            is_unlocked = sid in unlocked and level >= ul
-            cd = cooldowns.get(sid, 0)
-            cd_str = f" [CD: {cd}]" if cd > 0 else ""
-            mastery = format_mastery_label(sid, self.player)
-            label = f"{sdef['name']}{cd_str}  {mastery}  — Lv.{ul}"
-
-            if is_unlocked:
-                if sid in equipped:
-                    entry = f"✓ {label}"
-                    fg = Theme.BUFF_POSITIVE
-                else:
-                    entry = f"– {label}  [not equipped]"
-                    fg = Theme.TEXT_DIM
-                self.styled_label(unlocked_frame, text=entry, fg=fg).pack(
-                    anchor=tk.W, padx=6, pady=1
-                )
-            else:
-                self.styled_label(locked_frame, text=f"{sdef['name']}  — Lv.{ul}  [LOCKED]").pack(
-                    anchor=tk.W, padx=6, pady=1
-                )
+        self._rerender_current_char_page()
 
     # ═══════════════════════════════════════════════════════════════════════
-    #  TAB 4 — Allies  (sub-notebook: one tab per ally)
-    # ═══════════════════════════════════════════════════════════════════════
-
-    def _build_allies_tab(self):
-        self.allies_frame = tk.Frame(self.notebook, bg=Theme.BG_DARK)
-        self.notebook.add(self.allies_frame, text=" Allies ")
-        self.allies_frame.grid_rowconfigure(0, weight=1)
-        self.allies_frame.grid_columnconfigure(0, weight=1)
-        self._refresh_allies_tab()
-
-    def _refresh_allies_tab(self):
-        # Remember which ally page is open — an equip/unequip refresh must not
-        # bounce the view back to the first ally.
-        prev_index = self._ally_tab_index
-        if getattr(self, "ally_notebook", None) is not None:
-            try:
-                selected = self.ally_notebook.select()
-                if selected:
-                    prev_index = self.ally_notebook.index(selected)
-            except (tk.TclError, ValueError):
-                pass
-        self._ally_tab_index = max(0, prev_index)
-
-        for w in self.allies_frame.winfo_children():
-            w.destroy()
-
-        if not self.player:
-            self.styled_label(self.allies_frame, text="No player data.").pack(pady=20)
-            return
-
-        allies = self.player.get("allies", [])
-        if not allies:
-            self.styled_label(self.allies_frame, text="No allies recruited.").pack(pady=20)
-            return
-
-        # ── Sub-notebook for ally tabs ───────────────────────────────────────
-        self.ally_notebook = ttk.Notebook(self.allies_frame, style="Ally.TNotebook")
-        self.ally_notebook.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-
-        for ally in allies:
-            ally_tab = tk.Frame(self.ally_notebook, bg=Theme.BG_DARK)
-            tab_label = f" {display_name(ally) or 'Ally'} "
-            self.ally_notebook.add(ally_tab, text=tab_label)
-            self._render_ally_page(ally_tab, ally)
-
-        # Restore the previously selected ally (clamped if the party shrank).
-        self.ally_notebook.select(min(self._ally_tab_index, len(allies) - 1))
-
-    def _render_ally_page(self, parent, ally):
-        """Render a full dedicated page for an ally — mirrors the player Character tab."""
-        from pandemonium.inventory.core import get_total_equipment_mods
-        from pandemonium.resources.races_classes import ATTRIBUTES
-
-        # ── Reconcile vorpal skills before display ───────────────────────────
-        # Safety net: ensures innate/learned skills match the vorpal flags even
-        # if the load-time reconciliation in ensure_player_fields was missed.
-        from pandemonium.core.character import _reconcile_heroine_vorpal_skills
-        _reconcile_heroine_vorpal_skills(ally, self.player)
-
-        # ── Scrollable inner ─────────────────────────────────────────────────
-        scroll = tk.Scrollbar(parent)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
-        canvas = tk.Canvas(parent, bg=Theme.BG_DARK, highlightthickness=0)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll.config(command=canvas.yview)
-        canvas.config(yscrollcommand=scroll.set)
-
-        inner = tk.Frame(canvas, bg=Theme.BG_DARK)
-        canvas_window = canvas.create_window((0, 0), window=inner, anchor="nw")
-
-        def _on_configure(event):
-            canvas.itemconfig(canvas_window, width=event.width)
-            canvas.config(scrollregion=canvas.bbox("all"))
-
-        inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
-        parent.bind("<Configure>", _on_configure)
-
-        # ── Header ───────────────────────────────────────────────────────────
-        defeated = ally.get("defeated") or ally.get("current_hp", 0) <= 0
-        status_str = " [INCAPACITATED]" if defeated else ""
-        header = (
-            f"=== {display_name(ally) or 'Ally'} "
-            f"(Lv.{ally.get('level', 1)}){status_str} ==="
-        )
-        tk.Label(
-            inner, text=header, bg=Theme.BG_DARK,
-            fg=Theme.BUFF_NEGATIVE if defeated else Theme.ACCENT,
-            font=Theme.FONT_LARGE,
-        ).pack(anchor=tk.W, pady=(0, 4))
-
-        hp = ally.get("current_hp", 0)
-        max_hp = ally.get("max_hp", 1)
-        pct = max(0, min(100, int(100 * hp / max_hp))) if max_hp > 0 else 0
-        hp_color = Theme.HP_BAR_FILL if pct > 50 else (Theme.BUFF_NEUTRAL if pct > 25 else Theme.BUFF_NEGATIVE)
-        info = f"HP: {hp}/{max_hp}"
-        tk.Label(
-            inner, text=info, bg=Theme.BG_DARK, fg=hp_color,
-            font=Theme.FONT_BOLD,
-        ).pack(anchor=tk.W, pady=(0, 8))
-
-        # ── Attributes ───────────────────────────────────────────────────────
-        equip_mods = get_total_equipment_mods(ally)
-        buff_mods = self._compute_buff_mods(ally)
-
-        attr_frame = tk.LabelFrame(
-            inner, text=" Attributes ", bg=Theme.BG_DARK, fg=Theme.TEXT,
-            font=Theme.FONT_BOLD, highlightthickness=1,
-            highlightbackground=Theme.BORDER,
-        )
-        attr_frame.pack(fill=tk.X, pady=4, padx=4)
-
-        for attr in ATTRIBUTES:
-            base = ally["attributes"][attr]
-            eq = equip_mods.get(attr, 0)
-            bf = buff_mods.get(attr, 0)
-            total = base + eq + bf
-            short = attr[:3].upper()
-
-            if bf > 0:
-                line = f"{short}: {base} + {eq}(eq) + {bf}(buff) = {total}"
-            else:
-                line = f"{short}: {base} + {eq} = {total}"
-
-            from pandemonium.combat.stat_milestones import format_milestone_label
-            milestone = format_milestone_label(ally, attr)
-            if milestone:
-                line += f"  [{milestone}]"
-
-            self.styled_label(attr_frame, text=line).pack(anchor=tk.W, padx=6, pady=1)
-
-        # ── Crit summary — chance + damage (includes overflow conversion) ──
-        from pandemonium.combat.stats import format_crit_summary
-        from pandemonium.combat.ally import compute_ally_stats
-        _a_str, _a_con, a_dex, a_ler, _a_wis, _a_cha = compute_ally_stats(ally)
-        self.styled_label(
-            attr_frame, text=format_crit_summary(ally, "ally", dex=a_dex, lrn=a_ler)
-        ).pack(anchor=tk.W, padx=6, pady=1)
-
-        # ── Equipment ────────────────────────────────────────────────────────
-        eq_frame = tk.LabelFrame(
-            inner, text=" Equipment ", bg=Theme.BG_DARK, fg=Theme.TEXT,
-            font=Theme.FONT_BOLD, highlightthickness=1,
-            highlightbackground=Theme.BORDER,
-        )
-        eq_frame.pack(fill=tk.X, pady=4, padx=4)
-
-        eq_slots = ["weapon", "armor", "accessory1", "accessory2"]
-        if ally.get("acc3_unlocked"):
-            eq_slots.append("accessory3")
-        for slot in eq_slots:
-            item = ally.get("equipped", {}).get(slot)
-            slot_name = _slot_display_name(slot)
-
-            row = tk.Frame(eq_frame, bg=Theme.BG_DARK)
-            row.pack(fill=tk.X, padx=6, pady=2)
-
-            if item:
-                rarity = item.get("rarity", "common")
-                color = Theme.RARITY_COLORS.get(rarity, Theme.TEXT)
-                name = item["name"]
-                mods = item.get("mods", {})
-                mod_txt = ", ".join(
-                    f"{k[:3]} {'+' if v >= 0 else ''}{v}" for k, v in mods.items()
-                )
-                txt = f"{slot_name}: {name}"
-                if mod_txt:
-                    txt += f"  ({mod_txt})"
-                tk.Label(
-                    row, text=txt, bg=Theme.BG_DARK, fg=color,
-                    font=Theme.FONT, anchor=tk.W,
-                ).pack(side=tk.LEFT)
-
-                scale_txt = format_scaling_stat(item)
-                if scale_txt:
-                    tk.Label(
-                        row, text=f"  {scale_txt}", bg=Theme.BG_DARK,
-                        fg=Theme.RARITY_LEGENDARY, font=Theme.FONT_SMALL,
-                    ).pack(side=tk.LEFT)
-
-                self.styled_button(
-                    row, text="Unequip", width=8,
-                    command=lambda a=ally, s=slot: self._unequip_ally_slot(a, s),
-                ).pack(side=tk.RIGHT)
-                # Every worn piece is examinable — affinity and effect without
-                # a trip to the blacksmith.
-                self.styled_button(
-                    row, text="Examine", width=9,
-                    command=lambda it=item: self._examine_item(it),
-                ).pack(side=tk.RIGHT, padx=2)
-            else:
-                self.styled_label(row, text=f"{slot_name}: (empty)").pack(side=tk.LEFT)
-                self.styled_button(
-                    row, text="Equip", width=6,
-                    command=lambda a=ally, s=slot: self._jump_to_bag_and_hint(s, ally=a),
-                ).pack(side=tk.RIGHT)
-
-        # ── Passive skill ────────────────────────────────────────────────────
-        from pandemonium.combat.ally_skills import (
-            get_race_passive, get_passive_by_id,
-        )
-        race = ally.get("race")
-        passive = get_race_passive(race) if race else None
-        if not passive and ally.get("passive_skill"):
-            passive = get_passive_by_id(ally["passive_skill"])
-        if not passive and ally.get("key"):
-            from pandemonium.resources.enemies import ENEMIES
-            template = ENEMIES.get(ally["key"], {})
-            template_race = template.get("race")
-            if template_race:
-                passive = get_race_passive(template_race)
-
-        if passive:
-            ps_frame = tk.LabelFrame(
-                inner, text=" Passive Skill ", bg=Theme.BG_DARK, fg=Theme.TEXT,
-                font=Theme.FONT_BOLD, highlightthickness=1,
-                highlightbackground=Theme.BORDER,
-            )
-            ps_frame.pack(fill=tk.X, pady=4, padx=4)
-            tk.Label(
-                ps_frame, text=f"{passive['name']}: {passive['description']}",
-                bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
-                wraplength=600, justify=tk.LEFT,
-            ).pack(anchor=tk.W, padx=6, pady=4)
-
-        # ── Skills ───────────────────────────────────────────────────────────
-        from pandemonium.combat.ally_skills import (
-            get_innate_skill_def, get_learnable_skill_def,
-            get_ally_skill_mastery_level, format_skill_learning_progress,
-            format_ally_mastery_label,
-        )
-        skill_lines = []
-        for sid in ally.get("innate_skills", []):
-            sdef = get_innate_skill_def(sid)
-            if sdef:
-                m = get_ally_skill_mastery_level(ally, sid)
-                stars = format_ally_mastery_label(sid, ally)
-                cd = ally.get("skill_cooldowns", {}).get(sid, 0)
-                cd_str = f" [CD: {cd}]" if cd > 0 else ""
-                skill_lines.append(f"[Innate] {sdef['name']}{cd_str} {stars}")
-        for sid in ally.get("upgrade_skills", []):
-            sdef = get_innate_skill_def(sid)
-            if sdef:
-                stars = format_ally_mastery_label(sid, ally)
-                cd = ally.get("skill_cooldowns", {}).get(sid, 0)
-                cd_str = f" [CD: {cd}]" if cd > 0 else ""
-                skill_lines.append(f"[Upgrade] {sdef['name']}{cd_str} {stars}")
-        for sid in ally.get("learned_skills", []):
-            sdef = get_learnable_skill_def(sid)
-            if sdef:
-                m = get_ally_skill_mastery_level(ally, sid)
-                stars = format_ally_mastery_label(sid, ally)
-                cd = ally.get("skill_cooldowns", {}).get(sid, 0)
-                cd_str = f" [CD: {cd}]" if cd > 0 else ""
-                skill_lines.append(f"[Learned] {sdef['name']}{cd_str} {stars}")
-
-        progress = format_skill_learning_progress(ally)
-        if progress and "Not learning" not in progress:
-            skill_lines.append(f"[Learning] {progress}")
-
-        if skill_lines:
-            sk_frame = tk.LabelFrame(
-                inner, text=" Skills ", bg=Theme.BG_DARK, fg=Theme.TEXT,
-                font=Theme.FONT_BOLD, highlightthickness=1,
-                highlightbackground=Theme.BORDER,
-            )
-            sk_frame.pack(fill=tk.X, pady=4, padx=4)
-            for line in skill_lines:
-                self.styled_label(sk_frame, text=f"  {line}").pack(
-                    anchor=tk.W, padx=6, pady=1
-                )
-
-        # ── Milestones ───────────────────────────────────────────────────────
-        from pandemonium.combat.stat_milestones import format_milestone_bonuses
-        mb = format_milestone_bonuses(ally)
-        if mb:
-            mb_frame = tk.LabelFrame(
-                inner, text=" Milestones ", bg=Theme.BG_DARK, fg=Theme.TEXT,
-                font=Theme.FONT_BOLD, highlightthickness=1,
-                highlightbackground=Theme.BORDER,
-            )
-            mb_frame.pack(fill=tk.X, pady=4, padx=4)
-            tk.Label(
-                mb_frame, text=mb,
-                bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
-                wraplength=600, justify=tk.LEFT,
-            ).pack(anchor=tk.W, padx=6, pady=4)
-
-    # ═══════════════════════════════════════════════════════════════════════
-    #  Personal Information box (rendered inside the Character tab)
+    #  Personal Information box (top of the player's Overview view)
     # ═══════════════════════════════════════════════════════════════════════
 
     def _render_personal_box(self, parent):
@@ -1234,7 +1522,7 @@ class InventoryScreen(BaseScreen):
             except Exception:
                 pass
             # Title bonuses feed the attribute lines and the personal box.
-            self._refresh_stats_tab()
+            self._refresh_characters_tab()
 
     def _render_bounty_subtab(self, parent):
         """Render the Bounty sub-tab showing active bounties."""
@@ -1408,7 +1696,13 @@ class InventoryScreen(BaseScreen):
         # Show most recent events first
         for evt in reversed(events):
             tag = evt.get("tag", "")
-            tag_color = Theme.ACCENT if "[FIXED]" in tag else Theme.BUFF_NEUTRAL
+            if "[FIXED]" in tag:
+                tag_color = Theme.ACCENT
+            elif "[MAP BOSS]" in tag:
+                # Seasonal Warden beats wear the world-map marker's gold.
+                tag_color = "#d4a017"
+            else:
+                tag_color = Theme.BUFF_NEUTRAL
 
             frame = tk.LabelFrame(
                 inner,
@@ -1470,7 +1764,7 @@ class InventoryScreen(BaseScreen):
             from pandemonium.combat.ally import equip_ally_item
             result = equip_ally_item(ally, item, self.player, target_slot=slot_hint)
             self.sm.log(result if isinstance(result, str) else f"Equipped {item['name']} on {display_name(ally)}.")
-            self._show_ally_page(ally)
+            self._show_character_page(ally)
             return
 
         # ── Player path (original) ───────────────────────────────────────
@@ -2054,7 +2348,7 @@ class InventoryScreen(BaseScreen):
         """Unequip a slot on an ally, staying on that ally's page."""
         from pandemonium.combat.ally import unequip_ally_slot
         result = unequip_ally_slot(ally, slot, self.player)
-        self._remember_ally_index(ally)
+        self._remember_character(ally)
         self._handle_unequip_result(result)
         self._refresh_all()
 
@@ -2124,7 +2418,7 @@ class InventoryScreen(BaseScreen):
             if target == "player":
                 self._refresh_all()
             else:
-                self._show_ally_page(ally)
+                self._show_character_page(ally)
 
         btn1_text = f"Replace {acc1['name']}" if acc1 else "Accessory 1"
         btn2_text = f"Replace {acc2['name']}" if acc2 else "Accessory 2"
@@ -2167,45 +2461,47 @@ class InventoryScreen(BaseScreen):
         except tk.TclError:
             pass
 
-    def _remember_ally_index(self, ally):
-        """Store *ally*'s party position as the sub-tab to keep selected."""
-        allies = (self.player or {}).get("allies", [])
+    def _remember_character(self, char):
+        """Keep *char*'s Characters sub-tab selected (you, or an ally in the party)."""
+        chars = self._characters()
         index = None
-        for idx, candidate in enumerate(allies):
-            if candidate is ally:
+        for idx, candidate in enumerate(chars):
+            if candidate is char:
                 index = idx
                 break
         if index is None:
             try:
-                index = allies.index(ally)
+                index = chars.index(char)
             except ValueError:
                 return
-        self._ally_tab_index = index
+        self._char_tab_index = index
         # Mirror the choice onto the live notebook so a concurrent refresh
-        # cannot fall back to the previously displayed ally.
+        # cannot fall back to the previously displayed character.
         try:
-            if getattr(self, "ally_notebook", None) is not None:
-                self.ally_notebook.select(index)
+            if self.char_notebook is not None:
+                self.char_notebook.select(index)
         except (tk.TclError, ValueError):
             pass
 
-    def _show_ally_page(self, ally):
-        """Refresh the screen, then return to *ally*'s page."""
-        self._remember_ally_index(ally)
+    def _show_character_page(self, char, view="overview"):
+        """Refresh the screen, then return to *char*'s page.
+
+        Opens the Overview by default — that's where gear lives, and where the
+        Bag's "equip to ally" flow should land.
+        """
+        self._char_view = view
+        self._remember_character(char)
         self._refresh_all()
         try:
-            self.notebook.select(self.allies_frame)
-            count = len((self.player or {}).get("allies", []))
-            if count and getattr(self, "ally_notebook", None) is not None:
-                self.ally_notebook.select(min(self._ally_tab_index, count - 1))
+            self.notebook.select(self.characters_frame)
+            if self.char_notebook is not None and self._char_pages:
+                self.char_notebook.select(min(self._char_tab_index, len(self._char_pages) - 1))
         except (tk.TclError, ValueError):
             pass
 
     def _refresh_all(self):
-        self._refresh_stats_tab()
+        self._refresh_characters_tab()
         self._refresh_bag_tab()
-        self._refresh_skills_tab()
-        self._refresh_allies_tab()
         self._refresh_journal_tab()
         if hasattr(self, "eh_frame"):
             self._refresh_eh_tab()

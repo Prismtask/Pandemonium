@@ -164,7 +164,7 @@ def main():
         assert tb.get_day_phase(make_player(day_blocks=16)) == "night"
         assert tb.get_day_phase(make_player(day_blocks=23)) == "night"
         track = tb.format_block_track(make_player(day_blocks=3, day=12))
-        assert "Morning" in track and "Day 12" in track
+        assert "Morning" in track and "12/01" in track and "Spring" in track, track
         assert track.count("▮") == 5 and track.count("▯") == 3, track
         sick = tb.format_block_track(make_player(fatigue_stacks=2))
         assert "FATIGUE II" in sick and "\U0001F441" in sick, sick

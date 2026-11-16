@@ -1,7 +1,7 @@
 """Diagnostic: seasons & weather (events.py / time_blocks.py).
 
-Covers the 2026-10-30 slice:
-  1. get_season: 30-day months, one season per month, 4-month cycle.
+Covers the 2026-11-13 calendar slice:
+  1. get_season: 30-day months, 3-month seasons (90 days), 360-day year.
   2. format_date carries the season; format_block_track swaps the phase
      icon for the weather glyph and appends the season with the day.
   3. Weather severity is charged exactly once, as blocks
@@ -31,26 +31,42 @@ import pandemonium.core.time_blocks as tb
 def main():
     # ── 1. Seasons ────────────────────────────────────────────────────────
     assert events.get_season(1) == ("spring", "Spring")
-    assert events.get_season(30) == ("spring", "Spring")
-    assert events.get_season(31) == ("summer", "Summer")
-    assert events.get_season(61) == ("autumn", "Autumn")
-    assert events.get_season(91) == ("winter", "Winter")
-    assert events.get_season(121) == ("spring", "Spring")
-    assert events.get_season({"day": 61}) == ("autumn", "Autumn")
-    print("PASS 1: seasons rotate one per 30-day month (4-month cycle)")
+    assert events.get_season(90) == ("spring", "Spring")
+    assert events.get_season(91) == ("summer", "Summer")
+    assert events.get_season(180) == ("summer", "Summer")
+    assert events.get_season(181) == ("autumn", "Autumn")
+    assert events.get_season(270) == ("autumn", "Autumn")
+    assert events.get_season(271) == ("winter", "Winter")
+    assert events.get_season(360) == ("winter", "Winter")
+    assert events.get_season(361) == ("spring", "Spring")
+    assert events.get_season({"day": 181}) == ("autumn", "Autumn")
+
+    # Season boundaries + calendar wrap (12 months, then back to 01/01).
+    assert events.SEASON_LENGTH_DAYS == 90
+    assert events.season_start_day(45) == 1
+    assert events.season_start_day(91) == 91
+    assert events.season_start_day(360) == 271
+    assert events.next_season_day(1) == 91
+    assert events.next_season_day(90) == 91
+    assert events.next_season_day(91) == 181
+    assert events.next_season_day(360) == 361
+    assert events.format_short_date(13) == "13/01"
+    assert events.format_short_date(331) == "01/12"
+    assert events.format_short_date(361) == "01/01"
+    print("PASS 1: three 30-day months per season (90 days, 360-day year)")
 
     # ── 2. Display ────────────────────────────────────────────────────────
     assert "Spring" in events.format_date(1)
-    assert "Winter" in events.format_date(91)
+    assert "Winter" in events.format_date(271)
 
-    rain_player = {"day": 31, "day_blocks": 8,
+    rain_player = {"day": 91, "day_blocks": 8,
                    "daily_effects": {"weather": "rain", "rain_level": 2}}
     track = tb.format_block_track(rain_player)
     assert track.startswith("⛈ Noon"), track            # weather replaces the icon
     assert "Summer" in track, track
 
     clear = tb.format_block_track({"day": 1, "day_blocks": 0})
-    assert clear == "☀ Morning ▮▮▮▮▮▮▮▮ · Day 1 · Spring", clear
+    assert clear == "☀ Morning ▮▮▮▮▮▮▮▮ · 01/01 · Spring", clear
     print("PASS 2: weather glyph replaces the phase icon; season rides the day")
 
     # ── 3. Glyph table + single-charge travel ────────────────────────────

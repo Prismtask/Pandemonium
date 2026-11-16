@@ -484,7 +484,7 @@ w("Every class has **1 passive skill** and **10 active skills**: the launch six 
   "levels 3, 5, 8, 10, 12 and 15, the **wave-2 skills** at 20, 26 and 32, and the class "
   "**capstone** at 40 — after which you choose a **profession** (see below). In combat your "
   "skills appear as numbered options (`1`–`9`) and you bring a **Battle Loadout** of up to 9 — "
-  "the **Skill Book** in any city menu lists them with cooldowns and mastery.")
+  "the **Inventory → Skills** tab lists them with full descriptions, cooldowns and mastery.")
 w("")
 for class_name, class_skills in CLASS_SKILLS.items():
     w(f"### {class_name}")

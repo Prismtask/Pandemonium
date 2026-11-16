@@ -682,6 +682,12 @@ UNIQUE_PRIMARY_ELEMENTS = {
     "vileheart_pendant": "dark",
     # Resistance-only uniques whose theme beats the ELEMENTS tie-break.
     "chronoweave_mantle": "light",
+    # Seasonal Warden trophies (docs/map_boss_design.md §9): the authored
+    # two-element profiles collapse to these identity elements.
+    "warden_signet": "light",
+    "long_day": "fire",
+    "echo_mantle": "physical",
+    "sundial_crown": "light",
     "wedding_banshee_wailer": "dark",
     "wedding_mummy_princess": "dark",
     "wedding_lizard_queen": "earth",

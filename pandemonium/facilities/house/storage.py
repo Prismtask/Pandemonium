@@ -32,8 +32,9 @@ def _house_storage(player, city_id, house):
 
         term.print("\n-- Chest --")
         if storage:
+            chest_w = max(len(itm["name"]) for itm in storage)
             for i, itm in enumerate(storage):
-                term.print(f"  {i+1}. {itm['name']} ({itm['type']})")
+                term.print(f"  {i+1:>2}. {itm['name']:<{chest_w}}  ({itm['type']})")
         else:
             term.print("  (empty)")
 
@@ -42,12 +43,20 @@ def _house_storage(player, city_id, house):
             sorted_equip = get_sorted_equipment(player)
             sorted_items = get_sorted_items(player)
             all_sorted = sorted_equip + sorted_items
+            name_w = max(len(itm["name"]) for itm in all_sorted)
+            tag_w = max(
+                len(itm.get("slot", "?") if itm.get("type") == "equipment"
+                    else itm.get("type", "?"))
+                for itm in all_sorted
+            )
             for i, itm in enumerate(all_sorted):
                 if itm.get("type") == "equipment":
                     tag = f"[{itm.get('rarity','common')}]"
-                    term.print(f"  {i+1}. {itm['name']} ({itm['slot']}) {tag}")
+                    term.print(f"  {i+1:>2}. {itm['name']:<{name_w}}  "
+                               f"({itm.get('slot', '?'):<{tag_w}}) {tag}")
                 else:
-                    term.print(f"  {i+1}. {itm['name']} ({itm['type']})")
+                    term.print(f"  {i+1:>2}. {itm['name']:<{name_w}}  "
+                               f"({itm.get('type', '?'):<{tag_w}})")
         else:
             term.print("  (empty)")
 

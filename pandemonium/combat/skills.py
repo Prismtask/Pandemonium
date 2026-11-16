@@ -82,8 +82,8 @@ def get_available_skills(player):
 def get_all_unlocked_skills(player):
     """Return all unlocked skills (including those on cooldown).
 
-    Deliberately NOT loadout-filtered — the Skill Book and Arcane Tower show
-    every owned skill.
+    Deliberately NOT loadout-filtered — Inventory → Skills and the Arcane
+    Tower show every owned skill.
     """
     skill_map = get_class_skill_map(player)
     unlocked = player.get("skills", [])
@@ -108,8 +108,8 @@ def unlock_skills_for_level(player):
 
     Also maintains the Battle Loadout: a missing loadout starts as "everything
     unlocked"; new skills auto-join while under the cap. When the cap is full,
-    the skill still unlocks (Skill Book/mastery unaffected) but stays out of
-    combat until equipped.
+    the skill still unlocks (mastery unaffected) but stays out of combat until
+    equipped in Inventory → Skills.
     """
     skill_map = get_class_skill_map(player)
     level = player.get("level", 1)
@@ -144,7 +144,7 @@ def unlock_skills_for_level(player):
             loadout.append(sid)
             names.append(name)
         else:
-            names.append(f"{name} (battle loadout full — equip it at the Skill Book)")
+            names.append(f"{name} (battle loadout full — equip it in Inventory → Skills)")
     return names
 
 
@@ -536,7 +536,7 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 hp = m.get("current_hp", 0)
                 max_hp = m.get("max_hp", player_max_hp(m) if m is player else m.get("max_hp", hp))
                 status = " [FALLEN]" if m.get("current_hp", 1) <= 0 else ""
-                c_print(f"  {i+1}. {name} ({hp}/{max_hp}){status}")
+                c_print(f"  {i+1:>2}. {name} ({hp}/{max_hp}){status}")
         try:
             choice = int(c_input("Choice: ")) - 1
             if 0 <= choice < len(alive):
@@ -559,7 +559,7 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             for i, m in enumerate(dead):
                 name = m.get("name", "You") if m is player else m.get("name", "Ally")
                 max_hp = m.get("max_hp", player_max_hp(m) if m is player else m.get("max_hp", 1))
-                c_print(f"  {i+1}. {name} (will revive at {int(max_hp * 0.5)} HP)")
+                c_print(f"  {i+1:>2}. {name} (will revive at {int(max_hp * 0.5)} HP)")
         try:
             choice = int(c_input("Choice: ")) - 1
             if 0 <= choice < len(dead):
@@ -680,6 +680,9 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         _title_dmg = _title_mod(player, "damage_pct")
         if _title_dmg:
             dmg = int(dmg * (1.0 + _title_dmg))
+        # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
+        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+        dmg = apply_long_day_damage(player, dmg)
         apply_wedding_on_hit(player, target, enemies, dmg)
         player["wedding_first_attack_done"] = True
         return DamageResult(dmg, is_crit)

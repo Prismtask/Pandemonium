@@ -100,7 +100,6 @@
 | `./pandemonium/facilities/herbalist.py` | Herbalist |
 | `./pandemonium/facilities/port.py` | Port facility |
 | `./pandemonium/facilities/shipyard.py` | Shipyard |
-| `./pandemonium/facilities/skill_book.py` | Skill book management |
 | `./pandemonium/facilities/trade_hall.py` | Trading |
 | `./pandemonium/facilities/pathfinding.py` | Pathfinding utility |
 

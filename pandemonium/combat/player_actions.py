@@ -57,8 +57,17 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
         # Override from superboss loop
         action = _action_override
         _, valid_actions, _disabled = get_action_menu(player, enemies)
+        if not action:
+            # No button was actually pressed — a stray Enter/Continue echo
+            # from the previous prompt (double click). Re-open the menu
+            # quietly instead of printing an error.
+            return "retry", False
         if action not in valid_actions:
-            c_print(f"Internal error: override action '{action}' is not available.")
+            if c_renders_menus():
+                # The bridge draws the real menu, so just explain and re-open.
+                c_print("  That action is no longer available \u2014 choose again.")
+            else:
+                c_print(f"Internal error: override action '{action}' is not available.")
             return "retry", False
 
     # ----- BLANK CANVAS (shawl free action, once per combat) -----
@@ -424,6 +433,10 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
         final_dmg += get_rally_attack_bonus(player, final_dmg)
         final_dmg = max(0, final_dmg)
 
+        # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
+        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+        final_dmg = apply_long_day_damage(player, final_dmg)
+
         # Pandemonium: Weakened Resolve curse — player deals less damage
         if player.get("pandemonium_curse"):
             from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
@@ -570,7 +583,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             for display_idx, (_, itm) in enumerate(combat_inventory):
                 qty = itm.get("count", 1)
                 qty_str = f" x{qty}" if qty > 1 else ""
-                c_print(f"{display_idx+1}. {itm['name']}{qty_str} ({itm['type']})")
+                c_print(f"  {display_idx+1:>2}. {itm['name']}{qty_str} ({itm['type']})")
         try:
             choice = int(c_input("Use which item? (0 to cancel): ")) - 1
             if choice < 0 or choice >= len(combat_inventory):
@@ -635,7 +648,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     c_print("Select target to capture:")
                     for i, e in enumerate(mg_targets):
                         chance = get_capture_chance(player, e, item)
-                        c_print(f"{i+1}. {e['name']} - {chance:.0f}% capture")
+                        c_print(f"  {i+1:>2}. {e['name']} - {chance:.0f}% capture")
                     try:
                         idx = int(c_input("Choice: ")) - 1
                     except ValueError:
@@ -998,7 +1011,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     else:
                         tag = f"(+{net.get('rarity_mult_bonus', 25)} catch)"
                     count = net.get("count", 1)
-                    c_print(f"{i+1}. {name} {tag} x{count}")
+                    c_print(f"  {i+1:>2}. {name} {tag} x{count}")
             try:
                 idx = int(c_input("Net choice (0 to cancel): ")) - 1
                 if idx < 0 or idx >= len(nets):
@@ -1013,7 +1026,7 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             c_print("Select target to capture:")
             for i, e in enumerate(mg_targets):
                 chance = get_capture_chance(player, e, chosen_net)
-                c_print(f"{i+1}. {e['name']} - {chance:.0f}% capture")
+                c_print(f"  {i+1:>2}. {e['name']} - {chance:.0f}% capture")
             try:
                 idx = int(c_input("Choice: ")) - 1
             except ValueError:

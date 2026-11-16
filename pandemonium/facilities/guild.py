@@ -482,14 +482,21 @@ def _traveling_merchant(player, city_id):
 
     term.print("")
     options = []
+    stock_rows = []
     for item, your_price, road_price in stock:
-        stat = _item_stat_line(item)
-        if cha_disc > 0 and your_price < road_price:
-            price_str = f"{your_price}g  (road: {road_price}g)"
-        else:
-            price_str = f"{your_price}g"
-        term.print(f"  {len(options) + 1}. {item['name']}  {stat}  —  {price_str}")
-        options.append(f"Buy: {item['name']}  {stat}  —  {your_price}g")
+        has_road = cha_disc > 0 and your_price < road_price
+        stock_rows.append((item["name"], _item_stat_line(item),
+                           your_price, road_price, has_road))
+    stock_name_w = max(len(r[0]) for r in stock_rows)
+    stock_stat_w = max(len(r[1]) for r in stock_rows)
+    price_w = max(len(str(r[2])) for r in stock_rows)
+    road_w = max((len(str(r[3])) for r in stock_rows), default=0)
+    for i, (name, stat, your_price, road_price, has_road) in enumerate(stock_rows, 1):
+        price_str = f"{your_price:>{price_w}}g"
+        if has_road:
+            price_str += f"  (road: {road_price:>{road_w}}g)"
+        term.print(f"  {i:>2}. {name:<{stock_name_w}}  {stat:<{stock_stat_w}}  —  {price_str}")
+        options.append(f"Buy: {name}  {stat}  —  {your_price}g")
     options.append("Sell an item")
     options.append("Leave the stall")
 
@@ -551,11 +558,18 @@ def _merchant_sell(player, city_id=None):
     term.print("\n  The merchant eyes your pack with practiced interest.")
     term.print("  (Road sell rate: ~75% of city shop value)\n")
 
-    for i, (item, unit_price) in enumerate(sellable):
-        count       = item.get("count", 1)
-        stack_price = unit_price * count
-        count_str   = f" (x{count})" if count > 1 else ""
-        term.print(f"  {i+1:>2}. {item['name']}{count_str}  {_item_stat_line(item)}  —  {stack_price}g")
+    sell_rows = []
+    for item, unit_price in sellable:
+        count = item.get("count", 1)
+        count_str = f" (x{count})" if count > 1 else ""
+        sell_rows.append((f"{item['name']}{count_str}",
+                          _item_stat_line(item), unit_price * count))
+    name_w = max(len(r[0]) for r in sell_rows)
+    stat_w = max(len(r[1]) for r in sell_rows)
+    price_w = max(len(str(r[2])) for r in sell_rows)
+    for i, (name_part, stat, stack_price) in enumerate(sell_rows, 1):
+        term.print(f"  {i:>2}. {name_part:<{name_w}}  {stat:<{stat_w}}  "
+                   f"—  {stack_price:>{price_w}}g")
 
     try:
         raw = term.input("\n  Sell which item number? (0 to cancel): ")
@@ -723,12 +737,12 @@ def _view_bounty_board(player, city_id, stock_key):
             options = []
             for i, b in enumerate(bounties):
                 if b.get("atonement"):
-                    term.print(f"{i+1}. Atonement — Hunt {b['required']} {b['target_name']} (Difficulty Atonement)")
-                    term.print(f"   Reward: {b['reward_gold']}g, +{b.get('reward_karma', 5)} Karma | Deadline: {b['days_given']} Days")
+                    term.print(f"  {i+1:>2}. Atonement — Hunt {b['required']} {b['target_name']} (Difficulty Atonement)")
+                    term.print(f"      Reward: {b['reward_gold']}g, +{b.get('reward_karma', 5)} Karma | Deadline: {b['days_given']} Days")
                     options.append(f"Atonement: {b['target_name']} — +{b.get('reward_karma', 5)} Karma")
                 else:
-                    term.print(f"{i+1}. Hunt {b['required']} {b['target_name']} (Difficulty {b['difficulty']})")
-                    term.print(f"   Reward: {b['reward_gold']}g | Deadline: {b['days_given']} Days")
+                    term.print(f"  {i+1:>2}. Hunt {b['required']} {b['target_name']} (Difficulty {b['difficulty']})")
+                    term.print(f"      Reward: {b['reward_gold']}g | Deadline: {b['days_given']} Days")
                     options.append(f"Hunt {b['target_name']} — {b['reward_gold']}g")
         
         choice = term.menu(options, prompt="Select a bounty to accept:", allow_cancel=True, cancel_label="Back")
@@ -785,7 +799,7 @@ def _manage_bounties(player, city_id):
         options = []
         for i, b in enumerate(active):
             status = "READY TO TURN IN" if b["current"] >= b["required"] else f"{b['current']}/{b['required']}"
-            term.print(f"{i+1}. {b['target_name']} [{status}] - "
+            term.print(f"  {i+1:>2}. {b['target_name']} [{status}] - "
                        f"Expires {format_day_delta(b['deadline'], current_day)} "
                        f"(Issuer: {CITIES[b['city']]['name']})")
             options.append(f"{b['target_name']} [{status}]")

@@ -12,7 +12,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pandemonium.facilities.house as house # noqa: F401  (circular-import smoke test)
+import pandemonium.facilities.house as house_mod  # circular-import smoke test
+import pandemonium.facilities.house.lounge as house_lounge
 import pandemonium.facilities.dispatch as D
 import pandemonium.progression.family as F
 import pandemonium.progression.quests as quests
@@ -175,11 +176,11 @@ check("spring + full moon = 14%", abs(F.initiation_chance(
 check("spring new moon = 11%", abs(F.initiation_chance(
     {"day": 1, "daily_effects": {}}, g) - 0.11) < 1e-9)
 check("summer + full moon = 12%", abs(F.initiation_chance(
-    {"day": 45, "daily_effects": {"full_moon": True}}, g) - 0.12) < 1e-9)
+    {"day": 105, "daily_effects": {"full_moon": True}}, g) - 0.12) < 1e-9)
 check("autumn + full moon = 11%", abs(F.initiation_chance(
-    {"day": 75, "daily_effects": {"full_moon": True}}, g) - 0.11) < 1e-9)
+    {"day": 195, "daily_effects": {"full_moon": True}}, g) - 0.11) < 1e-9)
 check("winter + full moon = 13%", abs(F.initiation_chance(
-    {"day": 105, "daily_effects": {"full_moon": True}}, g) - 0.13) < 1e-9)
+    {"day": 285, "daily_effects": {"full_moon": True}}, g) - 0.13) < 1e-9)
 check("monster girl season +3%", abs(F.initiation_chance(
     {"day": 16, "daily_effects": {"capture_bonus": 15}}, g) - 0.12) < 1e-9)
 check("wary prey -3%", abs(F.initiation_chance(
@@ -512,14 +513,14 @@ check("launch rejects pregnancy", inst is None and "expecting" in msg)
 
 p = make_player(day=10)
 preg = make_girl("PregAscend", level=10, level_cap=10, pregnant=True)
-check("ascension blocked while pregnant", not facilities.house._can_ascend_ally(p, preg))
+check("ascension blocked while pregnant", not house_mod._can_ascend_ally(p, preg))
 awaken_girl = make_girl("Awaken", key="goblin_girl", level=40, level_cap=40,
                         affection=200, pregnant=True)
-ok, reason = facilities.house.can_awaken_girl(awaken_girl, 10)
+ok, reason = house_mod.can_awaken_girl(awaken_girl, 10)
 check("awakening blocked while pregnant", not ok and reason == "expecting")
 recovering = make_girl("RecoverAwaken", key="goblin_girl", level=40, level_cap=40,
                        affection=200, recovery_until=15)
-ok, reason = facilities.house.can_awaken_girl(recovering, 10)
+ok, reason = house_mod.can_awaken_girl(recovering, 10)
 check("awakening blocked in recovery", not ok and reason == "recovering")
 
 p = make_player(day=10)
@@ -542,7 +543,7 @@ awaken_child = make_girl("AwakenChild", key="trueborn_goblin_girl_4",
                          mother_key="goblin_girl", is_trueborn=True,
                          no_romance=True, stage="adult", level=40,
                          level_cap=40, affection=200)
-ok, reason = facilities.house.can_awaken_girl(awaken_child, 10)
+ok, reason = house_mod.can_awaken_girl(awaken_child, 10)
 check("true-born can awaken via mother", ok)
 from pandemonium.combat.ally_skills import apply_awakening_skills
 apply_awakening_skills(awaken_child, "goblin_girl")
@@ -593,7 +594,7 @@ item_child = make_girl("ItemLegacy", is_ally=True,
 check("Gnome item legacy", abs(F.father_legacy_item_mult(item_child) - 1.05) < 1e-9)
 
 check("child talk lines", bool(child_talk_lines("mid")))
-check("child gift is positive", 8 <= facilities.house.get_gift_reaction(
+check("child gift is positive", 8 <= house_mod.get_gift_reaction(
     "trueborn_goblin_girl_1", "sweet", is_trueborn=True) <= 14)
 
 # 16. Phase 4 content coverage -------------------------------------------
@@ -744,12 +745,12 @@ daughter = make_girl("DaughterUI", key="trueborn_goblin_girl_ui",
                      affection=60, affection_cap=100)
 p["houses"]["solmere"]["monster_girls"] = [daughter]
 lounge_term = SeqTerm([0, 0, -1, -1])
-old_term = facilities.house.term
-facilities.house.term = lounge_term
+old_term = house_lounge.term
+house_lounge.term = lounge_term
 try:
-    facilities.house._house_lounge(p, "solmere", p["houses"]["solmere"])
+    house_mod._house_lounge(p, "solmere", p["houses"]["solmere"])
 finally:
-    facilities.house.term = old_term
+    house_lounge.term = old_term
 check("lounge shows Bond label", any("Bond:" in line for line in lounge_term.lines))
 check("lounge shows Daughter status", any("Daughter" in line for line in lounge_term.lines))
 check("lounge child talk gains bond", daughter["affection"] > 60)

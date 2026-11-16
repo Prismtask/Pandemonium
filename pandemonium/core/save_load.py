@@ -102,6 +102,13 @@ def load_game(slot):
         data.pop("_eh_in_run", None)
         # Run-end aftermath stash — display-only, never valid after a load.
         data.pop("_eh_last_summary", None)
+        # Seasonal map boss arena transients (docs/map_boss_design.md §4.3) —
+        # a loaded game resumes in a city, never mid-arena. The Warden state
+        # itself lives in data["map_boss"] and is preserved.
+        for _key in ("_map_boss_site", "_map_boss_in_fight",
+                     "_map_boss_prev_floor", "_map_boss_clock_blocks",
+                     "_map_boss_victory", "_combat_time_label"):
+            data.pop(_key, None)
         # Rift effects live in player["event_horizon"] while suspended, never
         # on actors (docs §6.3). Scrub baked-in entries from saves written
         # before detach-on-suspend — legacy sweep included, since pre-marking

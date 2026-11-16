@@ -51,7 +51,7 @@ def _house_family(player, city_id, house):
                 else:
                     progress = f"{growth_days_remaining(child, day)} day(s) to the next stage"
                 home = child.get("home_city") or city_id
-                term.print(f"  {i}. {child.get('name')} ({label}) — {progress} · {home}")
+                term.print(f"  {i:>2}. {child.get('name')} ({label}) — {progress} · {home}")
         else:
             term.print("Children: —")
 

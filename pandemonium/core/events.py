@@ -145,23 +145,31 @@ RANDOM_EVENT_POOL = [
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+MONTH_LENGTH_DAYS = 30           # one game month, also the billing cycle
+
+
 def get_month_day(global_day):
     """Convert a global day counter to (month, day_of_month)."""
-    month = (global_day - 1) // 30 + 1
-    day_of_month = (global_day - 1) % 30 + 1
+    month = (global_day - 1) // MONTH_LENGTH_DAYS + 1
+    day_of_month = (global_day - 1) % MONTH_LENGTH_DAYS + 1
     return month, day_of_month
 
 
 # ── Seasons ─────────────────────────────────────────────────────────────
-# Months are 30 days and repeat forever; one season per month keeps the
-# world visibly changing (a full cycle is 120 days):
-#   M1 Spring · M2 Summer · M3 Autumn · M4 Winter · M5 Spring ...
+# Months are 30 days and the year is twelve of them (360 days). Each season
+# spans three consecutive months, so the world visibly turns four times a
+# year and a season lasts long enough to carry the map boss's Echo ladder:
+#   M1-M3 Spring · M4-M6 Summer · M7-M9 Autumn · M10-M12 Winter · M13 Spring ...
 SEASONS = (
     ("spring", "Spring"),
     ("summer", "Summer"),
     ("autumn", "Autumn"),
     ("winter", "Winter"),
 )
+
+MONTHS_PER_SEASON = 3            # 3 × 30 = a 90-day season
+MONTHS_PER_YEAR = 12             # a 360-day calendar year
+SEASON_LENGTH_DAYS = MONTHS_PER_SEASON * MONTH_LENGTH_DAYS
 
 
 def get_season(day_or_player):
@@ -179,7 +187,23 @@ def get_season(day_or_player):
     except (TypeError, ValueError):
         day = 1
     month, _ = get_month_day(day)
-    return SEASONS[(month - 1) % len(SEASONS)]
+    return SEASONS[(month - 1) // MONTHS_PER_SEASON % len(SEASONS)]
+
+
+def season_start_day(global_day):
+    """First global day of the season containing ``global_day`` (1/91/181/271)."""
+    try:
+        day = max(1, int(global_day or 1))
+    except (TypeError, ValueError):
+        day = 1
+    month, _ = get_month_day(day)
+    first_month = (month - 1) // MONTHS_PER_SEASON * MONTHS_PER_SEASON + 1
+    return (first_month - 1) * MONTH_LENGTH_DAYS + 1
+
+
+def next_season_day(global_day):
+    """Strictly the next season boundary day (the next 1st of months 1/4/7/10)."""
+    return season_start_day(global_day) + SEASON_LENGTH_DAYS
 
 
 # ── Wonderland date flavours ────────────────────────────────────────────
@@ -205,15 +229,15 @@ _WL_DATE_FLAVORS = [
 def format_short_date(global_day):
     """Return a calendar stamp ``dd/mm`` for a global day.
 
-    Months are 30 days and the calendar year is four season-months (120
-    days), so the month wraps 1–4: day 13 → ``13/01``, day 121 → ``01/01``.
+    Months are 30 days and the calendar year is twelve of them (360 days),
+    so the month wraps 1–12: day 13 → ``13/01``, day 361 → ``01/01``.
     """
     try:
         day = max(1, int(global_day or 1))
     except (TypeError, ValueError):
         day = 1
     month, dom = get_month_day(day)
-    month = (month - 1) % len(SEASONS) + 1
+    month = (month - 1) % MONTHS_PER_YEAR + 1
     return f"{dom:02d}/{month:02d}"
 
 
@@ -506,5 +530,12 @@ def process_day_rollover(player, days_passed, old_day):
     _, spawn_event = maybe_spawn_cycle(player)
     if spawn_event:
         all_events.append(spawn_event)
+
+    # ── Seasonal map boss (docs/map_boss_design.md) ──
+    # Spawns the current season's Warden once Floor 20 is cleared, and swaps
+    # to the next season's Warden on a season boundary (days 1/91/181/271).
+    # Idempotent; journal entries are written by the runtime itself.
+    from pandemonium.world.map_boss import maybe_spawn as maybe_spawn_map_boss
+    maybe_spawn_map_boss(player)
 
     return all_events

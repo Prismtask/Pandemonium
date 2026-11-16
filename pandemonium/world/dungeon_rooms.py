@@ -605,13 +605,20 @@ def handle_merchant_room(player, floor):
         gold_line += f"  |  Charisma discount: {cha_disc:.0f}%"
     _tprint(gold_line)
 
-    for i, (item, your_price, road_price) in enumerate(stock, 1):
-        stat = _item_stat_line(item)
-        if cha_disc > 0 and your_price < road_price:
-            price_str = f"{your_price}g (road: {road_price}g)"
-        else:
-            price_str = f"{your_price}g"
-        _tprint(f"  {i}. {item['name']}  {stat}  —  {price_str}")
+    stock_rows = []
+    for item, your_price, road_price in stock:
+        has_road = cha_disc > 0 and your_price < road_price
+        stock_rows.append((item["name"], _item_stat_line(item),
+                           your_price, road_price, has_road))
+    stock_name_w = max(len(r[0]) for r in stock_rows)
+    stock_stat_w = max(len(r[1]) for r in stock_rows)
+    price_w = max(len(str(r[2])) for r in stock_rows)
+    road_w = max((len(str(r[3])) for r in stock_rows), default=0)
+    for i, (name, stat, your_price, road_price, has_road) in enumerate(stock_rows, 1):
+        price_str = f"{your_price:>{price_w}}g"
+        if has_road:
+            price_str += f"  (road: {road_price:>{road_w}}g)"
+        _tprint(f"  {i:>2}. {name:<{stock_name_w}}  {stat:<{stock_stat_w}}  —  {price_str}")
 
     options = [f"Buy: {item['name']}" for item, _, _ in stock]
     options.append("Sell an item")

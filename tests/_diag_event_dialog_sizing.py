@@ -48,7 +48,7 @@ def _walk(widget):
 
 
 def _check(root, label, events):
-    dlg = _EventNoticeDialog(events, day_text="Day 28 (M1-D28)", parent=root)
+    dlg = _EventNoticeDialog(events, day_text="28/01 · Spring", parent=root)
     dlg.dialog.update_idletasks()
 
     canvas = dlg._body_canvas

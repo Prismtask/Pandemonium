@@ -28,8 +28,8 @@
       "max_floor": 1
     },
     "wonderland": {
-      "floor": 33,
-      "max_floor": 33
+      "floor": 44,
+      "max_floor": 44
     },
     "stormhold": {
       "floor": 1,
@@ -39,7 +39,7 @@
   "current_hp": 149,
   "level": 30,
   "level_cap": 30,
-  "exp": 4607,
+  "exp": 10497,
   "level_hp_bonus": 116,
   "inventory": [
     {
@@ -69,7 +69,7 @@
       "type": "crafting_material",
       "rarity": "common",
       "enhance": 0,
-      "count": 3,
+      "count": 4,
       "description": "A flower with petals of layered slate. It grows in cracks where nothing else will.",
       "flower_element": "earth"
     },
@@ -79,7 +79,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 11,
+      "count": 12,
       "power": 5,
       "temp_stat": "Strength",
       "duration": 3
@@ -121,7 +121,7 @@
       "type": "crafting_material",
       "rarity": "common",
       "enhance": 0,
-      "count": 8,
+      "count": 9,
       "description": "An orchid that leans into a wind no one else can feel. Its petals whistle softly.",
       "flower_element": "wind"
     },
@@ -131,7 +131,7 @@
       "type": "crafting_material",
       "rarity": "common",
       "enhance": 0,
-      "count": 6,
+      "count": 7,
       "description": "A lily that hums before a storm. Sparks gather on its stamens like dew.",
       "flower_element": "thunder"
     },
@@ -218,7 +218,7 @@
       "type": "crafting_material",
       "rarity": "common",
       "enhance": 0,
-      "count": 5,
+      "count": 6,
       "description": "A flower whose petals rearrange themselves into faint runes when no one is watching.",
       "flower_element": "magical"
     },
@@ -267,7 +267,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 21,
+      "count": 27,
       "power": 28,
       "shock_damage": 5,
       "shock_duration": 3
@@ -278,7 +278,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 7,
+      "count": 8,
       "power": 0,
       "escape_bonus": 8
     },
@@ -288,7 +288,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 25,
+      "count": 27,
       "power": 25,
       "bonus_vs": "Undead"
     },
@@ -318,7 +318,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 15,
+      "count": 21,
       "power": 0,
       "expose_armor": 2
     },
@@ -328,7 +328,7 @@
       "type": "crafting_material",
       "rarity": "common",
       "enhance": 0,
-      "count": 19,
+      "count": 24,
       "description": "A flower that only opens in darkness. Looking at it too long makes the room feel smaller.",
       "flower_element": "dark"
     },
@@ -348,7 +348,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 2,
+      "count": 3,
       "power": 40,
       "cleanse_burn_poison": true
     },
@@ -358,7 +358,7 @@
       "type": "crafting_material",
       "rarity": "common",
       "enhance": 0,
-      "count": 4,
+      "count": 5,
       "description": "A lotus that blooms on black ice. Its chill never melts, even beside an open forge.",
       "flower_element": "water"
     },
@@ -368,7 +368,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 17,
+      "count": 19,
       "power": 20,
       "expose_armor": 2
     },
@@ -387,7 +387,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 1,
+      "count": 2,
       "power": 0,
       "stun_chance": 0.6
     },
@@ -397,7 +397,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 1,
+      "count": 2,
       "power": 30,
       "defense_buff": 0.15,
       "buff_duration": 2
@@ -408,7 +408,7 @@
       "type": "crafting_material",
       "rarity": "common",
       "enhance": 0,
-      "count": 5,
+      "count": 8,
       "description": "A stubborn briar with iron-hard thorns. Smiths fold it into physical gear to push it to the next grade.",
       "flower_element": "physical"
     },
@@ -435,81 +435,12 @@
       "description": "A whole mirror, small enough to carry. Sylvana's reflection no longer lives behind it — but she still checks it when she thinks you are not looking."
     },
     {
-      "id": "sword",
-      "name": "Legendary Sword",
-      "type": "equipment",
-      "rarity": "legendary",
-      "enhance": 0,
-      "slot": "weapon",
-      "mods": {
-        "Strength": 2
-      },
-      "scaling_stat": "Strength",
-      "primary_element": "physical",
-      "elemental_dmg": {
-        "physical": 1.1
-      },
-      "weapon_type": "sword",
-      "form": "sword",
-      "trait_tier": 1,
-      "count": 1
-    },
-    {
-      "id": "chakram",
-      "name": "Legendary Chakram",
-      "type": "equipment",
-      "rarity": "legendary",
-      "enhance": 0,
-      "slot": "weapon",
-      "mods": {
-        "Dexterity": 4,
-        "Strength": 1
-      },
-      "scaling_stat": "Dexterity",
-      "primary_element": "physical",
-      "elemental_dmg": {
-        "physical": 1.1
-      },
-      "weapon_type": "chakram",
-      "form": "chakram",
-      "trait_tier": 1,
-      "count": 1
-    },
-    {
-      "id": "vorpal_blade_rusted",
-      "name": "??? Blade",
-      "type": "equipment",
-      "rarity": "unique",
-      "enhance": 0,
-      "slot": "weapon",
-      "mods": {
-        "Strength": 13,
-        "Dexterity": 9
-      },
-      "special": "vorpal_rusted",
-      "unique": true,
-      "drop_rarity": "unique",
-      "scaling_stat": [
-        "Strength",
-        "Dexterity"
-      ],
-      "primary_element": "light",
-      "elemental_dmg": {
-        "light": 1.35
-      },
-      "wonderland_only": true,
-      "weapon_type": "blade",
-      "form": "blade",
-      "trait_tier": 2,
-      "count": 1
-    },
-    {
       "id": "mana_philter",
       "name": "Mana Philter",
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 3,
+      "count": 4,
       "power": 0,
       "restore_random_skill": true
     },
@@ -519,7 +450,7 @@
       "type": "utility",
       "rarity": "common",
       "enhance": 0,
-      "count": 4,
+      "count": 6,
       "power": 0,
       "fixed_flee": true
     },
@@ -529,7 +460,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 3,
+      "count": 5,
       "power": 35,
       "buff_duration": 3,
       "init_bonus": 3
@@ -540,7 +471,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 3,
+      "count": 4,
       "power": 180
     },
     {
@@ -570,7 +501,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 1,
+      "count": 2,
       "power": 30,
       "cooldown_reduce": 1
     },
@@ -580,7 +511,7 @@
       "type": "consumable",
       "rarity": "common",
       "enhance": 0,
-      "count": 2,
+      "count": 3,
       "power": 40,
       "buff_fire_resist": 0.2,
       "buff_duration": 2
@@ -596,58 +527,64 @@
       "cleanse_curse_debuff": true
     },
     {
-      "id": "nether_grimoire",
-      "name": "Uncommon Nether Grimoire",
-      "type": "equipment",
-      "rarity": "uncommon",
-      "enhance": 1,
-      "slot": "weapon",
-      "mods": {
-        "Learning": 9
-      },
-      "scaling_stat": "Learning",
-      "primary_element": "dark",
-      "elemental_dmg": {
-        "magical": 1.2,
-        "dark": 1.5
-      },
-      "weapon_type": "grimoire",
-      "grade": 3,
-      "form": "grimoire",
-      "composed": true,
-      "count": 1
+      "id": "cinderpeak_ore",
+      "name": "Cinderpeak Ore",
+      "type": "cargo",
+      "rarity": "common",
+      "count": 1,
+      "weight": 20,
+      "theme": "mountain",
+      "origin": "cinderpeak",
+      "base_price": 70
     },
     {
-      "id": "crossbow",
-      "name": "Legendary Crossbow",
+      "id": "orb",
+      "name": "Epic Orb",
       "type": "equipment",
-      "rarity": "legendary",
+      "rarity": "epic",
       "enhance": 0,
       "slot": "weapon",
       "mods": {
-        "Dexterity": 4,
-        "Learning": 1
+        "Learning": 3,
+        "Charisma": 1
       },
-      "scaling_stat": "Dexterity",
-      "primary_element": "physical",
+      "scaling_stat": "Learning",
+      "primary_element": "magical",
       "elemental_dmg": {
-        "physical": 1.1
+        "magical": 1.1
       },
-      "weapon_type": "crossbow",
-      "form": "crossbow",
+      "weapon_type": "orb",
+      "form": "orb",
       "trait_tier": 1,
       "count": 1
     },
     {
-      "id": "elven_mail",
-      "name": "Rare Elven Mail",
+      "id": "signet",
+      "name": "Legendary Signet",
+      "type": "equipment",
+      "rarity": "legendary",
+      "enhance": 0,
+      "slot": "accessory",
+      "mods": {
+        "Charisma": 5
+      },
+      "primary_element": "physical",
+      "elemental_res": {
+        "physical": 1.0
+      },
+      "form": "signet",
+      "count": 1
+    },
+    {
+      "id": "vestments",
+      "name": "Rare Vestments",
       "type": "equipment",
       "rarity": "rare",
       "enhance": 0,
       "slot": "armor",
       "mods": {
-        "Dexterity": 3,
-        "Learning": 1
+        "Learning": 4,
+        "Constitution": 1
       },
       "primary_element": "physical",
       "elemental_res": {
@@ -655,59 +592,69 @@
         "fire": 1.05,
         "earth": 1.05
       },
-      "form": "elven_mail",
+      "form": "vestments",
       "count": 1
     },
     {
-      "id": "mace",
-      "name": "Epic Mace",
+      "id": "fur_mantle",
+      "name": "Epic Fur Mantle",
       "type": "equipment",
       "rarity": "epic",
       "enhance": 0,
+      "slot": "armor",
+      "mods": {
+        "Constitution": 2,
+        "Wisdom": 1
+      },
+      "primary_element": "physical",
+      "elemental_res": {
+        "physical": 1.15,
+        "fire": 1.05,
+        "earth": 1.05
+      },
+      "form": "fur_mantle",
+      "count": 1
+    },
+    {
+      "id": "sword",
+      "name": "Rare Sword",
+      "type": "equipment",
+      "rarity": "rare",
+      "enhance": 0,
       "slot": "weapon",
       "mods": {
-        "Strength": 3,
-        "Wisdom": 1
+        "Strength": 2
       },
       "scaling_stat": "Strength",
       "primary_element": "physical",
       "elemental_dmg": {
         "physical": 1.1
       },
-      "weapon_type": "mace",
-      "form": "mace",
+      "weapon_type": "sword",
+      "form": "sword",
       "trait_tier": 1,
       "count": 1
     },
     {
-      "id": "wraps",
-      "name": "Rare Wraps",
-      "type": "equipment",
-      "rarity": "rare",
+      "id": "shadow_essence",
+      "name": "Shadow Essence",
+      "type": "consumable",
+      "rarity": "common",
       "enhance": 0,
-      "slot": "armor",
-      "mods": {
-        "Dexterity": 4,
-        "Charisma": 1
-      },
-      "primary_element": "physical",
-      "elemental_res": {
-        "physical": 1.15,
-        "fire": 1.05
-      },
-      "form": "wraps",
-      "count": 1
+      "count": 2,
+      "power": 25,
+      "dodge_next": true
     },
     {
-      "id": "dragonhide",
-      "name": "Rare Dragonhide",
+      "id": "regalia",
+      "name": "Rare Regalia",
       "type": "equipment",
       "rarity": "rare",
       "enhance": 0,
       "slot": "armor",
       "mods": {
-        "Constitution": 4,
-        "Dexterity": 2
+        "Charisma": 4,
+        "Wisdom": 1
       },
       "primary_element": "physical",
       "elemental_res": {
@@ -715,14 +662,197 @@
         "fire": 1.05,
         "earth": 1.05
       },
-      "form": "dragonhide",
+      "form": "regalia",
+      "count": 1
+    },
+    {
+      "id": "bell",
+      "name": "Epic Bell",
+      "type": "equipment",
+      "rarity": "epic",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Charisma": 3,
+        "Learning": 2
+      },
+      "scaling_stat": "Charisma",
+      "primary_element": "magical",
+      "elemental_dmg": {
+        "magical": 1.1
+      },
+      "weapon_type": "bell",
+      "form": "bell",
+      "trait_tier": 1,
+      "count": 1
+    },
+    {
+      "id": "leathers",
+      "name": "Rare Leathers",
+      "type": "equipment",
+      "rarity": "rare",
+      "enhance": 0,
+      "slot": "armor",
+      "mods": {
+        "Dexterity": 2,
+        "Constitution": 1
+      },
+      "primary_element": "physical",
+      "elemental_res": {
+        "physical": 1.15,
+        "fire": 1.05
+      },
+      "form": "leathers",
+      "count": 1
+    },
+    {
+      "id": "shield",
+      "name": "Epic Shield",
+      "type": "equipment",
+      "rarity": "epic",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Constitution": 3
+      },
+      "scaling_stat": "Constitution",
+      "scaling_mult": 0.5,
+      "con_defense": true,
+      "primary_element": "physical",
+      "elemental_dmg": {
+        "physical": 1.1
+      },
+      "weapon_type": "shield",
+      "form": "shield",
+      "trait_tier": 1,
+      "count": 1
+    },
+    {
+      "id": "bell",
+      "name": "Legendary Bell",
+      "type": "equipment",
+      "rarity": "legendary",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Charisma": 4,
+        "Learning": 2
+      },
+      "scaling_stat": "Charisma",
+      "primary_element": "magical",
+      "elemental_dmg": {
+        "magical": 1.1
+      },
+      "weapon_type": "bell",
+      "form": "bell",
+      "trait_tier": 1,
+      "count": 1
+    },
+    {
+      "id": "shield",
+      "name": "Epic Shield",
+      "type": "equipment",
+      "rarity": "epic",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Constitution": 3
+      },
+      "scaling_stat": "Constitution",
+      "scaling_mult": 0.5,
+      "con_defense": true,
+      "primary_element": "physical",
+      "elemental_dmg": {
+        "physical": 1.1
+      },
+      "weapon_type": "shield",
+      "form": "shield",
+      "trait_tier": 1,
+      "count": 1
+    },
+    {
+      "id": "bell",
+      "name": "Legendary Bell",
+      "type": "equipment",
+      "rarity": "legendary",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Charisma": 4,
+        "Learning": 2
+      },
+      "scaling_stat": "Charisma",
+      "primary_element": "magical",
+      "elemental_dmg": {
+        "magical": 1.1
+      },
+      "weapon_type": "bell",
+      "form": "bell",
+      "trait_tier": 1,
+      "count": 1
+    },
+    {
+      "id": "amulet",
+      "name": "Epic Amulet",
+      "type": "equipment",
+      "rarity": "epic",
+      "enhance": 0,
+      "slot": "accessory",
+      "mods": {
+        "Constitution": 3
+      },
+      "primary_element": "physical",
+      "elemental_res": {
+        "physical": 1.0
+      },
+      "form": "amulet",
+      "count": 1
+    },
+    {
+      "id": "staff",
+      "name": "Epic Staff",
+      "type": "equipment",
+      "rarity": "epic",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Wisdom": 5
+      },
+      "scaling_stat": "Wisdom",
+      "primary_element": "magical",
+      "elemental_dmg": {
+        "magical": 1.1
+      },
+      "weapon_type": "staff",
+      "form": "staff",
+      "trait_tier": 1,
+      "count": 1
+    },
+    {
+      "id": "bow",
+      "name": "Epic Bow",
+      "type": "equipment",
+      "rarity": "epic",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Dexterity": 5
+      },
+      "scaling_stat": "Dexterity",
+      "primary_element": "physical",
+      "elemental_dmg": {
+        "physical": 1.1
+      },
+      "weapon_type": "bow",
+      "form": "bow",
+      "trait_tier": 1,
       "count": 1
     },
     {
       "id": "wand",
-      "name": "Rare Wand",
+      "name": "Epic Wand",
       "type": "equipment",
-      "rarity": "rare",
+      "rarity": "epic",
       "enhance": 0,
       "slot": "weapon",
       "mods": {
@@ -740,32 +870,55 @@
       "count": 1
     },
     {
-      "id": "talisman",
-      "name": "Rare Talisman",
+      "id": "regalia",
+      "name": "Epic Regalia",
       "type": "equipment",
-      "rarity": "rare",
+      "rarity": "epic",
       "enhance": 0,
-      "slot": "accessory",
+      "slot": "armor",
       "mods": {
-        "Constitution": 2,
-        "Wisdom": 2
+        "Charisma": 5,
+        "Wisdom": 1
       },
       "primary_element": "physical",
       "elemental_res": {
-        "physical": 1.0
+        "physical": 1.15,
+        "fire": 1.05,
+        "earth": 1.05
       },
-      "form": "talisman",
+      "form": "regalia",
+      "count": 1
+    },
+    {
+      "id": "halberd",
+      "name": "Epic Halberd",
+      "type": "equipment",
+      "rarity": "epic",
+      "enhance": 0,
+      "slot": "weapon",
+      "mods": {
+        "Strength": 5,
+        "Dexterity": 1
+      },
+      "scaling_stat": "Strength",
+      "primary_element": "physical",
+      "elemental_dmg": {
+        "physical": 1.1
+      },
+      "weapon_type": "halberd",
+      "form": "halberd",
+      "trait_tier": 1,
       "count": 1
     },
     {
       "id": "rapier",
-      "name": "Rare Rapier",
+      "name": "Epic Rapier",
       "type": "equipment",
-      "rarity": "rare",
+      "rarity": "epic",
       "enhance": 0,
       "slot": "weapon",
       "mods": {
-        "Dexterity": 4,
+        "Dexterity": 5,
         "Charisma": 1
       },
       "scaling_stat": "Dexterity",
@@ -779,131 +932,10 @@
       "count": 1
     },
     {
-      "id": "dagger",
-      "name": "Rare Dagger",
-      "type": "equipment",
-      "rarity": "rare",
-      "enhance": 0,
-      "slot": "weapon",
-      "mods": {
-        "Dexterity": 3
-      },
-      "scaling_stat": "Dexterity",
-      "primary_element": "physical",
-      "elemental_dmg": {
-        "physical": 1.1
-      },
-      "weapon_type": "dagger",
-      "form": "dagger",
-      "trait_tier": 1,
-      "count": 1
-    },
-    {
-      "id": "scepter",
-      "name": "Epic Scepter",
-      "type": "equipment",
-      "rarity": "epic",
-      "enhance": 0,
-      "slot": "weapon",
-      "mods": {
-        "Wisdom": 3,
-        "Charisma": 2
-      },
-      "scaling_stat": "Wisdom",
-      "primary_element": "magical",
-      "elemental_dmg": {
-        "magical": 1.1
-      },
-      "weapon_type": "scepter",
-      "form": "scepter",
-      "trait_tier": 1,
-      "count": 1
-    },
-    {
-      "id": "padded_armor",
-      "name": "Epic Padded Armor",
-      "type": "equipment",
-      "rarity": "epic",
-      "enhance": 0,
-      "slot": "armor",
-      "mods": {
-        "Constitution": 2
-      },
-      "primary_element": "physical",
-      "elemental_res": {
-        "physical": 1.15,
-        "fire": 1.05
-      },
-      "form": "padded_armor",
-      "count": 1
-    },
-    {
-      "id": "elven_mail",
-      "name": "Rare Elven Mail",
-      "type": "equipment",
-      "rarity": "rare",
-      "enhance": 0,
-      "slot": "armor",
-      "mods": {
-        "Dexterity": 3,
-        "Learning": 1
-      },
-      "primary_element": "physical",
-      "elemental_res": {
-        "physical": 1.15,
-        "fire": 1.05,
-        "earth": 1.05
-      },
-      "form": "elven_mail",
-      "count": 1
-    },
-    {
-      "id": "wand",
-      "name": "Uncommon Wand",
-      "type": "equipment",
-      "rarity": "uncommon",
-      "enhance": 0,
-      "slot": "weapon",
-      "mods": {
-        "Learning": 2,
-        "Wisdom": 1
-      },
-      "scaling_stat": "Learning",
-      "primary_element": "magical",
-      "elemental_dmg": {
-        "magical": 1.1
-      },
-      "weapon_type": "wand",
-      "form": "wand",
-      "trait_tier": 1,
-      "count": 1
-    },
-    {
-      "id": "plate_armor",
-      "name": "Epic Plate Armor",
-      "type": "equipment",
-      "rarity": "epic",
-      "enhance": 0,
-      "slot": "armor",
-      "mods": {
-        "Constitution": 6,
-        "Dexterity": -1
-      },
-      "primary_element": "physical",
-      "elemental_res": {
-        "physical": 1.15,
-        "fire": 1.05,
-        "magical": 0.85,
-        "earth": 1.05
-      },
-      "form": "plate_armor",
-      "count": 1
-    },
-    {
       "id": "talisman",
-      "name": "Epic Talisman",
+      "name": "Legendary Talisman",
       "type": "equipment",
-      "rarity": "epic",
+      "rarity": "legendary",
       "enhance": 0,
       "slot": "accessory",
       "mods": {
@@ -915,23 +947,6 @@
         "physical": 1.0
       },
       "form": "talisman",
-      "count": 1
-    },
-    {
-      "id": "boots",
-      "name": "Rare Boots",
-      "type": "equipment",
-      "rarity": "rare",
-      "enhance": 0,
-      "slot": "accessory",
-      "mods": {
-        "Dexterity": 3
-      },
-      "primary_element": "physical",
-      "elemental_res": {
-        "physical": 1.0
-      },
-      "form": "boots",
       "count": 1
     }
   ],
@@ -1046,29 +1061,438 @@
   "active_buffs": [],
   "save_slot": 4,
   "dungeon_time": 0,
-  "gold": 7528,
-  "time_minutes": 360,
-  "day_blocks": 0,
+  "gold": 82431,
+  "time_minutes": 780,
+  "day_blocks": 7,
   "fatigue_stacks": 0,
   "stress": 0,
   "time_blocks_migrated": true,
-  "location": "wonderland",
+  "location": "skylume",
   "superboss_seed": 981762,
   "allies": [
     {
-      "name": "Red Hood",
-      "key": "wonderland_red_hood",
-      "level": 35,
+      "name": "Alraune Fledger",
+      "nickname": "",
+      "key": "alraune_fledger",
+      "mother_key": null,
+      "level": 20,
       "attributes": {
-        "Strength": 12,
-        "Constitution": 7,
-        "Dexterity": 13,
-        "Wisdom": 4,
-        "Learning": 5,
+        "Strength": 2,
+        "Constitution": 3,
+        "Dexterity": 10,
+        "Wisdom": 15,
+        "Learning": 3,
         "Charisma": 6
       },
-      "current_hp": 172,
-      "max_hp": 172,
+      "equipped": {
+        "weapon": {
+          "id": "scepter",
+          "name": "Legendary Scepter",
+          "type": "equipment",
+          "rarity": "legendary",
+          "enhance": 0,
+          "slot": "weapon",
+          "mods": {
+            "Wisdom": 4,
+            "Charisma": 2
+          },
+          "scaling_stat": "Wisdom",
+          "primary_element": "magical",
+          "elemental_dmg": {
+            "magical": 1.1
+          },
+          "weapon_type": "scepter",
+          "form": "scepter",
+          "trait_tier": 1,
+          "count": 1
+        },
+        "armor": {
+          "id": "robes",
+          "name": "Uncommon Robes",
+          "type": "equipment",
+          "rarity": "uncommon",
+          "enhance": 0,
+          "slot": "armor",
+          "mods": {
+            "Learning": 3,
+            "Wisdom": 1
+          },
+          "primary_element": "physical",
+          "elemental_res": {
+            "physical": 1.15,
+            "fire": 1.05,
+            "magical": 0.85
+          },
+          "form": "robes",
+          "count": 1
+        },
+        "accessory1": {
+          "id": "crown",
+          "name": "Legendary Crown",
+          "type": "equipment",
+          "rarity": "legendary",
+          "enhance": 0,
+          "slot": "accessory",
+          "mods": {
+            "Charisma": 4,
+            "Wisdom": 4
+          },
+          "primary_element": "physical",
+          "elemental_res": {
+            "physical": 1.0
+          },
+          "form": "crown",
+          "count": 1
+        },
+        "accessory2": {
+          "id": "astral_ring",
+          "name": "Uncommon Astral Ring",
+          "type": "equipment",
+          "rarity": "uncommon",
+          "enhance": 1,
+          "slot": "accessory",
+          "mods": {
+            "Learning": 6
+          },
+          "primary_element": "magical",
+          "elemental_res": {
+            "magical": 1.15,
+            "dark": 1.1
+          },
+          "grade": 3,
+          "form": "ring",
+          "composed": true,
+          "count": 1
+        }
+      },
+      "active_buffs": [
+        {
+          "type": "well_rested",
+          "stat": "all",
+          "value": 2,
+          "remaining": 6,
+          "_tick_grace": true
+        }
+      ],
+      "active_debuffs": [],
+      "blinded": false,
+      "slowed": false,
+      "stunned": false,
+      "frozen": false,
+      "cursed": false,
+      "dreaded": false,
+      "silenced": false,
+      "is_ally": true,
+      "affection": 200,
+      "affection_cap": 200,
+      "engaged": false,
+      "married": false,
+      "pregnant": false,
+      "conceived_day": 0,
+      "due_day": 0,
+      "next_conception_day": 0,
+      "recovery_until": 0,
+      "pregnancy_pity": 0,
+      "beloved_until_day": 0,
+      "is_trueborn": false,
+      "no_romance": false,
+      "stage": null,
+      "prime": false,
+      "preferred_tones": [],
+      "father_legacy": {},
+      "ring_stat_bonus": {},
+      "monster_girl": true,
+      "exp": 217,
+      "level_hp_bonus": 76,
+      "level_cap": 20,
+      "growth_applied": 7,
+      "defeated": false,
+      "stress": 0,
+      "consecutive_dispatch": 0,
+      "last_dispatch": null,
+      "last_dispatch_day": 0,
+      "injured_until": 0,
+      "awakened": false,
+      "awakened_name": "",
+      "awakened_skills": [],
+      "passive_skill": "fey_passive",
+      "innate_skills": [
+        "root_strike",
+        "nature_embrace"
+      ],
+      "learned_skills": [
+        "haste"
+      ],
+      "upgrade_skills": [],
+      "learning": null,
+      "skill_cooldowns": {},
+      "skill_mastery": {
+        "root_strike": 313,
+        "nature_embrace": 42,
+        "haste": 7
+      },
+      "max_hp": 100,
+      "current_hp": 100,
+      "elemental_res": {
+        "fire": 1.0499999999999998,
+        "water": 1.0,
+        "thunder": 1.0,
+        "wind": 1.1,
+        "earth": 1.0,
+        "light": 1.2000000000000002,
+        "dark": 0.8,
+        "physical": 1.9500000000000002,
+        "magical": 2.0
+      },
+      "elemental_dmg": {
+        "fire": 1.0,
+        "water": 1.0,
+        "thunder": 1.0,
+        "wind": 1.2000000000000002,
+        "earth": 1.0,
+        "light": 1.2999999999999998,
+        "dark": 1.0,
+        "physical": 1.0,
+        "magical": 1.4000000000000004
+      },
+      "race": "Fey",
+      "abyss_triple_actions": 0,
+      "cutlass_riposte_count": 0,
+      "cutlass_rally_active": false,
+      "cutlass_rally_turns": 0,
+      "tarnished_jade_pins": 0,
+      "tarnished_jade_weakened": false,
+      "floor": 44,
+      "dungeon_region": "wonderland",
+      "_last_element_hit": "light",
+      "defending_this_turn": false,
+      "potion_sickness": 0,
+      "moonlight_turns": 0,
+      "moonlight_cooldown": 0
+    },
+    {
+      "name": "Umbral Weaver",
+      "nickname": "",
+      "key": "umbral_weaver",
+      "mother_key": null,
+      "level": 20,
+      "attributes": {
+        "Strength": 14,
+        "Constitution": 4,
+        "Dexterity": 10,
+        "Wisdom": 4,
+        "Learning": 4,
+        "Charisma": 4
+      },
+      "equipped": {
+        "weapon": {
+          "id": "blade",
+          "name": "Epic Nether Blade +2",
+          "type": "equipment",
+          "rarity": "epic",
+          "enhance": 2,
+          "slot": "weapon",
+          "mods": {
+            "Strength": 7,
+            "Dexterity": 5
+          },
+          "scaling_stat": "Strength",
+          "primary_element": "dark",
+          "elemental_dmg": {
+            "dark": 1.48,
+            "magical": 1.15
+          },
+          "weapon_type": "blade",
+          "form": "blade",
+          "trait_tier": 3,
+          "count": 1,
+          "infusions": [
+            {
+              "element": "dark",
+              "value": 1.48
+            },
+            {
+              "element": "magical",
+              "value": 1.15
+            }
+          ]
+        },
+        "armor": {
+          "id": "runic_plate",
+          "name": "Uncommon Runic Plate",
+          "type": "equipment",
+          "rarity": "uncommon",
+          "enhance": 0,
+          "slot": "armor",
+          "mods": {
+            "Constitution": 4,
+            "Learning": 2
+          },
+          "primary_element": "physical",
+          "elemental_res": {
+            "physical": 1.15,
+            "fire": 1.05,
+            "earth": 1.05,
+            "magical": 1.05,
+            "thunder": 1.05
+          },
+          "form": "runic_plate",
+          "count": 1
+        },
+        "accessory1": {
+          "id": "gloves",
+          "name": "Epic Gloves",
+          "type": "equipment",
+          "rarity": "epic",
+          "enhance": 0,
+          "slot": "accessory",
+          "mods": {
+            "Strength": 2,
+            "Dexterity": 1
+          },
+          "primary_element": "physical",
+          "elemental_res": {
+            "physical": 1.0
+          },
+          "form": "gloves",
+          "count": 1
+        },
+        "accessory2": {
+          "id": "bracers",
+          "name": "Epic Bracers",
+          "type": "equipment",
+          "rarity": "epic",
+          "enhance": 0,
+          "slot": "accessory",
+          "mods": {
+            "Strength": 3
+          },
+          "primary_element": "physical",
+          "elemental_res": {
+            "physical": 1.0
+          },
+          "form": "bracers",
+          "count": 1
+        }
+      },
+      "active_buffs": [
+        {
+          "type": "well_rested",
+          "stat": "all",
+          "value": 2,
+          "remaining": 6,
+          "_tick_grace": true
+        }
+      ],
+      "active_debuffs": [],
+      "blinded": false,
+      "slowed": false,
+      "stunned": false,
+      "frozen": false,
+      "cursed": false,
+      "dreaded": false,
+      "silenced": false,
+      "is_ally": true,
+      "affection": 200,
+      "affection_cap": 200,
+      "engaged": false,
+      "married": false,
+      "pregnant": true,
+      "conceived_day": 78,
+      "due_day": 108,
+      "next_conception_day": 0,
+      "recovery_until": 0,
+      "pregnancy_pity": 0,
+      "beloved_until_day": 79,
+      "is_trueborn": false,
+      "no_romance": false,
+      "stage": null,
+      "prime": false,
+      "preferred_tones": [
+        "shy",
+        "tender"
+      ],
+      "father_legacy": {},
+      "ring_stat_bonus": {},
+      "monster_girl": true,
+      "exp": 26,
+      "level_hp_bonus": 76,
+      "level_cap": 20,
+      "growth_applied": 6,
+      "defeated": false,
+      "stress": 0,
+      "consecutive_dispatch": 0,
+      "last_dispatch": null,
+      "last_dispatch_day": 0,
+      "injured_until": 0,
+      "awakened": false,
+      "awakened_name": "",
+      "awakened_skills": [],
+      "passive_skill": "shadow_passive",
+      "innate_skills": [
+        "shadow_strike",
+        "web_trap"
+      ],
+      "learned_skills": [],
+      "upgrade_skills": [],
+      "learning": null,
+      "skill_cooldowns": {},
+      "skill_mastery": {
+        "shadow_strike": 210,
+        "web_trap": 37
+      },
+      "max_hp": 103,
+      "current_hp": 103,
+      "elemental_res": {
+        "fire": 1.0499999999999998,
+        "water": 1.0,
+        "thunder": 1.0499999999999998,
+        "wind": 1.0,
+        "earth": 1.0499999999999998,
+        "light": 0.6000000000000001,
+        "dark": 1.2999999999999998,
+        "physical": 2.0,
+        "magical": 1.0499999999999998
+      },
+      "elemental_dmg": {
+        "fire": 1.0,
+        "water": 1.0,
+        "thunder": 1.0,
+        "wind": 1.0,
+        "earth": 1.0,
+        "light": 1.0,
+        "dark": 1.7800000000000002,
+        "physical": 1.0,
+        "magical": 1.15
+      },
+      "race": "Shadow",
+      "abyss_triple_actions": 0,
+      "cutlass_riposte_count": 0,
+      "cutlass_rally_active": false,
+      "cutlass_rally_turns": 0,
+      "tarnished_jade_pins": 0,
+      "tarnished_jade_weakened": false,
+      "floor": 44,
+      "dungeon_region": "wonderland",
+      "defending_this_turn": false,
+      "_last_element_hit": "light",
+      "moonlight_turns": 0,
+      "moonlight_cooldown": 0
+    },
+    {
+      "name": "Red Hood",
+      "key": "wonderland_red_hood",
+      "level": 42,
+      "attributes": {
+        "Strength": 13,
+        "Constitution": 7,
+        "Dexterity": 18,
+        "Wisdom": 4,
+        "Learning": 6,
+        "Charisma": 6
+      },
+      "current_hp": 200,
+      "max_hp": 200,
       "equipped": {
         "weapon": {
           "id": "grandmothers_axe",
@@ -1173,8 +1597,8 @@
       "is_trueborn": false,
       "no_romance": false,
       "monster_girl": false,
-      "exp": 13026,
-      "level_hp_bonus": 136,
+      "exp": 3071,
+      "level_hp_bonus": 164,
       "level_cap": 99,
       "defeated": false,
       "_heroine_key": "red_hood",
@@ -1194,9 +1618,9 @@
       "skill_mastery": {
         "hunters_mark": 31,
         "whats_in_the_basket": 8,
-        "what_big_teeth": 33,
-        "fell_the_wolf": 26,
-        "through_the_forest": 24
+        "what_big_teeth": 66,
+        "fell_the_wolf": 45,
+        "through_the_forest": 59
       },
       "race": "Beast",
       "elemental_res": {
@@ -1236,10 +1660,10 @@
       "tarnished_jade_weakened": false,
       "moonlight_turns": 0,
       "moonlight_cooldown": 0,
-      "floor": 32,
+      "floor": 44,
       "dungeon_region": "wonderland",
       "defending_this_turn": false,
-      "_last_element_hit": "dark",
+      "_last_element_hit": "light",
       "_redhood_original_innate": [
         "hunters_mark",
         "whats_in_the_basket"
@@ -1252,17 +1676,17 @@
     {
       "name": "Dorothy",
       "key": "wonderland_dorothy",
-      "level": 35,
+      "level": 41,
       "attributes": {
         "Strength": 8,
         "Constitution": 8,
         "Dexterity": 8,
         "Wisdom": 11,
-        "Learning": 8,
+        "Learning": 14,
         "Charisma": 10
       },
-      "current_hp": 175,
-      "max_hp": 175,
+      "current_hp": 199,
+      "max_hp": 199,
       "equipped": {
         "weapon": {
           "id": "harp",
@@ -1366,8 +1790,8 @@
       "is_trueborn": false,
       "no_romance": false,
       "monster_girl": false,
-      "exp": 17,
-      "level_hp_bonus": 136,
+      "exp": 8156,
+      "level_hp_bonus": 160,
       "level_cap": 99,
       "defeated": false,
       "_heroine_key": "dorothy",
@@ -1387,9 +1811,9 @@
       "skill_mastery": {
         "ruby_blink": 7,
         "no_place_like_home": 6,
-        "heart_of_tin": 13,
-        "cyclones_call": 15,
-        "emerald_citys_light": 9
+        "heart_of_tin": 30,
+        "cyclones_call": 49,
+        "emerald_citys_light": 32
       },
       "race": "Human",
       "elemental_res": {
@@ -1422,10 +1846,10 @@
       "tarnished_jade_weakened": false,
       "moonlight_turns": 0,
       "moonlight_cooldown": 0,
-      "floor": 32,
+      "floor": 44,
       "dungeon_region": "wonderland",
       "defending_this_turn": false,
-      "_last_element_hit": "dark",
+      "_last_element_hit": "fire",
       "nickname": "",
       "growth_applied": 0,
       "awakened": false,
@@ -1446,38 +1870,44 @@
     {
       "name": "Alice",
       "key": "wonderland_alice",
-      "level": 30,
+      "level": 33,
       "attributes": {
-        "Strength": 5,
+        "Strength": 8,
         "Constitution": 6,
         "Dexterity": 8,
         "Wisdom": 10,
         "Learning": 6,
         "Charisma": 8
       },
-      "current_hp": 136,
-      "max_hp": 136,
+      "current_hp": 161,
+      "max_hp": 161,
       "equipped": {
         "weapon": {
-          "id": "inferno_greatsword",
-          "name": "Rare Inferno Greatsword",
+          "id": "vorpal_blade",
+          "name": "Vorpal Blade +5",
           "type": "equipment",
-          "rarity": "rare",
-          "enhance": 3,
+          "rarity": "unique",
+          "enhance": 5,
           "slot": "weapon",
           "mods": {
-            "Strength": 13
+            "Strength": 18,
+            "Dexterity": 14
           },
-          "scaling_stat": "Strength",
-          "primary_element": "fire",
+          "special": "vorpal_blade",
+          "unique": true,
+          "drop_source": "jabberwock",
+          "drop_rarity": "unique",
+          "scaling_stat": [
+            "Strength",
+            "Dexterity"
+          ],
+          "primary_element": "light",
           "elemental_dmg": {
-            "physical": 1.2,
-            "fire": 1.5
+            "light": 1.35
           },
-          "weapon_type": "greatsword",
-          "grade": 3,
-          "form": "greatsword",
-          "composed": true
+          "weapon_type": "blade",
+          "form": "blade",
+          "trait_tier": 2
         },
         "armor": {
           "id": "blaze_battle_harness",
@@ -1548,7 +1978,7 @@
       "dreaded": false,
       "silenced": false,
       "is_ally": true,
-      "affection": 50,
+      "affection": 60,
       "affection_cap": 200,
       "engaged": false,
       "married": false,
@@ -1560,25 +1990,30 @@
       "is_trueborn": false,
       "no_romance": false,
       "monster_girl": false,
-      "exp": 0,
-      "level_hp_bonus": 116,
-      "level_cap": 10,
+      "exp": 4704,
+      "level_hp_bonus": 128,
+      "level_cap": 99,
       "defeated": false,
       "_heroine_key": "alice",
-      "_wonderland_temp": true,
+      "_wonderland_temp": false,
       "_heroine_passive": "wonderland_logic",
       "passive_skill": "fey_passive",
       "innate_skills": [
-        "curious_inquiry",
-        "try_me"
+        "vorpal_edge",
+        "snicker_snack"
       ],
       "learned_skills": [],
-      "upgrade_skills": [],
+      "upgrade_skills": [
+        "frabjous_day"
+      ],
       "learning": null,
       "skill_cooldowns": {},
       "skill_mastery": {
-        "curious_inquiry": 1,
-        "try_me": 3
+        "curious_inquiry": 2,
+        "try_me": 3,
+        "snicker_snack": 16,
+        "vorpal_edge": 43,
+        "frabjous_day": 9
       },
       "race": "Fey",
       "elemental_res": {
@@ -1593,14 +2028,14 @@
         "magical": 1.2999999999999998
       },
       "elemental_dmg": {
-        "fire": 1.5,
+        "fire": 1.0,
         "water": 1.0,
         "thunder": 1.0,
         "wind": 1.2000000000000002,
         "earth": 1.0,
-        "light": 1.2999999999999998,
+        "light": 1.6500000000000004,
         "dark": 1.0,
-        "physical": 1.2000000000000002,
+        "physical": 1.0,
         "magical": 1.2999999999999998
       },
       "abyss_triple_actions": 0,
@@ -1611,17 +2046,24 @@
       "tarnished_jade_weakened": false,
       "moonlight_turns": 0,
       "moonlight_cooldown": 0,
-      "floor": 32,
+      "floor": 44,
       "dungeon_region": "wonderland",
       "defending_this_turn": false,
-      "_last_element_hit": "dark",
+      "_last_element_hit": "physical",
       "nickname": "",
       "growth_applied": 0,
       "awakened": false,
       "awakened_name": "",
       "awakened_skills": [],
       "recovery_until": 0,
-      "beloved_until_day": 0
+      "beloved_until_day": 0,
+      "_alice_original_innate": [
+        "curious_inquiry",
+        "try_me"
+      ],
+      "_alice_vorpal_skills": true,
+      "_heroine_permanent_passive": "vorpal_instinct",
+      "_alice_vorpal_upgraded": true
     }
   ],
   "skills": [
@@ -1636,14 +2078,14 @@
   ],
   "skill_cooldowns": {},
   "skill_mastery": {
-    "war_cleave": 326,
-    "war_battlecry": 51,
-    "war_execute": 126,
-    "war_shield_slam": 50,
-    "war_second_wind": 15,
-    "war_bladestorm": 59,
-    "war_reckless_charge": 34,
-    "war_banner": 14
+    "war_cleave": 371,
+    "war_battlecry": 54,
+    "war_execute": 134,
+    "war_shield_slam": 52,
+    "war_second_wind": 17,
+    "war_bladestorm": 68,
+    "war_reckless_charge": 37,
+    "war_banner": 15
   },
   "passive_unlocked": true,
   "ascension_notified": {},
@@ -1746,17 +2188,29 @@
     "dragon_slayer": {
       "day": 86,
       "seen": false
+    },
+    "happily_ever_after": {
+      "day": 93,
+      "seen": false
+    },
+    "vorpal_hand": {
+      "day": 93,
+      "seen": false
+    },
+    "shadow_touched": {
+      "day": 95,
+      "seen": false
     }
   },
   "title_active": "delver",
   "title_stats": {
     "gold_spent_shops": 630,
-    "travel_segments": 73,
+    "travel_segments": 80,
     "casino_hands_won": 22,
     "casino_biggest_win": 250,
     "casino_cheats_unseen": 0,
     "casino_cheats_caught": 0,
-    "wonderland_shadows_taken": 0
+    "wonderland_shadows_taken": 5
   },
   "titles_version": 1,
   "karma_enabled": true,
@@ -1950,22 +2404,14 @@
         },
         "started_day": 69
       },
-      "sq_wonderland_02": {
+      "sq_wonderland_03": {
         "objectives": {
-          "wonderland_floor:20": true,
-          "wonderland_floor:30": true,
-          "wonderland_floor:40": false
+          "wonderland_boss:big_bad_wolf": true,
+          "wonderland_boss:wicked_witch": true,
+          "wonderland_boss:jabberwock": true,
+          "wonderland_boss:mary_sue": false
         },
-        "started_day": 76
-      },
-      "sq_wonderland_alice": {
-        "objectives": {
-          "heroine_met:alice": true,
-          "heroine_recruited:alice": true,
-          "wonderland_boss:jabberwock": false,
-          "heroine_permanent:alice": false
-        },
-        "started_day": 76
+        "started_day": 93
       }
     },
     "completed": [
@@ -1977,7 +2423,9 @@
       "sq_wonderland_00",
       "sq_wonderland_01",
       "sq_wonderland_red_hood",
-      "sq_wonderland_dorothy"
+      "sq_wonderland_dorothy",
+      "sq_wonderland_02",
+      "sq_wonderland_alice"
     ],
     "completed_days": {
       "mq_archivist_01": 8,
@@ -1988,7 +2436,9 @@
       "sq_wonderland_00": 76,
       "sq_wonderland_01": 76,
       "sq_wonderland_red_hood": 82,
-      "sq_wonderland_dorothy": 83
+      "sq_wonderland_dorothy": 83,
+      "sq_wonderland_02": 93,
+      "sq_wonderland_alice": 93
     },
     "declined": [],
     "flags": {
@@ -2059,57 +2509,6 @@
         ]
       },
       {
-        "id": "wild_66",
-        "name": "Brine-Black Cistern",
-        "biome": "sea_caves",
-        "level": 38,
-        "total_floors": 6,
-        "highest_floor_cleared": 0,
-        "position": [
-          492,
-          578
-        ],
-        "spawn_day": 91,
-        "expire_day": 94,
-        "seed_city": "blackwake",
-        "nearest_city": "blackwake",
-        "attempted": false,
-        "reward_pool": [
-          {
-            "item_id": "wand",
-            "rarity": "epic"
-          },
-          {
-            "item_id": "chainmail",
-            "rarity": "rare"
-          },
-          {
-            "item_id": "manabloom",
-            "rarity": "common"
-          },
-          {
-            "item_id": "frostlotus",
-            "rarity": "common"
-          },
-          {
-            "item_id": "cloak",
-            "rarity": "rare"
-          },
-          {
-            "item_id": "greatstaff",
-            "rarity": "rare"
-          },
-          {
-            "item_id": "frostlotus",
-            "rarity": "common"
-          },
-          {
-            "item_id": "acid_flask",
-            "rarity": "common"
-          }
-        ]
-      },
-      {
         "id": "wild_67",
         "name": "Monsoon Canopy-Fort",
         "biome": "tropical",
@@ -2141,57 +2540,6 @@
           {
             "item_id": "bell",
             "rarity": "legendary"
-          }
-        ]
-      },
-      {
-        "id": "wild_68",
-        "name": "Mirage Sands",
-        "biome": "desert",
-        "level": 29,
-        "total_floors": 6,
-        "highest_floor_cleared": 0,
-        "position": [
-          30,
-          405
-        ],
-        "spawn_day": 91,
-        "expire_day": 94,
-        "seed_city": "ashkara",
-        "nearest_city": "brinewatch",
-        "attempted": false,
-        "reward_pool": [
-          {
-            "item_id": "staff",
-            "rarity": "legendary"
-          },
-          {
-            "item_id": "shield",
-            "rarity": "rare"
-          },
-          {
-            "item_id": "cloak",
-            "rarity": "uncommon"
-          },
-          {
-            "item_id": "ironbriar",
-            "rarity": "common"
-          },
-          {
-            "item_id": "emberbloom",
-            "rarity": "common"
-          },
-          {
-            "item_id": "vestments",
-            "rarity": "epic"
-          },
-          {
-            "item_id": "runic_plate",
-            "rarity": "legendary"
-          },
-          {
-            "item_id": "harp",
-            "rarity": "epic"
           }
         ]
       }
@@ -2959,6 +3307,62 @@
         "desc": "4 wild dungeons appeared on the world map:\n  • Hollow Cacophony — Lv 25 (6 floors) near Coralhaven\n  • Brine-Black Cistern — Lv 38 (6 floors) near Blackwake\n  • Monsoon Canopy-Fort — Lv 28 (2 floors) near Veilholt\n  • Mirage Sands — Lv 29 (6 floors) near Brinewatch",
         "tag": "[RANDOM]",
         "fixed": false
+      },
+      {
+        "day": 93,
+        "name": "Quest Complete: The Storybook Road",
+        "desc": "You completed \"The Storybook Road\".",
+        "tag": "[QUEST]",
+        "fixed": false
+      },
+      {
+        "day": 93,
+        "name": "Quest Started: The Author's Last Page",
+        "desc": "Every chapter has an ending. At the bottom of the Storybook, the Author is still writing — and she does not intend to let anyone leave.",
+        "tag": "[QUEST]",
+        "fixed": false
+      },
+      {
+        "day": 93,
+        "name": "Title unlocked — Happily Ever After",
+        "desc": "+1 all attributes · Three stories chose their own endings. They chose you with them.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 93,
+        "name": "Title unlocked — Vorpal Hand",
+        "desc": "+4% damage · Snicker-snack. The echo stays in your hands.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 93,
+        "name": "Quest Complete: Alice's Jabberwock",
+        "desc": "You completed \"Alice's Jabberwock\".",
+        "tag": "[QUEST]",
+        "fixed": false
+      },
+      {
+        "day": 95,
+        "name": "Title unlocked — Shadow-Touched",
+        "desc": "+2% damage · Something in the dark turned its head and decided you were interesting.",
+        "tag": "[TITLE]",
+        "fixed": false
+      },
+      {
+        "day": 95,
+        "name": "A Warden Notices",
+        "desc": "Floor 20 is cleared. The Summer Warden stirs near Greyharbor.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
+      },
+      {
+        "day": 95,
+        "name": "The Season Turns",
+        "desc": "The Warden of the Long Noon has surfaced near Greyharbor. Echo 0 (Lv 20). The season ends on Day 181.",
+        "tag": "[MAP BOSS]",
+        "fixed": false
       }
     ],
     "main_quests": [
@@ -3067,47 +3471,26 @@
     ],
     "side_quests": [
       {
-        "id": "sq_wonderland_02",
-        "name": "The Storybook Road",
-        "desc": "The road through Wonderland runs floor by floor. The deeper chapters hold the Wolf, the Witch, the Jabberwock — and the Author at the very end.",
-        "day": 76,
+        "id": "sq_wonderland_03",
+        "name": "The Author's Last Page",
+        "desc": "Every chapter has an ending. At the bottom of the Storybook, the Author is still writing — and she does not intend to let anyone leave.",
+        "day": 93,
         "status": "active",
         "objectives": [
           {
-            "label": "Reach Floor 20 of the Storybook Dungeon",
+            "label": "Defeat the Big Bad Wolf (Floor 20)",
             "done": true
           },
           {
-            "label": "Reach Floor 30 of the Storybook Dungeon",
-            "done": true
-          },
-          {
-            "label": "Reach Floor 40 of the Storybook Dungeon",
-            "done": false
-          }
-        ]
-      },
-      {
-        "id": "sq_wonderland_alice",
-        "name": "Alice's Jabberwock",
-        "desc": "Alice has been counting sugar cubes at the Mad Hatter's table while a beast writes its own ending. She would like her story back.",
-        "day": 76,
-        "status": "active",
-        "objectives": [
-          {
-            "label": "Meet Alice at the Mad Hatter's tea party",
-            "done": true
-          },
-          {
-            "label": "Recruit Alice into your party",
+            "label": "Defeat the Wicked Witch of the West (Floor 30)",
             "done": true
           },
           {
             "label": "Defeat the Jabberwock (Floor 40)",
-            "done": false
+            "done": true
           },
           {
-            "label": "Help Alice become a permanent ally",
+            "label": "Defeat Mary Sue, the Author (Floor 50)",
             "done": false
           }
         ]
@@ -3203,24 +3586,72 @@
             "done": true
           }
         ]
+      },
+      {
+        "id": "sq_wonderland_02",
+        "name": "The Storybook Road",
+        "desc": "The road through Wonderland runs floor by floor. The deeper chapters hold the Wolf, the Witch, the Jabberwock — and the Author at the very end.",
+        "day": 93,
+        "status": "complete",
+        "objectives": [
+          {
+            "label": "Reach Floor 20 of the Storybook Dungeon",
+            "done": true
+          },
+          {
+            "label": "Reach Floor 30 of the Storybook Dungeon",
+            "done": true
+          },
+          {
+            "label": "Reach Floor 40 of the Storybook Dungeon",
+            "done": true
+          }
+        ]
+      },
+      {
+        "id": "sq_wonderland_alice",
+        "name": "Alice's Jabberwock",
+        "desc": "Alice has been counting sugar cubes at the Mad Hatter's table while a beast writes its own ending. She would like her story back.",
+        "day": 93,
+        "status": "complete",
+        "objectives": [
+          {
+            "label": "Meet Alice at the Mad Hatter's tea party",
+            "done": true
+          },
+          {
+            "label": "Recruit Alice into your party",
+            "done": true
+          },
+          {
+            "label": "Defeat the Jabberwock (Floor 40)",
+            "done": true
+          },
+          {
+            "label": "Help Alice become a permanent ally",
+            "done": true
+          }
+        ]
       }
     ]
   },
   "party_order": [
     0,
     1,
-    2
+    2,
+    3,
+    4
   ],
-  "max_floor": 33,
+  "max_floor": 44,
   "dungeon_region": "wonderland",
   "origin_city": "wonderland",
-  "floor": 33,
-  "day": 92,
+  "floor": 44,
+  "day": 95,
   "_show_title_beside_name": true,
   "active_debuffs": [],
   "wedding_combat_active": false,
-  "wedding_combat_floor": 32,
-  "wedding_combat_room": 10,
+  "wedding_combat_floor": null,
+  "wedding_combat_room": null,
   "abyss_triple_actions": 0,
   "cutlass_riposte_count": 0,
   "cutlass_rally_active": false,
@@ -3229,7 +3660,7 @@
   "tarnished_jade_weakened": false,
   "stunned": false,
   "cutlass_high_tide_stacks": 0,
-  "_last_element_hit": "dark",
+  "_last_element_hit": "fire",
   "bestiary": {
     "goblin_thief": {
       "defeated": 6,
@@ -5528,14 +5959,14 @@
       ]
     },
     "abomination_annihilation_beast": {
-      "defeated": 5,
+      "defeated": 6,
       "captured": 0,
       "regions": [
         "wonderland"
       ]
     },
     "construct_aurum_golem": {
-      "defeated": 2,
+      "defeated": 3,
       "captured": 0,
       "regions": [
         "wonderland"
@@ -5557,7 +5988,7 @@
       ]
     },
     "abyssal_juggernaut": {
-      "defeated": 11,
+      "defeated": 14,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5565,7 +5996,7 @@
       ]
     },
     "beast_titan_snake": {
-      "defeated": 5,
+      "defeated": 10,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5573,7 +6004,7 @@
       ]
     },
     "wl_bandersnatch": {
-      "defeated": 2,
+      "defeated": 8,
       "captured": 0,
       "regions": [
         "wonderland"
@@ -5595,7 +6026,7 @@
       ]
     },
     "scylla_wrecker": {
-      "defeated": 4,
+      "defeated": 9,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5603,7 +6034,7 @@
       ]
     },
     "abomination_chaos_spawn": {
-      "defeated": 3,
+      "defeated": 8,
       "captured": 0,
       "regions": [
         "wonderland"
@@ -5617,7 +6048,7 @@
       ]
     },
     "construct_primal_guardian": {
-      "defeated": 4,
+      "defeated": 7,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5625,7 +6056,7 @@
       ]
     },
     "wl_tweedle_dum": {
-      "defeated": 4,
+      "defeated": 8,
       "captured": 0,
       "regions": [
         "wonderland"
@@ -5640,21 +6071,21 @@
       ]
     },
     "shadow_dusk_weaver": {
-      "defeated": 3,
+      "defeated": 4,
       "captured": 0,
       "regions": [
         "wonderland"
       ]
     },
     "centaur_champion": {
-      "defeated": 3,
+      "defeated": 4,
       "captured": 0,
       "regions": [
         "wonderland"
       ]
     },
     "abomination_world_eater": {
-      "defeated": 3,
+      "defeated": 4,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5662,7 +6093,7 @@
       ]
     },
     "abomination_doom_of_worlds": {
-      "defeated": 6,
+      "defeated": 10,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5670,14 +6101,14 @@
       ]
     },
     "shadow_void_spectre": {
-      "defeated": 3,
+      "defeated": 4,
       "captured": 0,
       "regions": [
         "wonderland"
       ]
     },
     "beast_thunder_bird_elder": {
-      "defeated": 2,
+      "defeated": 10,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5685,7 +6116,7 @@
       ]
     },
     "wl_tweedle_dee": {
-      "defeated": 2,
+      "defeated": 3,
       "captured": 0,
       "regions": [
         "wonderland"
@@ -5699,7 +6130,7 @@
       ]
     },
     "abomination_necro_titan": {
-      "defeated": 3,
+      "defeated": 8,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5707,14 +6138,14 @@
       ]
     },
     "wl_jubjub_bird": {
-      "defeated": 5,
+      "defeated": 7,
       "captured": 0,
       "regions": [
         "wonderland"
       ]
     },
     "beast_sky_leviathan": {
-      "defeated": 4,
+      "defeated": 14,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5722,14 +6153,14 @@
       ]
     },
     "construct_primordial_golem": {
-      "defeated": 4,
+      "defeated": 14,
       "captured": 0,
       "regions": [
         "wonderland"
       ]
     },
     "planar_behemoth": {
-      "defeated": 5,
+      "defeated": 10,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5760,14 +6191,14 @@
       ]
     },
     "ninetales_fox": {
-      "defeated": 1,
+      "defeated": 6,
       "captured": 1,
       "regions": [
         "wonderland"
       ]
     },
     "demon_lord_of_ruin": {
-      "defeated": 5,
+      "defeated": 10,
       "captured": 0,
       "regions": [
         "wonderland",
@@ -5839,7 +6270,7 @@
       ]
     },
     "demon_arch_devil": {
-      "defeated": 7,
+      "defeated": 9,
       "captured": 0,
       "regions": [
         "tundra",
@@ -5953,10 +6384,11 @@
       ]
     },
     "shadow_void_stalker": {
-      "defeated": 1,
+      "defeated": 14,
       "captured": 0,
       "regions": [
-        "tundra"
+        "tundra",
+        "wonderland"
       ]
     },
     "orc_warlord": {
@@ -5974,10 +6406,11 @@
       ]
     },
     "gnome_arcane_artillerist": {
-      "defeated": 1,
+      "defeated": 3,
       "captured": 0,
       "regions": [
-        "tundra"
+        "tundra",
+        "wonderland"
       ]
     },
     "dragonkin_sky_terror": {
@@ -6009,10 +6442,11 @@
       ]
     },
     "beast_ancient_wyrm": {
-      "defeated": 2,
+      "defeated": 6,
       "captured": 0,
       "regions": [
-        "tundra"
+        "tundra",
+        "wonderland"
       ]
     },
     "goblin_bomb_chucker": {
@@ -6023,7 +6457,7 @@
       ]
     },
     "abomination_god_serpent": {
-      "defeated": 1,
+      "defeated": 14,
       "captured": 0,
       "regions": [
         "wonderland"
@@ -6031,6 +6465,195 @@
     },
     "wl_captain_hook": {
       "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "beast_earth_breaker": {
+      "defeated": 15,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "construct_celestial_automaton": {
+      "defeated": 13,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "dragonkin_time_drake": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "wl_red_queen": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "shadow_penumbra_wraith": {
+      "defeated": 7,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "abomination_primordial_chaos": {
+      "defeated": 9,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "arachne_brood_queen": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "cosmic_abomination": {
+      "defeated": 10,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "sphinx_riddler": {
+      "defeated": 9,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "wl_scarecrow_king": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "abomination_doom_of_elders": {
+      "defeated": 8,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "shadow_total_eclipse": {
+      "defeated": 8,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "wl_bandersnatch_alpha": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "fey_twilight_courtier": {
+      "defeated": 8,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "wl_jabberwock": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "elemental_entropy_orb": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "gnome_mecha_overlord": {
+      "defeated": 2,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "vampire_carmilla_handmaiden": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "gnome_reality_engineer": {
+      "defeated": 2,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "construct_celestial_sentry": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "demon_hellfire_archon": {
+      "defeated": 7,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "fey_star_court_dancer": {
+      "defeated": 3,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "abomination_void_horror": {
+      "defeated": 3,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "wl_wizard_oz": {
+      "defeated": 1,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "fey_verdant_sovereign": {
+      "defeated": 5,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "beast_world_serpent": {
+      "defeated": 4,
+      "captured": 0,
+      "regions": [
+        "wonderland"
+      ]
+    },
+    "beast_apex_predator": {
+      "defeated": 2,
       "captured": 0,
       "regions": [
         "wonderland"
@@ -6060,7 +6683,7 @@
       "dream_small_mercy": 1
     },
     "last_day": 90,
-    "streak": 2,
+    "streak": 4,
     "last_category": "boon",
     "last_location": "home",
     "queue": []
@@ -6234,38 +6857,18 @@
     "completed": 0,
     "offers": [
       {
-        "id": "errand_monster_survey_skylume_84_0",
-        "kind": "errand",
-        "subtype": "monster_survey",
-        "name": "Reaving Ley-Lines Study",
-        "stars": 4,
-        "power": 66,
-        "risk": 1,
-        "tag": "lrn",
-        "hours": 10,
-        "gold_min": 166,
-        "gold_max": 269,
-        "exp": 103,
-        "loot_pool": [
-          "mana_philter",
-          "shadow_essence"
-        ],
-        "floors": null,
-        "label": "survey"
-      },
-      {
-        "id": "errand_caravan_escort_skylume_84_1",
+        "id": "errand_caravan_escort_skylume_92_0",
         "kind": "errand",
         "subtype": "caravan_escort",
-        "name": "Thunderous Wagons Watch",
+        "name": "Thunderous Pilgrims Escort",
         "stars": 4,
-        "power": 75,
+        "power": 83,
         "risk": 1,
         "tag": "str",
         "hours": 14,
-        "gold_min": 207,
-        "gold_max": 332,
-        "exp": 124,
+        "gold_min": 229,
+        "gold_max": 368,
+        "exp": 138,
         "loot_pool": [
           "healing_potion",
           "battle_drink"
@@ -6274,15 +6877,36 @@
         "label": "escort"
       },
       {
-        "id": "sweep_skylume_23_84_0",
+        "id": "errand_herb_gathering_skylume_92_1",
+        "kind": "errand",
+        "subtype": "herb_gathering",
+        "name": "Brooding Bloom Harvest",
+        "stars": 3,
+        "power": 55,
+        "risk": 0,
+        "tag": "wis",
+        "hours": 8,
+        "gold_min": 114,
+        "gold_max": 206,
+        "exp": 82,
+        "loot_pool": [
+          "minor_healing_potion",
+          "healing_salve",
+          "antidote"
+        ],
+        "floors": null,
+        "label": "foraging"
+      },
+      {
+        "id": "sweep_skylume_23_92_0",
         "kind": "sweep",
         "subtype": null,
-        "name": "Sanguine Reliquary Onslaught",
+        "name": "Grave-Bound Sanctum Onslaught",
         "stars": 4,
         "power": 56,
         "risk": 2,
         "tag": "str",
-        "hours": 29,
+        "hours": 28,
         "gold_min": 255,
         "gold_max": 362,
         "exp": 102,
@@ -6298,15 +6922,15 @@
         "label": "sweep"
       },
       {
-        "id": "sweep_skylume_19_84_1",
+        "id": "sweep_skylume_19_92_1",
         "kind": "sweep",
         "subtype": null,
-        "name": "Sundered Sanctum Assault",
+        "name": "Bitter Manse Clearing",
         "stars": 3,
         "power": 47,
         "risk": 2,
         "tag": "str",
-        "hours": 21,
+        "hours": 20,
         "gold_min": 215,
         "gold_max": 306,
         "exp": 86,
@@ -6323,15 +6947,15 @@
         "label": "sweep"
       },
       {
-        "id": "sweep_skylume_15_84_2",
+        "id": "sweep_skylume_15_92_2",
         "kind": "sweep",
         "subtype": null,
-        "name": "Storm-Watched Vault Descent",
+        "name": "Hollow Observatory Clearing",
         "stars": 3,
         "power": 39,
         "risk": 2,
         "tag": "str",
-        "hours": 31,
+        "hours": 20,
         "gold_min": 175,
         "gold_max": 250,
         "exp": 70,
@@ -6348,7 +6972,7 @@
         "label": "sweep"
       },
       {
-        "id": "sweep_skylume_11_84_3",
+        "id": "sweep_skylume_11_92_3",
         "kind": "sweep",
         "subtype": null,
         "name": "Dim Manse Sweep",
@@ -6373,7 +6997,7 @@
         "label": "sweep"
       }
     ],
-    "offers_cycle": 27
+    "offers_cycle": 30
   },
   "cutlass_rally_cooldown": 0,
   "hourglass_cooldown": 0,
@@ -6383,21 +7007,23 @@
     "queen_of_mirrors_sylvana",
     "wl_queen_of_hearts",
     "wl_big_bad_wolf",
-    "wl_wicked_witch"
+    "wl_wicked_witch",
+    "wl_jabberwock"
   ],
   "sky_piercer_claimed": false,
   "bounties_completed": 5,
   "high_bounties_completed": 0,
   "prescript_ledger_claimed": false,
   "awakening_sigils": 1,
-  "awakening_shards": 6,
+  "awakening_shards": 7,
   "awakening_shard_sources": [
     "pool:chromatic_artisan",
     "pool:melt_forge_golem_ignis",
     "pool:queen_of_mirrors_sylvana",
     "wl:10",
     "wl:20",
-    "wl:30"
+    "wl:30",
+    "wl:40"
   ],
   "awakening_intro_granted": true,
   "children": [],
@@ -6450,7 +7076,7 @@
           "count": 1
         }
       ],
-      "last_income_day": 89,
+      "last_income_day": 92,
       "monster_girls": [
         {
           "key": "kitsune_miko",
@@ -6826,6 +7452,129 @@
           "skill_cooldowns": {},
           "skill_mastery": {},
           "learning": null
+        },
+        {
+          "key": "ninetales_fox",
+          "mother_key": null,
+          "name": "Ninetales Fox",
+          "nickname": "",
+          "level": 30,
+          "affection": 53,
+          "affection_cap": 200,
+          "engaged": false,
+          "married": false,
+          "pregnant": false,
+          "conceived_day": 0,
+          "due_day": 0,
+          "next_conception_day": 0,
+          "recovery_until": 0,
+          "pregnancy_pity": 0,
+          "beloved_until_day": 0,
+          "is_trueborn": false,
+          "no_romance": false,
+          "stage": null,
+          "prime": false,
+          "race": "Beast",
+          "innate_skills": [
+            "sunfire_breath",
+            "nine_tails_strike"
+          ],
+          "passive_skill": "beast_passive",
+          "preferred_tones": [],
+          "father_legacy": {},
+          "ring_stat_bonus": {},
+          "exp": 0,
+          "level_hp_bonus": 116,
+          "level_cap": 10,
+          "growth_applied": 0,
+          "attributes": {
+            "Strength": 11,
+            "Constitution": 9,
+            "Dexterity": 10,
+            "Wisdom": 11,
+            "Learning": 4,
+            "Charisma": 12
+          },
+          "current_hp": 158,
+          "stress": 0,
+          "consecutive_dispatch": 0,
+          "last_dispatch": null,
+          "last_dispatch_day": 0,
+          "injured_until": 0,
+          "awakened": false,
+          "awakened_name": "",
+          "awakened_skills": [],
+          "upgrade_skills": [],
+          "_heroine_key": null,
+          "_heroine_passive": null,
+          "_heroine_permanent_passive": null,
+          "acc3_unlocked": false,
+          "equipped": {
+            "weapon": {
+              "id": "blade",
+              "name": "Epic Cyclone Blade +2",
+              "type": "equipment",
+              "rarity": "epic",
+              "enhance": 2,
+              "slot": "weapon",
+              "mods": {
+                "Strength": 7,
+                "Dexterity": 5
+              },
+              "scaling_stat": "Strength",
+              "primary_element": "wind",
+              "elemental_dmg": {
+                "wind": 1.4,
+                "earth": 1.2,
+                "dark": 1.15
+              },
+              "weapon_type": "blade",
+              "form": "blade",
+              "trait_tier": 2,
+              "count": 1,
+              "infusions": [
+                {
+                  "element": "wind",
+                  "value": 1.4
+                },
+                {
+                  "element": "earth",
+                  "value": 1.2
+                },
+                {
+                  "element": "dark",
+                  "value": 1.15
+                }
+              ]
+            },
+            "armor": {
+              "id": "decaying_aegis",
+              "name": "Decaying Aegis",
+              "type": "equipment",
+              "rarity": "unique",
+              "enhance": 0,
+              "slot": "armor",
+              "mods": {
+                "Constitution": 16,
+                "Dexterity": 7
+              },
+              "special": "decaying_aegis",
+              "unique": true,
+              "drop_source": "queen_of_mirrors_sylvana",
+              "drop_rarity": "unique",
+              "primary_element": "physical",
+              "elemental_res": {
+                "physical": 1.15
+              },
+              "form": "runic_plate",
+              "description": "A shield of mirrored glass that regrows around its bearer and slowly cracks away. When it shatters, it takes five turns to find her reflection again.",
+              "count": 1
+            }
+          },
+          "learned_skills": [],
+          "skill_cooldowns": {},
+          "skill_mastery": {},
+          "learning": null
         }
       ]
     }
@@ -7162,7 +7911,7 @@
       250
     ]
   ],
-  "last_shop_day_skylume": 90,
+  "last_shop_day_skylume": 92,
   "blinded": false,
   "shop_stock4_irondeep": [
     [
@@ -7488,144 +8237,63 @@
   "shop_stock5_skylume": [
     [
       {
-        "id": "holy_water",
-        "name": "Holy Water",
-        "type": "utility",
-        "rarity": "common",
-        "enhance": 0,
-        "count": 1,
-        "power": 25,
-        "bonus_vs": "Undead"
-      },
-      20
-    ],
-    [
-      {
-        "id": "blade",
-        "name": "Rare Blade",
+        "id": "boots",
+        "name": "Rare Boots",
         "type": "equipment",
         "rarity": "rare",
         "enhance": 0,
-        "slot": "weapon",
-        "mods": {
-          "Strength": 4,
-          "Dexterity": 2
-        },
-        "scaling_stat": "Strength",
-        "primary_element": "physical",
-        "elemental_dmg": {
-          "physical": 1.1
-        },
-        "weapon_type": "blade",
-        "form": "blade",
-        "trait_tier": 1
-      },
-      1511
-    ],
-    [
-      {
-        "id": "crown",
-        "name": "Common Crown",
-        "type": "equipment",
-        "rarity": "common",
-        "enhance": 0,
         "slot": "accessory",
         "mods": {
-          "Charisma": 3,
-          "Wisdom": 3
+          "Dexterity": 3
         },
         "primary_element": "physical",
         "elemental_res": {
           "physical": 1.0
         },
-        "form": "crown"
+        "form": "boots"
       },
-      601
+      780
     ],
     [
       {
-        "id": "harp",
-        "name": "Uncommon Harp",
-        "type": "equipment",
-        "rarity": "uncommon",
-        "enhance": 0,
-        "slot": "weapon",
-        "mods": {
-          "Charisma": 3,
-          "Dexterity": 2
-        },
-        "scaling_stat": "Charisma",
-        "primary_element": "magical",
-        "elemental_dmg": {
-          "magical": 1.1
-        },
-        "weapon_type": "harp",
-        "form": "harp",
-        "trait_tier": 1
-      },
-      812
-    ],
-    [
-      {
-        "id": "stun_bomb",
-        "name": "Stun Bomb",
+        "id": "thunder_bomb",
+        "name": "Thunder Bomb",
         "type": "utility",
         "rarity": "common",
         "enhance": 0,
         "count": 1,
-        "power": 0,
-        "stun_chance": 0.6
+        "power": 28,
+        "shock_damage": 5,
+        "shock_duration": 3
       },
       20
     ],
     [
       {
-        "id": "eye",
-        "name": "Epic Eye",
+        "id": "gloves",
+        "name": "Rare Gloves",
         "type": "equipment",
-        "rarity": "epic",
+        "rarity": "rare",
         "enhance": 0,
         "slot": "accessory",
         "mods": {
-          "Wisdom": 2,
-          "Learning": 2
+          "Strength": 2,
+          "Dexterity": 1
         },
         "primary_element": "physical",
         "elemental_res": {
           "physical": 1.0
         },
-        "form": "eye"
+        "form": "gloves"
       },
-      1609
-    ],
-    [
-      {
-        "id": "greatstaff",
-        "name": "Epic Greatstaff",
-        "type": "equipment",
-        "rarity": "epic",
-        "enhance": 0,
-        "slot": "weapon",
-        "mods": {
-          "Learning": 5
-        },
-        "scaling_stat": "Learning",
-        "primary_element": "magical",
-        "elemental_dmg": {
-          "magical": 1.1
-        },
-        "weapon_type": "staff",
-        "form": "greatstaff",
-        "trait_tier": 1
-      },
-      2015
+      780
     ],
     [
       {
         "id": "orb",
-        "name": "Epic Orb",
+        "name": "Rare Orb",
         "type": "equipment",
-        "rarity": "epic",
+        "rarity": "rare",
         "enhance": 0,
         "slot": "weapon",
         "mods": {
@@ -7641,17 +8309,93 @@
         "form": "orb",
         "trait_tier": 1
       },
-      2015
+      1219
     ],
     [
       {
-        "id": "uncommon_scroll",
-        "name": "Common Scroll of Fusion",
-        "type": "scroll",
+        "id": "elixir_of_mind",
+        "name": "Elixir of Mind",
+        "type": "consumable",
         "rarity": "common",
         "enhance": 0,
         "count": 1,
-        "target_rarity": "common"
+        "power": 3,
+        "temp_stat": "Learning",
+        "duration": 4
+      },
+      20
+    ],
+    [
+      {
+        "id": "frostward_tonic",
+        "name": "Frostward Tonic",
+        "type": "consumable",
+        "rarity": "common",
+        "enhance": 0,
+        "count": 1,
+        "power": 40,
+        "cleanse_burn_poison": true
+      },
+      20
+    ],
+    [
+      {
+        "id": "gauntlets",
+        "name": "Epic Gauntlets",
+        "type": "equipment",
+        "rarity": "epic",
+        "enhance": 0,
+        "slot": "weapon",
+        "mods": {
+          "Constitution": 2,
+          "Strength": 1
+        },
+        "scaling_stat": "Constitution",
+        "scaling_mult": 0.5,
+        "con_defense": true,
+        "primary_element": "physical",
+        "elemental_dmg": {
+          "physical": 1.1
+        },
+        "weapon_type": "gauntlets",
+        "form": "gauntlets",
+        "trait_tier": 1
+      },
+      2649
+    ],
+    [
+      {
+        "id": "mace",
+        "name": "Uncommon Mace",
+        "type": "equipment",
+        "rarity": "uncommon",
+        "enhance": 0,
+        "slot": "weapon",
+        "mods": {
+          "Strength": 3,
+          "Wisdom": 1
+        },
+        "scaling_stat": "Strength",
+        "primary_element": "physical",
+        "elemental_dmg": {
+          "physical": 1.1
+        },
+        "weapon_type": "mace",
+        "form": "mace",
+        "trait_tier": 1
+      },
+      780
+    ],
+    [
+      {
+        "id": "fire_bomb",
+        "name": "Fire Bomb",
+        "type": "utility",
+        "rarity": "common",
+        "enhance": 0,
+        "count": 1,
+        "power": 22,
+        "burn_tier": 2
       },
       20
     ],
@@ -7892,133 +8636,79 @@
   "wonderland_guests": {
     "red_hood": "resolved",
     "dorothy": "resolved",
-    "alice": "accepted"
+    "alice": "resolved"
   },
   "wl_hatter_three_guests_seen": true,
-  "wonderland_active": true,
+  "wonderland_active": false,
   "wonderland_unlocked": true,
   "skill_loadout": [
-    "war_cleave",
     "war_battlecry",
     "war_execute",
     "war_shield_slam",
     "war_second_wind",
     "war_bladestorm",
     "war_reckless_charge",
-    "war_banner"
+    "war_banner",
+    "war_cleave"
   ],
   "shop_stock5_wonderland": [
     [
       {
-        "id": "bracers",
-        "name": "Rare Bracers",
-        "type": "equipment",
-        "rarity": "rare",
-        "enhance": 0,
-        "slot": "accessory",
-        "mods": {
-          "Strength": 3
-        },
-        "primary_element": "physical",
-        "elemental_res": {
-          "physical": 1.0
-        },
-        "form": "bracers"
-      },
-      735
-    ],
-    [
-      {
-        "id": "elixir_of_strength",
-        "name": "Elixir of Strength",
-        "type": "consumable",
-        "rarity": "common",
+        "id": "herbal_bath_salts",
+        "name": "Herbal Bath Salts",
+        "type": "house_item",
+        "rarity": "uncommon",
         "enhance": 0,
         "count": 1,
-        "power": 3,
-        "temp_stat": "Strength",
-        "duration": 4
+        "description": "A linen pouch of calming herbs. Spend one at the House Lounge to soak away a companion's stress (−20).",
+        "stress_relief": 20
       },
       22
     ],
     [
       {
-        "id": "ember_draught",
-        "name": "Ember Draught",
-        "type": "consumable",
-        "rarity": "common",
+        "id": "axe",
+        "name": "Uncommon Axe",
+        "type": "equipment",
+        "rarity": "uncommon",
+        "enhance": 0,
+        "slot": "weapon",
+        "mods": {
+          "Strength": 4
+        },
+        "scaling_stat": "Strength",
+        "primary_element": "physical",
+        "elemental_dmg": {
+          "physical": 1.1
+        },
+        "weapon_type": "axe",
+        "form": "axe",
+        "trait_tier": 1
+      },
+      805
+    ],
+    [
+      {
+        "id": "herbal_bath_salts",
+        "name": "Herbal Bath Salts",
+        "type": "house_item",
+        "rarity": "uncommon",
         "enhance": 0,
         "count": 1,
-        "power": 40,
-        "buff_fire_resist": 0.2,
-        "buff_duration": 2
+        "description": "A linen pouch of calming herbs. Spend one at the House Lounge to soak away a companion's stress (−20).",
+        "stress_relief": 20
       },
       22
     ],
     [
       {
-        "id": "vestments",
-        "name": "Common Vestments",
-        "type": "equipment",
-        "rarity": "common",
-        "enhance": 0,
-        "slot": "armor",
-        "mods": {
-          "Learning": 4,
-          "Constitution": 1
-        },
-        "primary_element": "physical",
-        "elemental_res": {
-          "physical": 1.15,
-          "fire": 1.05,
-          "earth": 1.05
-        },
-        "form": "vestments"
-      },
-      735
-    ],
-    [
-      {
-        "id": "healing_salve",
-        "name": "Healing Salve",
-        "type": "consumable",
+        "id": "rare_scroll",
+        "name": "Common Scroll of Fusion",
+        "type": "scroll",
         "rarity": "common",
         "enhance": 0,
         "count": 1,
-        "power": 40,
-        "duration": 3,
-        "heal_over_time": 3
-      },
-      22
-    ],
-    [
-      {
-        "id": "amulet",
-        "name": "Rare Amulet",
-        "type": "equipment",
-        "rarity": "rare",
-        "enhance": 0,
-        "slot": "accessory",
-        "mods": {
-          "Constitution": 3
-        },
-        "primary_element": "physical",
-        "elemental_res": {
-          "physical": 1.0
-        },
-        "form": "amulet"
-      },
-      735
-    ],
-    [
-      {
-        "id": "healing_potion",
-        "name": "Healing Potion",
-        "type": "consumable",
-        "rarity": "common",
-        "enhance": 0,
-        "count": 1,
-        "power": 55
+        "target_rarity": "common"
       },
       22
     ],
@@ -8036,28 +8726,77 @@
     ],
     [
       {
-        "id": "gauntlets",
-        "name": "Uncommon Gauntlets",
+        "id": "bracers",
+        "name": "Uncommon Bracers",
         "type": "equipment",
         "rarity": "uncommon",
         "enhance": 0,
-        "slot": "weapon",
+        "slot": "accessory",
         "mods": {
-          "Constitution": 2,
-          "Strength": 1
+          "Strength": 3
         },
-        "scaling_stat": "Constitution",
-        "scaling_mult": 0.5,
-        "con_defense": true,
         "primary_element": "physical",
-        "elemental_dmg": {
-          "physical": 1.1
+        "elemental_res": {
+          "physical": 1.0
         },
-        "weapon_type": "gauntlets",
-        "form": "gauntlets",
-        "trait_tier": 1
+        "form": "bracers"
       },
-      840
+      455
+    ],
+    [
+      {
+        "id": "battle_drink",
+        "name": "Battle Drink",
+        "type": "consumable",
+        "rarity": "common",
+        "enhance": 0,
+        "count": 1,
+        "power": 5,
+        "temp_stat": "Strength",
+        "duration": 3
+      },
+      22
+    ],
+    [
+      {
+        "id": "regalia",
+        "name": "Rare Regalia",
+        "type": "equipment",
+        "rarity": "rare",
+        "enhance": 0,
+        "slot": "armor",
+        "mods": {
+          "Charisma": 4,
+          "Wisdom": 1
+        },
+        "primary_element": "physical",
+        "elemental_res": {
+          "physical": 1.15,
+          "fire": 1.05,
+          "earth": 1.05
+        },
+        "form": "regalia"
+      },
+      1732
+    ],
+    [
+      {
+        "id": "signet",
+        "name": "Uncommon Signet",
+        "type": "equipment",
+        "rarity": "uncommon",
+        "enhance": 0,
+        "slot": "accessory",
+        "mods": {
+          "Charisma": 4
+        },
+        "primary_element": "physical",
+        "elemental_res": {
+          "physical": 1.0
+        },
+        "form": "signet"
+      },
+      700
     ],
     [
       {
@@ -8072,12 +8811,12 @@
       250
     ]
   ],
-  "last_shop_day_wonderland": 83,
+  "last_shop_day_wonderland": 92,
   "wl_boss_defeated_queen_of_hearts": true,
   "wl_floor_looted_10": true,
   "wl_redhood_state": "permanent",
   "heroine_gear_tier_version": 2,
-  "wl_alice_state": "temp",
+  "wl_alice_state": "permanent",
   "wl_dorothy_state": "permanent",
   "moonlight_turns": 0,
   "moonlight_cooldown": 0,
@@ -8099,7 +8838,6 @@
   "wl_boss_defeated_wicked_witch": true,
   "wl_floor_looted_30": true,
   "wl_wizard_slippers_upgraded": true,
-  "wonderland_shadows": [],
   "wedding_bark_shield_room_count": 40,
   "cursed": false,
   "shop_stock5_stormhold": [
@@ -8228,720 +8966,162 @@
   ],
   "last_shop_day_stormhold": 88,
   "family_births_pending": [],
-  "wonderland_benched_allies": [
+  "wonderland_heroine_alice_permanent": true,
+  "wl_boss_defeated_jabberwock": true,
+  "wl_floor_looted_40": true,
+  "wl_godmother_blade_upgraded": true,
+  "wonderland_shadows": [
+    "authors_will",
+    "white_rabbit_panic",
+    "off_with_heads",
+    "down_rabbit_hole"
+  ],
+  "_dungeon_log": [
+    "\n╔══════════════════════════════════════════════════════════╗\n║  WONDERLAND WHIMSY — Floor 44 — Truly Wonderland         ║\n╠══════════════════════════════════════════════════════════╣\n║  🎁  Mad Hatter's Generosity                              ║\n║                                                          ║\n║  40% chance for an extra item drop after each combat.    ║\n╚══════════════════════════════════════════════════════════╝\n\n  ── Heroine Reactions ──\n\n  💬 [Red Hood] Red Hood examines a stray gift. \"The Hatter has better taste than the wolf. That's a low bar, but still.\"\n\n  💬 [Dorothy] \"An unbirthday present!\" Dorothy beams. \"I have SO many unbirthdays to celebrate! This is wonderful!\"\n\n  💬 [Alice] Alice peers around expectantly. \"The Hatter promised me a thimble once. Perhaps he'll leave something nicer this time.\"",
+    "\n╔══════════════════════════════════════════════════════════╗\n║  🌑  WONDERLAND GROWS DARKER...                           ║\n╠══════════════════════════════════════════════════════════╣\n║  The realm's whimsy twists. A Shadow must be chosen.     ║\n║  This Shadow will persist on ALL subsequent floors.      ║\n║                                                          ║\n║  Choose wisely — it cannot be undone.                    ║\n╚══════════════════════════════════════════════════════════╝\n\n  [1] 🕳️ Down the Rabbit Hole\n      The ground shifts beneath you. Reality frays at the\n      edges. Which way is up?\n      Effect: 10% chance for you or an ally to lose a turn each round.\n\n  [2] 🔥 Jabberwock's Wrath\n      The slain Jabberwock's spirit burns with undying\n      rage. Its flames seek you still.\n      Effect: Take 8 fire damage at the start of every room.\n\n  [3] 🎭 Madness Contagion\n      The Hatter's madness spreads like spilled tea. Your\n      thoughts tangle and twist.\n      Effect: At the start of each room, a random party member loses 3 from a random stat for the room.\n\n  [4] 💔 Looking Glass Shatter\n      The mirror cracks. Seven years of bad luck settle\n      over you like a shroud.\n      Effect: All healing effects are reduced by 35%.\n\n  [5] 💨 Caterpillar's Smoke\n      The Caterpillar's hookah smoke thickens. Your\n      vision blurs and strikes go wide.\n      Effect: All attacks have 15% reduced accuracy.\n\n  [6] 🥀 Rose Wilt\n      The roses die on their stems. Their thorns grow\n      sharper and more numerous.\n      Effect: Bleed and poison last 2 extra turn(s).\n\n  [7] 👻 Cheshire Cat's Absence\n      The grin fades. The Cat has gone elsewhere — and\n      without his chaos, Wonderland grows sharp-edged.\n      Effect: All enemies gain +3 initiative. The Cat's protection is gone.\n"
+  ],
+  "saved_dungeon_floor": 44,
+  "saved_dungeon_rooms": [
     {
-      "name": "Alraune Fledger",
-      "nickname": "",
-      "key": "alraune_fledger",
-      "mother_key": null,
-      "level": 20,
-      "attributes": {
-        "Strength": 2,
-        "Constitution": 3,
-        "Dexterity": 10,
-        "Wisdom": 15,
-        "Learning": 3,
-        "Charisma": 6
-      },
-      "equipped": {
-        "weapon": {
-          "id": "scepter",
-          "name": "Legendary Scepter",
-          "type": "equipment",
-          "rarity": "legendary",
-          "enhance": 0,
-          "slot": "weapon",
-          "mods": {
-            "Wisdom": 4,
-            "Charisma": 2
-          },
-          "scaling_stat": "Wisdom",
-          "primary_element": "magical",
-          "elemental_dmg": {
-            "magical": 1.1
-          },
-          "weapon_type": "scepter",
-          "form": "scepter",
-          "trait_tier": 1,
-          "count": 1
-        },
-        "armor": {
-          "id": "robes",
-          "name": "Uncommon Robes",
-          "type": "equipment",
-          "rarity": "uncommon",
-          "enhance": 0,
-          "slot": "armor",
-          "mods": {
-            "Learning": 3,
-            "Wisdom": 1
-          },
-          "primary_element": "physical",
-          "elemental_res": {
-            "physical": 1.15,
-            "fire": 1.05,
-            "magical": 0.85
-          },
-          "form": "robes",
-          "count": 1
-        },
-        "accessory1": {
-          "id": "crown",
-          "name": "Legendary Crown",
-          "type": "equipment",
-          "rarity": "legendary",
-          "enhance": 0,
-          "slot": "accessory",
-          "mods": {
-            "Charisma": 4,
-            "Wisdom": 4
-          },
-          "primary_element": "physical",
-          "elemental_res": {
-            "physical": 1.0
-          },
-          "form": "crown",
-          "count": 1
-        },
-        "accessory2": {
-          "id": "astral_ring",
-          "name": "Uncommon Astral Ring",
-          "type": "equipment",
-          "rarity": "uncommon",
-          "enhance": 1,
-          "slot": "accessory",
-          "mods": {
-            "Learning": 6
-          },
-          "primary_element": "magical",
-          "elemental_res": {
-            "magical": 1.15,
-            "dark": 1.1
-          },
-          "grade": 3,
-          "form": "ring",
-          "composed": true,
-          "count": 1
-        }
-      },
-      "active_buffs": [
-        {
-          "type": "well_rested",
-          "stat": "all",
-          "value": 2,
-          "remaining": 6,
-          "_tick_grace": true
-        }
-      ],
-      "active_debuffs": [],
-      "blinded": false,
-      "slowed": false,
-      "stunned": false,
-      "frozen": false,
-      "cursed": false,
-      "dreaded": false,
-      "silenced": false,
-      "is_ally": true,
-      "affection": 200,
-      "affection_cap": 200,
-      "engaged": false,
-      "married": false,
-      "pregnant": false,
-      "conceived_day": 0,
-      "due_day": 0,
-      "next_conception_day": 0,
-      "recovery_until": 0,
-      "pregnancy_pity": 0,
-      "beloved_until_day": 0,
-      "is_trueborn": false,
-      "no_romance": false,
-      "stage": null,
-      "prime": false,
-      "preferred_tones": [],
-      "father_legacy": {},
-      "ring_stat_bonus": {},
-      "monster_girl": true,
-      "exp": 217,
-      "level_hp_bonus": 76,
-      "level_cap": 20,
-      "growth_applied": 7,
-      "defeated": false,
-      "stress": 0,
-      "consecutive_dispatch": 0,
-      "last_dispatch": null,
-      "last_dispatch_day": 0,
-      "injured_until": 0,
-      "awakened": false,
-      "awakened_name": "",
-      "awakened_skills": [],
-      "passive_skill": "fey_passive",
-      "innate_skills": [
-        "root_strike",
-        "nature_embrace"
-      ],
-      "learned_skills": [
-        "haste"
-      ],
-      "upgrade_skills": [],
-      "learning": null,
-      "skill_cooldowns": {},
-      "skill_mastery": {
-        "root_strike": 311,
-        "nature_embrace": 40,
-        "haste": 6
-      },
-      "max_hp": 100,
-      "current_hp": 100,
-      "elemental_res": {
-        "fire": 1.0499999999999998,
-        "water": 1.0,
-        "thunder": 1.0,
-        "wind": 1.1,
-        "earth": 1.0,
-        "light": 1.2000000000000002,
-        "dark": 0.8,
-        "physical": 1.9500000000000002,
-        "magical": 2.0
-      },
-      "elemental_dmg": {
-        "fire": 1.0,
-        "water": 1.0,
-        "thunder": 1.0,
-        "wind": 1.2000000000000002,
-        "earth": 1.0,
-        "light": 1.2999999999999998,
-        "dark": 1.0,
-        "physical": 1.0,
-        "magical": 1.4000000000000004
-      },
-      "race": "Fey",
-      "abyss_triple_actions": 0,
-      "cutlass_riposte_count": 0,
-      "cutlass_rally_active": false,
-      "cutlass_rally_turns": 0,
-      "tarnished_jade_pins": 0,
-      "tarnished_jade_weakened": false,
-      "floor": 31,
-      "dungeon_region": "tundra",
-      "_last_element_hit": "thunder",
-      "defending_this_turn": false,
-      "potion_sickness": 0,
-      "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "type": "combat",
+      "enemies": [
+        "fey_verdant_sovereign",
+        "construct_celestial_automaton",
+        "fey_verdant_sovereign"
+      ]
     },
     {
-      "name": "Umbral Weaver",
-      "nickname": "",
-      "key": "umbral_weaver",
-      "mother_key": null,
-      "level": 20,
-      "attributes": {
-        "Strength": 14,
-        "Constitution": 4,
-        "Dexterity": 10,
-        "Wisdom": 4,
-        "Learning": 4,
-        "Charisma": 4
-      },
-      "equipped": {
-        "weapon": {
-          "id": "blade",
-          "name": "Epic Nether Blade +2",
-          "type": "equipment",
-          "rarity": "epic",
-          "enhance": 2,
-          "slot": "weapon",
-          "mods": {
-            "Strength": 7,
-            "Dexterity": 5
-          },
-          "scaling_stat": "Strength",
-          "primary_element": "dark",
-          "elemental_dmg": {
-            "dark": 1.48,
-            "magical": 1.15
-          },
-          "weapon_type": "blade",
-          "form": "blade",
-          "trait_tier": 3,
-          "count": 1,
-          "infusions": [
-            {
-              "element": "dark",
-              "value": 1.48
-            },
-            {
-              "element": "magical",
-              "value": 1.15
-            }
-          ]
-        },
-        "armor": {
-          "id": "runic_plate",
-          "name": "Uncommon Runic Plate",
-          "type": "equipment",
-          "rarity": "uncommon",
-          "enhance": 0,
-          "slot": "armor",
-          "mods": {
-            "Constitution": 4,
-            "Learning": 2
-          },
-          "primary_element": "physical",
-          "elemental_res": {
-            "physical": 1.15,
-            "fire": 1.05,
-            "earth": 1.05,
-            "magical": 1.05,
-            "thunder": 1.05
-          },
-          "form": "runic_plate",
-          "count": 1
-        },
-        "accessory1": {
-          "id": "gloves",
-          "name": "Epic Gloves",
-          "type": "equipment",
-          "rarity": "epic",
-          "enhance": 0,
-          "slot": "accessory",
-          "mods": {
-            "Strength": 2,
-            "Dexterity": 1
-          },
-          "primary_element": "physical",
-          "elemental_res": {
-            "physical": 1.0
-          },
-          "form": "gloves",
-          "count": 1
-        },
-        "accessory2": {
-          "id": "bracers",
-          "name": "Epic Bracers",
-          "type": "equipment",
-          "rarity": "epic",
-          "enhance": 0,
-          "slot": "accessory",
-          "mods": {
-            "Strength": 3
-          },
-          "primary_element": "physical",
-          "elemental_res": {
-            "physical": 1.0
-          },
-          "form": "bracers",
-          "count": 1
-        }
-      },
-      "active_buffs": [
-        {
-          "type": "well_rested",
-          "stat": "all",
-          "value": 2,
-          "remaining": 6,
-          "_tick_grace": true
-        }
-      ],
-      "active_debuffs": [],
-      "blinded": false,
-      "slowed": false,
-      "stunned": false,
-      "frozen": false,
-      "cursed": false,
-      "dreaded": false,
-      "silenced": false,
-      "is_ally": true,
-      "affection": 200,
-      "affection_cap": 200,
-      "engaged": false,
-      "married": false,
-      "pregnant": true,
-      "conceived_day": 78,
-      "due_day": 108,
-      "next_conception_day": 0,
-      "recovery_until": 0,
-      "pregnancy_pity": 0,
-      "beloved_until_day": 79,
-      "is_trueborn": false,
-      "no_romance": false,
-      "stage": null,
-      "prime": false,
-      "preferred_tones": [
-        "shy",
-        "tender"
-      ],
-      "father_legacy": {},
-      "ring_stat_bonus": {},
-      "monster_girl": true,
-      "exp": 26,
-      "level_hp_bonus": 76,
-      "level_cap": 20,
-      "growth_applied": 6,
-      "defeated": false,
-      "stress": 0,
-      "consecutive_dispatch": 0,
-      "last_dispatch": null,
-      "last_dispatch_day": 0,
-      "injured_until": 0,
-      "awakened": false,
-      "awakened_name": "",
-      "awakened_skills": [],
-      "passive_skill": "shadow_passive",
-      "innate_skills": [
-        "shadow_strike",
-        "web_trap"
-      ],
-      "learned_skills": [],
-      "upgrade_skills": [],
-      "learning": null,
-      "skill_cooldowns": {},
-      "skill_mastery": {
-        "shadow_strike": 205,
-        "web_trap": 37
-      },
-      "max_hp": 103,
-      "current_hp": 103,
-      "elemental_res": {
-        "fire": 1.0499999999999998,
-        "water": 1.0,
-        "thunder": 1.0499999999999998,
-        "wind": 1.0,
-        "earth": 1.0499999999999998,
-        "light": 0.6000000000000001,
-        "dark": 1.2999999999999998,
-        "physical": 2.0,
-        "magical": 1.0499999999999998
-      },
-      "elemental_dmg": {
-        "fire": 1.0,
-        "water": 1.0,
-        "thunder": 1.0,
-        "wind": 1.0,
-        "earth": 1.0,
-        "light": 1.0,
-        "dark": 1.7800000000000002,
-        "physical": 1.0,
-        "magical": 1.15
-      },
-      "race": "Shadow",
-      "abyss_triple_actions": 0,
-      "cutlass_riposte_count": 0,
-      "cutlass_rally_active": false,
-      "cutlass_rally_turns": 0,
-      "tarnished_jade_pins": 0,
-      "tarnished_jade_weakened": false,
-      "floor": 31,
-      "dungeon_region": "tundra",
-      "defending_this_turn": false,
-      "_last_element_hit": "dark",
-      "moonlight_turns": 0,
-      "moonlight_cooldown": 0
+      "type": "combat",
+      "enemies": [
+        "abomination_doom_of_elders",
+        "fey_verdant_sovereign",
+        "shadow_penumbra_wraith",
+        "fey_verdant_sovereign",
+        "demon_abyssal_sovereign"
+      ]
     },
     {
-      "name": "Ninetales Fox",
-      "nickname": "",
-      "key": "ninetales_fox",
-      "mother_key": null,
-      "level": 30,
-      "attributes": {
-        "Strength": 11,
-        "Constitution": 9,
-        "Dexterity": 10,
-        "Wisdom": 11,
-        "Learning": 4,
-        "Charisma": 12
-      },
-      "equipped": {
-        "weapon": {
-          "id": "blade",
-          "name": "Epic Cyclone Blade +2",
-          "type": "equipment",
-          "rarity": "epic",
-          "enhance": 2,
-          "slot": "weapon",
-          "mods": {
-            "Strength": 7,
-            "Dexterity": 5
-          },
-          "scaling_stat": "Strength",
-          "primary_element": "wind",
-          "elemental_dmg": {
-            "wind": 1.4,
-            "earth": 1.2,
-            "dark": 1.15
-          },
-          "weapon_type": "blade",
-          "form": "blade",
-          "trait_tier": 2,
-          "count": 1,
-          "infusions": [
-            {
-              "element": "wind",
-              "value": 1.4
-            },
-            {
-              "element": "earth",
-              "value": 1.2
-            },
-            {
-              "element": "dark",
-              "value": 1.15
-            }
-          ]
-        },
-        "armor": {
-          "id": "decaying_aegis",
-          "name": "Decaying Aegis",
-          "type": "equipment",
-          "rarity": "unique",
-          "enhance": 0,
-          "slot": "armor",
-          "mods": {
-            "Constitution": 16,
-            "Dexterity": 7
-          },
-          "special": "decaying_aegis",
-          "unique": true,
-          "drop_source": "queen_of_mirrors_sylvana",
-          "drop_rarity": "unique",
-          "primary_element": "physical",
-          "elemental_res": {
-            "physical": 1.15
-          },
-          "form": "runic_plate",
-          "description": "A shield of mirrored glass that regrows around its bearer and slowly cracks away. When it shatters, it takes five turns to find her reflection again.",
-          "count": 1
-        },
-        "accessory1": null,
-        "accessory2": null
-      },
-      "active_buffs": [
-        {
-          "type": "well_rested",
-          "stat": "all",
-          "value": 2,
-          "remaining": 6,
-          "_tick_grace": true
-        }
+      "type": "stat_check",
+      "event": "wl_cat_riddle"
+    },
+    {
+      "type": "combat",
+      "enemies": [
+        "shadow_penumbra_wraith"
+      ]
+    },
+    {
+      "type": "combat",
+      "enemies": [
+        "cosmic_abomination",
+        "shadow_penumbra_wraith",
+        "shadow_penumbra_wraith"
+      ]
+    },
+    {
+      "type": "combat",
+      "enemies": [
+        "abomination_doom_of_elders",
+        "beast_world_serpent"
+      ]
+    },
+    {
+      "type": "fountain"
+    },
+    {
+      "type": "combat",
+      "enemies": [
+        "abomination_doom_of_elders",
+        "abomination_god_serpent",
+        "fey_verdant_sovereign",
+        "fey_twilight_courtier"
+      ]
+    },
+    {
+      "type": "fountain"
+    },
+    {
+      "type": "combat",
+      "enemies": [
+        "wl_headless_horseman"
       ],
-      "active_debuffs": [],
-      "blinded": false,
-      "slowed": false,
-      "stunned": false,
-      "frozen": false,
-      "cursed": false,
-      "dreaded": false,
-      "silenced": false,
-      "is_ally": true,
-      "affection": 53,
-      "affection_cap": 200,
-      "engaged": false,
-      "married": false,
-      "pregnant": false,
-      "conceived_day": 0,
-      "due_day": 0,
-      "next_conception_day": 0,
-      "recovery_until": 0,
-      "pregnancy_pity": 0,
-      "beloved_until_day": 0,
-      "is_trueborn": false,
-      "no_romance": false,
-      "stage": null,
-      "prime": false,
-      "preferred_tones": [],
-      "father_legacy": {},
-      "ring_stat_bonus": {},
-      "monster_girl": true,
-      "exp": 0,
-      "level_hp_bonus": 116,
-      "level_cap": 10,
-      "growth_applied": 0,
-      "defeated": false,
-      "stress": 0,
-      "consecutive_dispatch": 0,
-      "last_dispatch": null,
-      "last_dispatch_day": 0,
-      "injured_until": 0,
-      "awakened": false,
-      "awakened_name": "",
-      "awakened_skills": [],
-      "passive_skill": "beast_passive",
-      "innate_skills": [
-        "sunfire_breath",
-        "nine_tails_strike"
-      ],
-      "learned_skills": [],
-      "upgrade_skills": [],
-      "learning": null,
-      "skill_cooldowns": {
-        "nine_tails_strike": 2
-      },
-      "skill_mastery": {
-        "nine_tails_strike": 2,
-        "sunfire_breath": 1
-      },
-      "max_hp": 158,
-      "current_hp": 158,
-      "elemental_res": {
-        "fire": 1.0,
-        "water": 1.0,
-        "thunder": 1.0,
-        "wind": 1.1,
-        "earth": 1.2000000000000002,
-        "light": 1.0,
-        "dark": 1.0,
-        "physical": 1.25,
-        "magical": 1.0
-      },
-      "elemental_dmg": {
-        "fire": 1.0,
-        "water": 1.0,
-        "thunder": 1.0,
-        "wind": 1.4,
-        "earth": 1.2000000000000002,
-        "light": 1.0,
-        "dark": 1.15,
-        "physical": 1.2999999999999998,
-        "magical": 1.0
-      },
-      "race": "Beast",
-      "abyss_triple_actions": 0,
-      "cutlass_riposte_count": 0,
-      "cutlass_rally_active": false,
-      "cutlass_rally_turns": 0,
-      "tarnished_jade_pins": 0,
-      "tarnished_jade_weakened": false,
-      "moonlight_turns": 0,
-      "moonlight_cooldown": 0,
-      "floor": 31,
-      "dungeon_region": "tundra",
-      "defending_this_turn": false
+      "is_boss": true
     }
   ],
-  "wonderland_time_frozen": 360,
-  "wonderland_day_frozen": 92,
-  "wonderland_return_city": "veilholt",
-  "_dungeon_log": [
-    "\n╔══════════════════════════════════════════════════════════╗\n║  WONDERLAND WHIMSY — Floor 32 — Truly Wonderland         ║\n╠══════════════════════════════════════════════════════════╣\n║  🐇  White Rabbit's Haste                                 ║\n║                                                          ║\n║  All skill cooldowns are reduced by 2 turn(s).           ║\n╚══════════════════════════════════════════════════════════╝\n\n  ── Heroine Reactions ──\n\n  💬 [Red Hood] \"A talking rabbit in a waistcoat.\" Red Hood shakes her head. \"I've officially seen everything. Let's move while he's helping.\"\n\n  💬 [Dorothy] \"There's no place like home,\" Dorothy says, \"but there's also no place like being FAST! Keep up, everyone!\"\n\n  💬 [Alice] \"I spent so long chasing that rabbit,\" Alice says wistfully. \"It's rather nice having him help us instead.\"",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Rare Dagger [rare]!",
-    "You acquired the Rare Dagger!",
-    "An enemy drops: Epic Scepter [epic]!",
-    "You acquired the Epic Scepter!",
-    "\nYou catch your breath and recover 14 HP.",
-    "  Red Hood recovers 8 HP.",
-    "  Dorothy recovers 10 HP.",
-    "  Alice recovers 7 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Uncommon Dragonhide [uncommon]!",
-    "You acquired the Uncommon Dragonhide!",
-    "\nYou catch your breath and recover 15 HP.",
-    "  Red Hood recovers 10 HP.",
-    "  Dorothy recovers 9 HP.",
-    "  Alice recovers 9 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Epic Padded Armor [epic]!",
-    "Discarded Common Shadow Wraps. Acquired Epic Padded Armor!",
-    "You acquired the Epic Padded Armor!",
-    "\nYou catch your breath and recover 18 HP.",
-    "  Red Hood recovers 10 HP.",
-    "  Dorothy recovers 11 HP.",
-    "  Alice recovers 7 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Greater Healing Potion [common]!",
-    "You acquired the Greater Healing Potion!",
-    "An enemy drops: Superior Healing Potion [common]!",
-    "You acquired the Superior Healing Potion!",
-    "\nYou catch your breath and recover 15 HP.",
-    "  Red Hood recovers 9 HP.",
-    "  Dorothy recovers 11 HP.",
-    "  Alice recovers 9 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Gale Cordial [common]!",
-    "You acquired the Gale Cordial!",
-    "An enemy drops: Rare Elven Mail [rare]!",
-    "Discarded Common Gale Boots. Acquired Rare Elven Mail!",
-    "You acquired the Rare Elven Mail!",
-    "An enemy drops: Ironbriar [common]!",
-    "You acquired the Ironbriar!",
-    "An enemy drops: Uncommon Wand [uncommon]!",
-    "Discarded Common Crown. Acquired Uncommon Wand!",
-    "You acquired the Uncommon Wand!",
-    "\nYou catch your breath and recover 14 HP.",
-    "  Red Hood recovers 10 HP.",
-    "  Dorothy recovers 9 HP.",
-    "  Alice recovers 8 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Epic Plate Armor [epic]!",
-    "Discarded Uncommon Dragonhide. Acquired Epic Plate Armor!",
-    "You acquired the Epic Plate Armor!",
-    "An enemy drops: Epic Talisman [epic]!",
-    "Discarded Common Cyclone Anklet. Acquired Epic Talisman!",
-    "You acquired the Epic Talisman!",
-    "An enemy drops: Rare Boots [rare]!",
-    "Discarded Common Sword. Acquired Rare Boots!",
-    "You acquired the Rare Boots!",
-    "An enemy drops: Ironbriar [common]!",
-    "You acquired the Ironbriar!",
-    "\nYou catch your breath and recover 16 HP.",
-    "  Red Hood recovers 9 HP.",
-    "  Dorothy recovers 11 HP.",
-    "  Alice recovers 9 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Emberbloom [common]!",
-    "You acquired the Emberbloom!",
-    "\nYou catch your breath and recover 18 HP.",
-    "  Red Hood recovers 8 HP.",
-    "  Dorothy recovers 9 HP.",
-    "  Alice recovers 9 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "\nYou catch your breath and recover 16 HP.",
-    "  Red Hood recovers 9 HP.",
-    "  Dorothy recovers 11 HP.",
-    "  Alice recovers 7 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  🐇  Curiouser Chamber",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "\nYou catch your breath and recover 14 HP.",
-    "  Red Hood recovers 10 HP.",
-    "  Dorothy recovers 11 HP.",
-    "  Alice recovers 7 HP.",
-    "\n══════════════════════════════════════════════════",
-    "  *** BOSS ROOM ***",
-    "══════════════════════════════════════════════════",
-    "\n--- Room Victory Rewards ---",
-    "An enemy drops: Uncommon Scepter [uncommon]!",
-    "You drop the Uncommon Scepter.",
-    "\nYou catch your breath and recover 14 HP.",
-    "  Red Hood recovers 10 HP.",
-    "  Dorothy recovers 9 HP.",
-    "  Alice recovers 9 HP.",
-    "Current time: ∞:∞∞  — Always. Never. Both. | Gold: 7528"
-  ]
+  "saved_dungeon_room_index": 0,
+  "wonderland_saved_temp_heroines": [],
+  "cutlass_high_tide_floor": null,
+  "map_boss": {
+    "unlocked_day": 95,
+    "season": "summer",
+    "echo": 0,
+    "active": {
+      "id": "warden_summer_0",
+      "season": "summer",
+      "season_name": "Summer",
+      "warden_name": "Warden of the Long Noon",
+      "glyph": "🔥",
+      "mechanic": "heat",
+      "mechanic_name": "Heat",
+      "stack_tag": "HEAT",
+      "signature_status": "burn",
+      "add_name": "Cinderling",
+      "echo": 0,
+      "level": 20,
+      "biome": "savanna",
+      "element": "fire",
+      "weakness": "water",
+      "seed_city": "sunreach",
+      "nearest_city": "greyharbor",
+      "position": [
+        90,
+        222
+      ],
+      "spawn_day": 95,
+      "expire_day": 181,
+      "max_hp": 1000,
+      "hp": 1000,
+      "str": 30,
+      "armor": 12,
+      "elemental_res": {
+        "fire": 1.3,
+        "water": 0.7,
+        "thunder": 1.0,
+        "wind": 1.0,
+        "earth": 1.0,
+        "light": 1.0,
+        "dark": 1.0,
+        "physical": 1.0,
+        "magical": 1.0
+      },
+      "status_res": 0.2,
+      "mechanic_tier": 1,
+      "mechanic_rank": 1,
+      "mechanic_effects": [
+        "heat_stacks"
+      ],
+      "mechanic_labels": [
+        "Heat"
+      ],
+      "attempts": 0,
+      "last_fought_day": null,
+      "defeated": false,
+      "cache_preview": {
+        "item_id": "sword",
+        "rarity": "rare"
+      },
+      "consumables": [
+        "greater_healing_potion",
+        "acid_flask"
+      ],
+      "flower": "emberbloom"
+    },
+    "defeated_total": 0,
+    "unique_grants": [],
+    "best_echo": -1,
+    "season_defeats": {},
+    "last_spawn_day": 95,
+    "last_result": null,
+    "depth_declined_season": null
+  }
 }

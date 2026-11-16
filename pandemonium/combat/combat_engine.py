@@ -134,6 +134,8 @@ def _tick_all_state(player):
     tick_captain_cutlass(player)
     tick_authors_pen_cooldown(player)
     tick_moonlight(player)
+    from pandemonium.combat.weapon.map_boss_uniques import tick_long_day
+    tick_long_day(player)
 
     # Tick ally specials
     from pandemonium.combat.weapon.captain_cutlass import _tick_captain_cutlass_actor
@@ -144,6 +146,7 @@ def _tick_all_state(player):
             _tick_captain_cutlass_actor(ally, player_ref=player)
             tick_authors_pen_cooldown(ally)
             tick_moonlight(ally)
+            tick_long_day(ally)
 
     from pandemonium.combat.skills import tick_skill_cooldowns
     from pandemonium.combat.fractured_hourglass import tick_hourglass_cooldown
@@ -272,6 +275,8 @@ def clear_battle_scoped_state(player):
     clear_abyss_fang_state(player)
     clear_authors_pen_state(player)
     clear_moonlight_state(player)
+    from pandemonium.combat.weapon.map_boss_uniques import clear_map_boss_unique_state
+    clear_map_boss_unique_state(player)
     # Free-action skill state is battle-scoped (Time Warp).
     player.pop("_skill_free_action", None)
     # Tarnished Jade combat state (pins/backlash are battle-scoped)
@@ -297,6 +302,7 @@ def clear_battle_scoped_state(player):
         clear_gloves_state(ally)
         clear_authors_pen_state(ally)
         clear_moonlight_state(ally)
+        clear_map_boss_unique_state(ally)
         clear_brush_state(ally)
         clear_shawl_state(ally)
         clear_palette_ally_state(ally)
@@ -387,6 +393,11 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
     clear_captain_cutlass_state(player)
     clear_authors_pen_state(player)
     clear_moonlight_state(player)
+    from pandemonium.combat.weapon.map_boss_uniques import (
+        begin_map_boss_uniques, clear_map_boss_unique_state,
+    )
+    clear_map_boss_unique_state(player)
+    begin_map_boss_uniques(player)
     from pandemonium.combat.sylvana_heroine import clear_sylvana_combat_state
     from pandemonium.combat.weapon.decaying_aegis import begin_decaying_aegis_combat
     clear_sylvana_combat_state(player)
@@ -496,6 +507,12 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
         apply_chronoweave_turn_start(player)
         for ally in get_active_allies(player):
             apply_chronoweave_turn_start(ally)
+
+        # Warden of the Long Day — Echo Mantle follows the clock each round
+        from pandemonium.combat.weapon.map_boss_uniques import refresh_echo_mantle
+        refresh_echo_mantle(player)
+        for ally in get_active_allies(player):
+            refresh_echo_mantle(ally)
 
         # Sylvana's Queen's Grace + Decaying Aegis upkeep
         from pandemonium.combat.sylvana_heroine import apply_sylvana_party_grace

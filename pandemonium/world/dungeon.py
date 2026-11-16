@@ -509,9 +509,10 @@ def _roll_consumable_drop(enemy_level):
 def roll_gold_drop(enemy_key, is_boss=False, pandemonium=False, player=None):
     """Roll gold drop from defeated enemy.
 
-    The market-index offset is subtracted from the base roll only (not the
-    boss/Pandemonium multipliers), so the expected total per kill stays flat
-    while loot becomes a larger share (docs/gold_economy_pacing_design.md §3.1).
+    The market-index offset is applied after the 25% bonus (before the min-8
+    floor), so boss/Pandemonium multipliers cannot amplify it and the expected
+    total per kill stays flat while loot becomes a larger share
+    (docs/gold_economy_pacing_design.md §3.1).
     """
     enemy_level = ENEMIES[enemy_key]["level"]
     
@@ -571,6 +572,13 @@ def add_gold_drop(player, enemy_key, pandemonium=False):
     # Daily events: Lucky Day / Full Moon gold bonus
     from pandemonium.core.events import get_daily_bonus_multiplier
     gold = int(gold * get_daily_bonus_multiplier(player, "gold_bonus"))
+
+    # Deed titles: Pathfinder/Delver boost dungeon gold.
+    from pandemonium.progression.titles import apply_gold_find
+    gold = apply_gold_find(player, gold)
+
+    player["gold"] = player.get("gold", 0) + gold
+    _tprint(f"  +{gold} gold")
 
 # Wonderland uses per‑10‑floor superbosses (unlike the global per‑20).
 # Each entry maps floor → (boss_name, module_path, combat_function).
@@ -1749,8 +1757,136 @@ def _explore_event_horizon(player, combat_override=None, superboss_override=None
         # "continue" → next room
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  Seasonal map boss — single arena (docs/map_boss_design.md §7)
+# ═══════════════════════════════════════════════════════════════════════════
+
+MAP_BOSS_ARENA_SEALED = "map_boss_locked"
+
+
+def _map_boss_restore_floor(player):
+    """Restore the pre-arena floor cursor (max_floor/city_floors untouched)."""
+    prev = player.pop("_map_boss_prev_floor", None)
+    if prev is not None:
+        player["floor"] = prev
+
+
+def _map_boss_scrub(player):
+    """Drop every transient arena key (idempotent)."""
+    player.pop("_map_boss_site", None)
+    player.pop("_map_boss_in_fight", None)
+    player.pop("_map_boss_clock_blocks", None)
+    player.pop("_map_boss_rounds", None)
+    player.pop("_combat_time_label", None)
+    player.pop("_combat_floor_label", None)
+    for key in ("_map_boss_frost_stacks", "_map_boss_freeze"):
+        player.pop(key, None)
+    _map_boss_restore_floor(player)
+
+
+def _map_boss_arena_exit(player, result, site, snapshot):
+    """Persist HP, commit the arena clock once, advance the Echo on a kill.
+
+    Result ordering follows docs/map_boss_design.md §7.7: state is resolved
+    before the time commit, the commit may roll the season, and only then is
+    the next Echo created (never two Wardens for one boundary).
+    """
+    import pandemonium.core.time_blocks as time_blocks
+    import pandemonium.world.map_boss as map_boss
+
+    rounds = max(0, int(player.pop("_map_boss_rounds", 0) or 0))
+    # The killing round's projected block decides the Night gold bonus — read
+    # it before the time commit/scrub clears the arena clock.
+    kill_blocks = player.get("_map_boss_clock_blocks")
+    night_kill = False
+    if kill_blocks is not None:
+        from pandemonium.core.time_blocks import get_day_phase
+        night_kill = get_day_phase(int(kill_blocks)) == "night"
+
+    # ── 1–3: resolve the fight before any time passes ──────────────────
+    if result == "victory":
+        map_boss.record_victory(player)
+    else:
+        boss_hp = 0
+        if isinstance(snapshot, dict):
+            boss_hp = int(snapshot.get("hp", 0) or 0)
+        map_boss.save_boss_hp(player, boss_hp)
+        map_boss.set_result(player, "dead" if result == "dead" else "fled")
+
+    # ── 4: the single time commit (may cross a day / season boundary) ──
+    if rounds:
+        time_blocks.spend_blocks(player, rounds, source="map_boss")
+    player.pop("_combat_time_label", None)
+    player.pop("_map_boss_clock_blocks", None)
+
+    outcome = result
+    if result == "victory":
+        # ── 5: spoils (§8) — granted from the killed Warden's snapshot ──
+        killed = dict(site) if isinstance(site, dict) else None
+        player["_map_boss_victory"] = map_boss.grant_victory_rewards(
+            player, killed, night=night_kill)
+        # ── 6: reform the next Echo — or the season turned under us ────
+        map_boss.advance_echo(player, killed=killed)
+        current = map_boss.get_active_boss(player)
+        if (killed is not None and current is not None
+                and current.get("season") != killed.get("season")):
+            outcome = "map_boss_season_shift"
+        else:
+            outcome = "map_boss_victory"
+
+    # ── 7: save + scrub ────────────────────────────────────────────────
+    _map_boss_scrub(player)
+    try:
+        from pandemonium.core.save_load import save_game
+        save_game(player)
+    except Exception:
+        pass
+    return outcome
+
+
+def _explore_map_boss_arena(player, combat_override=None, superboss_override=None,
+                            arena_override=None):
+    """The Warden's arena — one encounter, no floors (§7).
+
+    The fight runs through ``combat/map_boss.py`` (which drives the shared
+    superboss loop). ``arena_override(player, site, enemies)`` lets the GUI
+    host the same encounter in CombatScreen; without it the fight runs on the
+    redirected console I/O used by the dungeon thread.
+    """
+    import pandemonium.world.map_boss as map_boss
+
+    site = map_boss.get_active_boss(player)
+    if not site:
+        _map_boss_scrub(player)
+        if player.get("location") == "dungeon":
+            player["location"] = player.get("origin_city", "solmere")
+        return MAP_BOSS_ARENA_SEALED
+
+    from pandemonium.combat.map_boss import build_encounter, combat_map_boss
+
+    enemies = build_encounter(site)
+    player["_map_boss_in_fight"] = True
+    try:
+        if arena_override:
+            result = arena_override(player, site, enemies)
+        else:
+            result = combat_map_boss(player, floor=site.get("level"),
+                                     enemies=enemies)
+    finally:
+        player.pop("_map_boss_in_fight", None)
+
+    if result not in ("victory", "dead", "fled"):
+        # Interrupt / timeout / vanished screen — treat as a flee so the
+        # Echo's HP is still persisted (idempotent scrub below).
+        result = "fled"
+
+    boss = next((e for e in enemies if e.get("_map_boss")), None)
+    return _map_boss_arena_exit(player, result, site, boss)
+
+
+
 def explore_dungeon(player, combat_override=None, superboss_override=None,
-                    floor_clear_override=None):
+                    floor_clear_override=None, map_boss_override=None):
     """Main dungeon loop. Clears one floor. Returns False if player dies.
 
     Args:
@@ -1765,11 +1901,21 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
             Wild runs only. If provided, called after each cleared floor
             (except the last) so the GUI can show the floor-clear window.
             Without it the loop falls back to the console prompt.
+        map_boss_override: Optional function(player, site, enemies) -> str
+            Seasonal map boss only. Hosts the arena encounter (the GUI's
+            CombatScreen); without it the fight runs on redirected console
+            I/O inside the dungeon thread.
     """
     # ── Wild dungeons: dedicated loop (docs/wild_dungeon_design.md §4) ────
     if player.get("wild_dungeon_id"):
         return _explore_wild_dungeon(player, combat_override, superboss_override,
                                      floor_clear_override)
+
+    # ── Seasonal map boss: single arena (docs/map_boss_design.md §7) ──────
+    if player.get("_map_boss_site"):
+        return _explore_map_boss_arena(player, combat_override,
+                                       superboss_override,
+                                       arena_override=map_boss_override)
 
     # ── Event Horizon: dedicated room loop (docs/event_horizon_design.md §2) ──
     if player.get("_eh_in_run") and (player.get("event_horizon") or {}).get("run_active"):

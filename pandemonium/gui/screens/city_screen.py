@@ -1,8 +1,8 @@
 """
 gui/screens/city_screen.py — City hub with service buttons and action bar.
 
-Shows all city services as clickable buttons, plus Inventory, Skill Book,
-Travel, Dungeon, and Save & Quit actions.
+Shows all city services as clickable buttons, plus Inventory, Travel,
+Dungeon, and Save & Quit actions.
 """
 
 import tkinter as tk
@@ -181,7 +181,6 @@ class CityScreen(BaseScreen):
 
         actions = [
             ("[I] Inventory", self._open_inventory),
-            ("[K] Skill Book", self._open_skill_book),
             ("[M] World Map", self._open_world_map),
             ("[W] Wait", self._do_wait),
             ("[S] Settings", self._open_settings),
@@ -221,7 +220,6 @@ class CityScreen(BaseScreen):
         # Letter keys → bottom actions
         key_map = {
             "i": self._open_inventory,
-            "k": self._open_skill_book,
             "m": self._open_world_map,
             "w": self._do_wait,
             "d": self._enter_dungeon,
@@ -1113,18 +1111,6 @@ class CityScreen(BaseScreen):
         from pandemonium.gui.screens.inventory_screen import InventoryScreen
         self.sm.switch_to(InventoryScreen)
 
-    def _open_skill_book(self):
-        self.sm.log("Opening Skill Book...")
-        from pandemonium.facilities.skill_book import skill_book_menu
-        from pandemonium.gui.screens.facility_screen import FacilityScreen
-        self.sm.switch_to(
-            FacilityScreen,
-            title="Skill Book",
-            func=skill_book_menu,
-            func_args=(self.player,),
-            on_close=lambda _: self._after_facility(),
-        )
-
     def _open_world_map(self):
         """Open the unified world map — travel mode with pathfinding + Travel Here."""
         self.sm.log("Opening World Map...")
@@ -1199,6 +1185,12 @@ class CityScreen(BaseScreen):
         # A stale Event Horizon gate must never hijack a city-floor run
         # (the suspended run state itself is preserved).
         self.player.pop("_eh_in_run", None)
+        # Same for the seasonal map boss's arena context (the Warden itself
+        # lives in player["map_boss"] and is untouched).
+        self.player.pop("_map_boss_site", None)
+        self.player.pop("_map_boss_prev_floor", None)
+        self.player.pop("_map_boss_victory", None)
+        self.player.pop("_combat_time_label", None)
 
         # ── Receptionist "leave" dialogue ─────────────────────────────────
         from pandemonium.world.city_dialogue import get_city_dialogues
@@ -1600,7 +1592,6 @@ class CityScreen(BaseScreen):
             "City Screen:\n"
             "  1–9  — Open city service\n"
             "  I    — Inventory\n"
-            "  K    — Skill Book\n"
             "  M    — World Map / Travel\n"
             "  D    — Enter Dungeon\n"
             "  S    — Settings\n"

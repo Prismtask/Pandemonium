@@ -44,6 +44,15 @@ from pandemonium.world.wild_dungeons import (
     get_active_dungeons, get_wild_dungeon, maybe_spawn_cycle,
     build_journey_to_dungeon,
 )
+from pandemonium.world.map_boss import (
+    get_active_boss as get_map_boss,
+    maybe_spawn as maybe_spawn_map_boss,
+    build_journey_to_warden,
+    next_unique_milestone,
+    next_echo_preview,
+    echo_label as map_boss_echo_label,
+    is_current as map_boss_is_current,
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -124,6 +133,14 @@ _WILD_BIOME_ICONS = {
 }
 _WILD_FALLBACK_ICON = "\u2620"      # ☠
 
+# Seasonal map boss marker appearance (docs/map_boss_design.md §10.1).
+# Gold, so it never reads as a wild ruin (purple) or the Event Horizon (violet).
+_MAP_BOSS_MARKER_W = 116
+_MAP_BOSS_MARKER_H = 30
+_MAP_BOSS_MARKER_FILL = "#241d08"
+_MAP_BOSS_MARKER_OUTLINE = "#d4a017"
+_MAP_BOSS_MARKER_SELECTED = "#f1c40f"
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  WORLD MAP SCREEN
@@ -144,6 +161,9 @@ class WorldMapScreen(BaseScreen):
         self._selected_horizon = False   # Event Horizon site selected
         self._horizon_rect_id = None     # canvas rect id of the site marker
         self._horizon_hitbox = None      # (x1, y1, x2, y2)
+        self._selected_map_boss = False  # seasonal Warden selected
+        self._map_boss_rect_id = None    # canvas rect id of the Warden marker
+        self._map_boss_hitbox = None     # (x1, y1, x2, y2)
         self._node_rects = {}
         self._canvas = None
         self._info_frame = None
@@ -173,6 +193,7 @@ class WorldMapScreen(BaseScreen):
         self._travel_combat_result = None  # set by _check, handled on overlay dismiss
         self._travel_wild = None      # wild dungeon dict when journeying to a ruin
         self._travel_horizon = None   # EH site dict when journeying to the distortion
+        self._travel_map_boss = None  # Warden site dict when journeying to the arena
 
         super().__init__(parent, screen_manager, **kwargs)
 
@@ -279,6 +300,8 @@ class WorldMapScreen(BaseScreen):
                 )
             self._draw_wild_dungeons()
             self._draw_event_horizon()
+            self._sync_map_boss()
+            self._draw_map_boss()
 
         # Allow drag-panning when the map is larger than the viewport
         self._update_map_scrollregion()
@@ -632,6 +655,307 @@ class WorldMapScreen(BaseScreen):
             width=24, bg=Theme.ACCENT, fg=Theme.TEXT_HEADER,
         ).pack(pady=(2, 12))
 
+    # ── Seasonal map boss (docs/map_boss_design.md §5.3 / §10.1) ────────
+
+    def _sync_map_boss(self):
+        """Spawn/rotate the seasonal Warden; report a fresh arrival once.
+
+        Map open is a safe check point (the role it already plays for wild
+        ruins), so a save loaded mid-season — or one whose season turned
+        while the player was in a city — is immediately consistent.
+        """
+        if not self.player:
+            return
+        try:
+            spawned = maybe_spawn_map_boss(self.player)
+        except Exception:
+            spawned = None
+        if not spawned:
+            return
+        warden = spawned.get("warden_name", "A Warden")
+        city = CITIES.get(spawned.get("nearest_city"), {}).get("name", "the wilds")
+        self.sm.log(
+            f"{spawned.get('glyph', '')} {warden} has surfaced near {city}.",
+            category="event",
+        )
+
+    def _draw_map_boss(self):
+        """Draw the Warden's marker — gold, distinct from wild violet ruins."""
+        try:
+            self._canvas.delete("map_boss_node")
+        except (AttributeError, tk.TclError):
+            pass
+        self._map_boss_rect_id = None
+        self._map_boss_hitbox = None
+        if not self.player:
+            return
+        site = get_map_boss(self.player)
+        if not site:
+            return
+        position = site.get("position") or (0, 0)
+        x, y = position[0], position[1]
+        x1 = x - _MAP_BOSS_MARKER_W // 2
+        y1 = y - _MAP_BOSS_MARKER_H // 2
+        x2 = x1 + _MAP_BOSS_MARKER_W
+        y2 = y1 + _MAP_BOSS_MARKER_H
+        selected = self._selected_map_boss
+        self._map_boss_rect_id = self._canvas.create_rectangle(
+            x1, y1, x2, y2,
+            fill=_MAP_BOSS_MARKER_FILL,
+            outline=(_MAP_BOSS_MARKER_SELECTED if selected
+                     else _MAP_BOSS_MARKER_OUTLINE),
+            width=3 if selected else 2,
+            tags=("map_boss_node",),
+        )
+        self._canvas.create_text(
+            x, y,
+            text=self._map_boss_marker_text(site),
+            fill=Theme.RARITY_LEGENDARY,
+            font=(Theme.FONT_FAMILY, 8, "bold"),
+            tags=("map_boss_node",),
+        )
+        self._map_boss_hitbox = (x1, y1, x2, y2)
+
+    @staticmethod
+    def _map_boss_marker_text(site):
+        """`🌱 E2` — plus `· 63%` while the Echo has HP missing."""
+        glyph = site.get("glyph", "\u23f3")
+        echo = int(site.get("echo", 0) or 0)
+        text = f"{glyph} E{echo}"
+        try:
+            hp = int(site.get("hp", 0) or 0)
+            max_hp = max(1, int(site.get("max_hp", 1) or 1))
+        except (TypeError, ValueError):
+            return text
+        if hp < max_hp:
+            text += f" \u00b7 {int(round(100.0 * hp / max_hp))}%"
+        return text
+
+    def _find_map_boss_at(self, ex, ey):
+        """True when the click lands on the Warden's marker.
+
+        Mouse events arrive in widget coords; convert to canvas coords so the
+        marker stays clickable after drag-panning (same as the wild markers).
+        """
+        if self._map_boss_hitbox is None:
+            return False
+        ex = self._canvas.canvasx(ex)
+        ey = self._canvas.canvasy(ey)
+        x1, y1, x2, y2 = self._map_boss_hitbox
+        return x1 <= ex <= x2 and y1 <= ey <= y2
+
+    def _select_map_boss(self):
+        self._selected_map_boss = True
+        if self._map_boss_rect_id:
+            try:
+                self._canvas.itemconfig(self._map_boss_rect_id,
+                                        outline=_MAP_BOSS_MARKER_SELECTED,
+                                        width=3)
+            except tk.TclError:
+                pass
+        site = get_map_boss(self.player) if self.player else None
+        if site is None:
+            self._show_info_placeholder()
+            return
+        self._build_map_boss_info_panel(site)
+
+    def _deselect_map_boss(self):
+        self._selected_map_boss = False
+        if self._map_boss_rect_id:
+            try:
+                self._canvas.itemconfig(self._map_boss_rect_id,
+                                        outline=_MAP_BOSS_MARKER_OUTLINE,
+                                        width=2)
+            except tk.TclError:
+                pass
+        self._show_info_placeholder()
+
+    def _build_map_boss_info_panel(self, site):
+        """Warden details, current Echo state and the previewed spoils."""
+        inner = self._make_scrollable_info()
+
+        season = site.get("season_name", "")
+        glyph = site.get("glyph", "")
+        echo = int(site.get("echo", 0) or 0)
+        echo_lbl = map_boss_echo_label(echo)
+        level = int(site.get("level", 20) or 20)
+        try:
+            hp = int(site.get("hp", 0) or 0)
+            max_hp = max(1, int(site.get("max_hp", 1) or 1))
+        except (TypeError, ValueError):
+            hp, max_hp = 1, 1
+        pct = max(0, min(100, int(round(100.0 * hp / max_hp))))
+        element = str(site.get("element", "")).title()
+        weakness = str(site.get("weakness", "")).title()
+        mechanic = site.get("mechanic_name", "")
+        signature = str(site.get("signature_status", "")).title()
+        nearest_id = site.get("nearest_city", "solmere")
+        nearest = CITIES.get(nearest_id, {}).get("name", nearest_id)
+        departs = int(site.get("expire_day", 0) or 0)
+        day = int(self.player.get("day", 1) or 1) if self.player else 1
+        days_left = max(0, departs - day)
+
+        est_blocks = None
+        ferry_cost = 0
+        if self.player:
+            try:
+                journey = build_journey_to_warden(self.player)
+            except Exception:
+                journey = None
+            if journey is not None:
+                est_blocks = self._journey_blocks(journey)
+                ferry_cost = journey["total_cost"]
+
+        # ── Header ───────────────────────────────────────────────────────
+        tk.Label(inner, text=str(site.get("warden_name", "The Warden")).upper(),
+                 bg=Theme.BG_CARD, fg=_MAP_BOSS_MARKER_OUTLINE,
+                 font=Theme.FONT_BOLD, wraplength=270, justify=tk.LEFT,
+                 anchor=tk.W).pack(anchor=tk.W, padx=10, pady=(10, 2))
+        tk.Label(inner, text=f"[{glyph} {season} \u00b7 Echo {echo_lbl} \u00b7 "
+                             f"Lv {level}]",
+                 bg=Theme.BG_CARD, fg=Theme.TEXT_DIM,
+                 font=Theme.FONT_SMALL).pack(anchor=tk.W, padx=10)
+
+        # ── Echo state ───────────────────────────────────────────────────
+        sep = tk.Frame(inner, bg=Theme.BORDER, height=1)
+        sep.pack(fill=tk.X, padx=8, pady=6)
+        tk.Label(inner, text="THE WARDEN",
+                 bg=Theme.BG_CARD, fg=Theme.TEXT,
+                 font=(Theme.FONT_FAMILY, 9, "bold")).pack(
+            anchor=tk.W, padx=10, pady=(0, 4))
+
+        bar_outer = tk.Frame(inner, bg=Theme.HP_BAR_EMPTY, height=10, width=260)
+        bar_outer.pack(anchor=tk.W, padx=10, pady=(2, 2))
+        bar_outer.pack_propagate(False)
+        fill_color = (Theme.BUFF_POSITIVE if pct > 60
+                      else Theme.BUFF_NEUTRAL if pct > 30
+                      else Theme.BUFF_NEGATIVE)
+        tk.Frame(bar_outer, bg=fill_color, height=10,
+                 width=max(1, int(260 * pct / 100))).pack(side=tk.LEFT, fill=tk.Y)
+        tk.Label(inner, text=f"HP {hp:,} / {max_hp:,} ({pct}%)",
+                 bg=Theme.BG_CARD, fg=Theme.TEXT,
+                 font=Theme.FONT_SMALL).pack(anchor=tk.W, padx=10, pady=(0, 4))
+
+        rows = [
+            ("Mechanic", f"{mechanic} ({signature})"),
+            ("Biome", str(site.get("biome", "?")).title()),
+            ("Element", element),
+            ("Weakness", weakness),
+            ("Nearest city", nearest),
+            ("Departs", (f"Day {departs} (in {days_left} day(s))"
+                         if days_left > 0 else f"Day {departs} (today)")),
+            ("Est. travel", (f"\u2248{est_blocks} blocks"
+                             if est_blocks is not None else "no route")),
+        ]
+        if ferry_cost > 0:
+            rows.append(("Ferry cost", f"{ferry_cost}g"))
+        for label, value in rows:
+            row = tk.Frame(inner, bg=Theme.BG_CARD)
+            row.pack(fill=tk.X, padx=10, pady=1)
+            tk.Label(row, text=label, bg=Theme.BG_CARD, fg=Theme.TEXT_DIM,
+                     font=Theme.FONT_SMALL).pack(side=tk.LEFT)
+            tk.Label(row, text=value, bg=Theme.BG_CARD, fg=Theme.TEXT,
+                     font=Theme.FONT_SMALL).pack(side=tk.RIGHT)
+
+        # ── Next Echo ────────────────────────────────────────────────────
+        nxt = next_echo_preview(self.player) if self.player else None
+        if nxt:
+            next_lbl = map_boss_echo_label(nxt["echo"])
+            if nxt.get("effect"):
+                detail = (f"Lv {nxt['level']}, next {mechanic} effect "
+                          f"({nxt['effect']})")
+            else:
+                detail = f"Lv {nxt['level']}, mechanic at full rank"
+            tk.Label(inner, text=f"Next Echo: {next_lbl} \u2014 {detail}",
+                     bg=Theme.BG_CARD, fg=Theme.TEXT_DIM,
+                     font=Theme.FONT_SMALL, wraplength=270, justify=tk.LEFT).pack(
+                anchor=tk.W, padx=10, pady=(2, 0))
+
+        recalled = None
+        if self.player:
+            from pandemonium.world.map_boss import start_depth_offer
+            recalled = start_depth_offer(self.player)
+        if recalled is not None:
+            tk.Label(
+                inner,
+                text=(f"Recalled depth: Echo {map_boss_echo_label(recalled)} "
+                      f"available on arrival"),
+                bg=Theme.BG_CARD, fg=Theme.BUFF_POSITIVE,
+                font=Theme.FONT_SMALL, wraplength=270, justify=tk.LEFT).pack(
+                anchor=tk.W, padx=10, pady=(2, 0))
+
+        tk.Label(
+            inner,
+            text=(f"The Warden drinks the hours: every round costs one block. "
+                  f"Fleeing keeps this Echo's HP; only a kill advances it. "
+                  f"Recommended: party Lv ~{level}."),
+            bg=Theme.BG_CARD, fg=Theme.TEXT_DIM,
+            font=Theme.FONT_SMALL, wraplength=270, justify=tk.LEFT,
+        ).pack(anchor=tk.W, padx=10, pady=(6, 2))
+
+        # ── Spoils preview ───────────────────────────────────────────────
+        sep3 = tk.Frame(inner, bg=Theme.BORDER, height=1)
+        sep3.pack(fill=tk.X, padx=8, pady=6)
+        tk.Label(inner, text="SPOILS (THIS ECHO)",
+                 bg=Theme.BG_CARD, fg=Theme.TEXT,
+                 font=(Theme.FONT_FAMILY, 9, "bold")).pack(
+            anchor=tk.W, padx=10, pady=(0, 4))
+
+        cache = site.get("cache_preview") or {}
+        cache_id = cache.get("item_id", "")
+        rarity = str(cache.get("rarity", "rare")).lower()
+        cache_name = ITEMS.get(cache_id, {}).get("name", cache_id)
+        color = Theme.RARITY_COLORS.get(rarity, Theme.RARITY_COMMON)
+        row = tk.Frame(inner, bg=Theme.BG_CARD)
+        row.pack(fill=tk.X, padx=10, pady=1)
+        tk.Label(row, text=f"{cache_name}", bg=Theme.BG_CARD, fg=color,
+                 font=Theme.FONT_SMALL, anchor=tk.W).pack(side=tk.LEFT)
+        tk.Label(row, text=f"[{rarity.upper()}]", bg=Theme.BG_CARD, fg=color,
+                 font=(Theme.FONT_FAMILY, 7)).pack(side=tk.RIGHT)
+
+        for item_id in site.get("consumables") or []:
+            name = ITEMS.get(item_id, {}).get("name", item_id)
+            tk.Label(inner, text=f"\u2022 {name}", bg=Theme.BG_CARD,
+                     fg=Theme.TEXT, font=Theme.FONT_SMALL).pack(
+                anchor=tk.W, padx=10)
+        flower_id = site.get("flower")
+        if flower_id:
+            name = ITEMS.get(flower_id, {}).get("name", flower_id)
+            tk.Label(inner, text=f"\u273f {name}", bg=Theme.BG_CARD,
+                     fg=Theme.RARITY_UNCOMMON,
+                     font=Theme.FONT_SMALL).pack(anchor=tk.W, padx=10)
+
+        milestone = next_unique_milestone(self.player) if self.player else None
+        if milestone:
+            from pandemonium.resources import map_boss_data as _mb_data
+            from pandemonium.resources.items import ITEMS as _ITEMS
+            trophy_id = _mb_data.MAP_BOSS_UNIQUE_ITEMS[milestone["index"]]
+            trophy_name = _ITEMS.get(trophy_id, {}).get("name", trophy_id)
+            already = len((self.player.get("map_boss") or {})
+                          .get("unique_grants") or [])
+            trophy = (f"\u2605 Next trophy: {trophy_name} \u2014 "
+                      f"{milestone['at']} total victories "
+                      f"({milestone['victories']} to go)")
+            if already:
+                trophy += f" \u00b7 {already}/4 claimed"
+        else:
+            trophy = "All four trophies claimed \u2014 the cache doubles."
+        tk.Label(inner, text=trophy, bg=Theme.BG_CARD, fg=Theme.TEXT_DIM,
+                 font=Theme.FONT_SMALL, wraplength=270, justify=tk.LEFT).pack(
+            anchor=tk.W, padx=10, pady=(4, 6))
+
+        tk.Label(inner, text="Item stats are rolled on acquisition.",
+                 bg=Theme.BG_CARD, fg=Theme.TEXT_DIM,
+                 font=(Theme.FONT_FAMILY, 7, "italic")).pack(
+            anchor=tk.W, padx=10, pady=(0, 8))
+
+        self.styled_button(
+            inner,
+            text="\u25b6 Travel to the Warden",
+            command=self._on_travel_to_map_boss,
+            width=24, bg=Theme.ACCENT, fg=Theme.TEXT_HEADER,
+        ).pack(pady=(2, 12))
+
     # ── Canvas events ────────────────────────────────────────────────────
 
     def _update_map_scrollregion(self):
@@ -712,6 +1036,7 @@ class WorldMapScreen(BaseScreen):
         if self._mode == self.MODE_TRAVEL:
             return
         target = self._find_city_at(event.x, event.y) or \
+            self._find_map_boss_at(event.x, event.y) or \
             self._find_wild_at(event.x, event.y) or \
             self._find_horizon_at(event.x, event.y)
         self._canvas.config(cursor="hand2" if target else "")
@@ -725,15 +1050,31 @@ class WorldMapScreen(BaseScreen):
                 self._deselect_wild()
             if self._selected_horizon:
                 self._deselect_horizon()
+            if self._selected_map_boss:
+                self._deselect_map_boss()
             if city == self._selected_city:
                 self._deselect_city()
             else:
                 self._select_city(city)
             return
+        if self._find_map_boss_at(event.x, event.y):
+            if self._selected_wild is not None:
+                self._deselect_wild()
+            if self._selected_horizon:
+                self._deselect_horizon()
+            if self._selected_city is not None:
+                self._deselect_city()
+            if self._selected_map_boss:
+                self._deselect_map_boss()
+            else:
+                self._select_map_boss()
+            return
         wild_id = self._find_wild_at(event.x, event.y)
         if wild_id is not None:
             if self._selected_horizon:
                 self._deselect_horizon()
+            if self._selected_map_boss:
+                self._deselect_map_boss()
             if wild_id == self._selected_wild:
                 self._deselect_wild()
             else:
@@ -744,6 +1085,8 @@ class WorldMapScreen(BaseScreen):
                 self._deselect_wild()
             if self._selected_city is not None:
                 self._deselect_city()
+            if self._selected_map_boss:
+                self._deselect_map_boss()
             if self._selected_horizon:
                 self._deselect_horizon()
             else:
@@ -773,6 +1116,8 @@ class WorldMapScreen(BaseScreen):
             return
         if self._selected_wild is not None:
             self._deselect_wild()
+        elif self._selected_map_boss:
+            self._deselect_map_boss()
         elif self._selected_horizon:
             self._deselect_horizon()
         elif self._selected_city is not None:
@@ -1394,6 +1739,96 @@ class WorldMapScreen(BaseScreen):
             no_text="Cancel",
         )
 
+    def _on_travel_to_map_boss(self):
+        """Travel to the Warden's arena: city route + off-road leg to the site."""
+        site = get_map_boss(self.player)
+        if site is None:
+            self.sm.log("No Warden is on the map right now.")
+            self._draw_map_boss()
+            return
+
+        if not map_boss_is_current(self.player, site):
+            # The season turned while the panel was open.
+            maybe_spawn_map_boss(self.player)
+            self._selected_map_boss = False
+            self._draw_map_boss()
+            self._show_info_placeholder()
+            self.sm.log("The season has turned. A new Warden stirs elsewhere.")
+            return
+
+        journey = build_journey_to_warden(self.player)
+        if journey is None:
+            self.sm.log(f"No route found to the "
+                        f"{site.get('warden_name', 'Warden')}.")
+            return
+
+        gold = self.player.get("gold", 0)
+
+        # ── Cargo overload check (mirrors _on_travel_to_dungeon) ─────────
+        blocked = journey.get("blocked_segments", [])
+        if blocked:
+            lines = []
+            for seg in blocked:
+                frm = CITIES.get(seg["from"], {}).get("name", seg["from"])
+                if str(seg["to"]) == "map_boss":
+                    to = site.get("warden_name", seg["to"])
+                else:
+                    to = CITIES.get(seg["to"], {}).get("name", seg["to"])
+                lines.append(f"\u2022 {frm} \u2192 {to}")
+            confirm_dialog(
+                parent=self, title="Overloaded",
+                message=("Your cargo exceeds 1.8\u00d7 your transport's capacity on:\n\n"
+                         + "\n".join(lines)
+                         + "\n\nSell cargo at a shop market or stash it in your "
+                           "house before traveling."),
+                on_yes=lambda: None, yes_text="OK", no_text=None,
+            )
+            return
+
+        if journey["total_cost"] > gold:
+            confirm_dialog(
+                parent=self, title="Cannot Afford",
+                message=(f"You need {journey['total_cost']}g for ferry tickets, "
+                         f"but only have {gold}g."),
+                on_yes=lambda: None, yes_text="OK", no_text=None,
+            )
+            return
+
+        # ── Route summary ───────────────────────────────────────────────
+        route_parts = []
+        for node in journey["path"]:
+            if node == "map_boss":
+                route_parts.append(f"{site.get('glyph', '')} "
+                                   f"{site.get('warden_name', 'the Warden')}")
+            else:
+                route_parts.append(CITIES.get(node, {}).get("name", node))
+        route_line = " \u2192 ".join(route_parts)
+
+        echo_lbl = map_boss_echo_label(site.get("echo", 0))
+
+        def _do_embark():
+            self._travel_map_boss = site
+            self._start_travel(journey)
+
+        confirm_dialog(
+            parent=self, title="Embark on Journey",
+            message=(
+                f"Travel to the {site.get('warden_name', 'Warden')} "
+                f"({site.get('season_name', '')} Echo {echo_lbl}, "
+                f"Lv {site.get('level', '?')})?\n\n"
+                f"Route: {route_line}\n"
+                f"Total: \u2248{self._journey_blocks(journey)} blocks  |  "
+                f"Segments: {len(journey['segments'])}\n"
+                + (f"Ferry cost: {journey['total_cost']}g\n"
+                   if journey["total_cost"] > 0 else "")
+                + f"\nFleeing keeps this Echo's HP. The season ends on "
+                  f"Day {site.get('expire_day', '?')}."
+            ),
+            on_yes=_do_embark,
+            yes_text="Begin Journey",
+            no_text="Cancel",
+        )
+
     def _journey_blocks(self, journey):
         """Total block cost of a journey (per-hop rounding; docs §8/§16)."""
         import pandemonium.core.time_blocks as time_blocks
@@ -1763,6 +2198,9 @@ class WorldMapScreen(BaseScreen):
         if node_id == "horizon" and self._travel_horizon:
             px, py = self._travel_horizon.get("position", (0, 0))
             return (px, py)
+        if node_id == "map_boss" and self._travel_map_boss:
+            px, py = self._travel_map_boss.get("position", (0, 0))
+            return (px, py)
         return None
 
     def _node_display_name(self, node_id):
@@ -1774,6 +2212,8 @@ class WorldMapScreen(BaseScreen):
             return self._travel_wild.get("name", node_id)
         if node_id == "horizon" and self._travel_horizon:
             return self._travel_horizon.get("name", "The Event Horizon")
+        if node_id == "map_boss" and self._travel_map_boss:
+            return self._travel_map_boss.get("warden_name", "The Warden")
         return node_id
 
     def _do_anim_step(self):
@@ -1816,7 +2256,8 @@ class WorldMapScreen(BaseScreen):
         to_id = seg["to"]
 
         to_name = self._node_display_name(to_id)
-        if str(to_id).startswith("wild:") or to_id == "horizon":
+        if (str(to_id).startswith("wild:") or to_id == "horizon"
+                or to_id == "map_boss"):
             # Off-road leg done — entry handled by _on_arrival
             self._log(f"You reach the {to_name}.", "green")
         else:
@@ -2760,6 +3201,9 @@ class WorldMapScreen(BaseScreen):
         if self._travel_horizon is not None and dest_id == "horizon":
             self._arrive_at_horizon()
             return
+        if self._travel_map_boss is not None and dest_id == "map_boss":
+            self._arrive_at_map_boss()
+            return
         dest_name = CITIES.get(dest_id, {}).get("name", dest_id)
         self._log("\u2500" * 28, "dim")
         self._log(f"\u2714 Arrived at {dest_name}!", Theme.ACCENT)
@@ -2806,6 +3250,310 @@ class WorldMapScreen(BaseScreen):
                   f"(Lv {dungeon.get('level', '?')}).", Theme.ACCENT)
         self._finish_travel(wild_arrival=True)
 
+    # ── Seasonal map boss: arrival / exit (docs/map_boss_design.md §10.2) ─
+
+    def _arrive_at_map_boss(self):
+        """Enter the arena — or grace-exit when the season turned en route."""
+        player = self.player
+        site = self._travel_map_boss or {}
+        nearest = site.get("nearest_city", "solmere")
+        nearest_name = CITIES.get(nearest, {}).get("name", nearest)
+
+        if not map_boss_is_current(player, site):
+            # The season turned mid-journey (or the Warden was replaced).
+            maybe_spawn_map_boss(player)
+            self._log("\u2500" * 28, "dim")
+            self._log("The season has turned. The Warden is gone.", "red")
+            self._log(f"You make instead for {nearest_name}.", Theme.ACCENT)
+            player["location"] = nearest
+            self._finish_travel()
+            return
+
+        player["origin_city"] = nearest
+        player["dungeon_region"] = site.get("biome", "temperate")
+        player["location"] = "dungeon"
+        player["_map_boss_site"] = site["id"]
+        # Never show another run's log under the arena's branding, and never
+        # let a stale mode flag colour the Warden's combat (wild-dungeon
+        # entry hygiene).
+        for key in ("_dungeon_log", "pandemonium_mode", "_eh_in_run",
+                    "wild_dungeon_id"):
+            player.pop(key, None)
+        # Arena exits restore the pre-arena floor cursor; max_floor and
+        # city_floors are never touched.
+        player.setdefault("_map_boss_prev_floor", player.get("floor"))
+        player["_combat_floor_label"] = "Arena"
+
+        glyph = site.get("glyph", "\u23f3")
+        echo_lbl = map_boss_echo_label(site.get("echo", 0))
+        self._log("\u2500" * 28, "dim")
+        self._log(f"{glyph} You arrive at the {site.get('warden_name', 'Warden')} "
+                  f"\u2014 {site.get('season_name', '')} Echo {echo_lbl}, "
+                  f"Lv {site.get('level', '?')}.", Theme.ACCENT)
+
+        from pandemonium.world.map_boss import start_depth_offer
+        offer = start_depth_offer(player)
+        if offer is None:
+            self._open_map_boss_arena()
+            return
+        self._ask_start_depth(site, offer)
+
+    def _ask_start_depth(self, site, offer):
+        """Offer the highest Echo ever broken (§5.7). Default = Echo 0.
+
+        ``focus_no`` keeps a stray Enter from skipping the warm-up climb.
+        """
+        from pandemonium.world import map_boss as mb
+        element = str(site.get("element", "")).title()
+        weakness = str(site.get("weakness", "")).title()
+        warden = site.get("warden_name", "Warden")
+
+        def _call():
+            mb.apply_start_depth(self.player)
+            self.sm.log(f"You do not climb. You call. The {warden} answers "
+                        f"already grown \u2014 Echo "
+                        f"{map_boss_echo_label(offer)}.")
+            self._open_map_boss_arena()
+
+        def _begin():
+            mb.decline_start_depth(self.player)
+            self.sm.log("You begin where it always begins \u2014 small, and hungry.")
+            self._open_map_boss_arena()
+
+        confirm_dialog(
+            parent=self, title="Something Remembers You",
+            message=(
+                f"The {warden} waits at Echo {map_boss_echo_label(offer)} "
+                f"\u2014 the height your party last broke.\n\n"
+                f"It is {element}; it is weak to {weakness}.\n\n"
+                "Calling it discards any progress on the current Echo."
+            ),
+            on_yes=_call, on_no=_begin,
+            yes_text="Call the echo you broke",
+            no_text="Begin at Echo 0",
+            focus_no=True,
+        )
+
+    def _open_map_boss_arena(self):
+        self._finish_travel(map_boss_arrival=True)
+
+    def _on_map_boss_result(self, result):
+        """DungeonScreen on_result for the seasonal arena."""
+        from pandemonium.world import map_boss as mb
+
+        if result == "dead":
+            site = mb.get_active_boss(self.player) or {}
+            echo = int(site.get("echo", 0) or 0)
+            self._handle_death(
+                death_type="map_boss", floor=echo,
+                boss_name=site.get("warden_name"),
+                boss_season=site.get("season_name"),
+                boss_echo=echo,
+            )
+            return
+        if result == "save_exit":
+            self.sm.log("Game saved. Exiting to menu.")
+            self.sm.player = None
+            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+            self.sm.switch_to(MainMenuScreen)
+            return
+        if result == "map_boss_locked":
+            # Fought-out arena with no live Warden (season turned underneath).
+            self._scrub_map_boss_run()
+            self._show_arena_sealed()
+            return
+        if result == "map_boss_victory":
+            self._show_map_boss_victory()
+            return
+        if result == "map_boss_season_shift":
+            self._show_map_boss_season_shift()
+            return
+
+        # "fled" / "timeout" / None — button-flees kill the arena thread
+        # before its cleanup runs, so scrub here too (idempotent otherwise).
+        self._scrub_map_boss_run()
+        self.sm.log("The Warden waits. This Echo's progress is kept.")
+        from pandemonium.gui.screens.city_screen import CityScreen
+        self.sm.switch_to(CityScreen, push_history=False)
+
+    def _map_boss_leave_to_city(self):
+        p = self.player
+        if p and p.get("location") == "dungeon":
+            p["location"] = p.get("origin_city", "solmere")
+        from pandemonium.gui.screens.city_screen import CityScreen
+        self.sm.switch_to(CityScreen, push_history=False)
+
+    def _map_boss_reenter(self):
+        """Start the next Echo immediately — no travel, no free heal (§7.10)."""
+        from pandemonium.world import map_boss as mb
+        site = mb.get_active_boss(self.player)
+        if not site:
+            self._map_boss_leave_to_city()
+            return
+        p = self.player
+        p["origin_city"] = site.get("nearest_city",
+                                    p.get("origin_city", "solmere"))
+        p["dungeon_region"] = site.get("biome", "temperate")
+        p["location"] = "dungeon"
+        p["_map_boss_site"] = site["id"]
+        p["_combat_floor_label"] = "Arena"
+        p.setdefault("_map_boss_prev_floor", p.get("floor"))
+        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
+        self.sm.switch_to(DungeonScreen, on_result=self._on_map_boss_result,
+                          push_history=False)
+
+    @staticmethod
+    def _map_boss_loot_lines(summary):
+        """Spoils lines for the victory / season-shift windows (§8.2)."""
+        if not summary:
+            return []
+        lines = [f"Spoils: +{summary.get('gold', 0):,} gold  \u00b7  "
+                 f"+{summary.get('exp', 0):,} XP each"
+                 + ("  (Night kill)" if summary.get("night") else "")]
+        cache = summary.get("cache")
+        if cache:
+            lines.append(f"Warden's Cache: {cache['name']} "
+                         f"[{cache['rarity']}]")
+        if summary.get("extra_caches"):
+            lines.append(f"+{summary['extra_caches']} additional "
+                         f"Warden's Cache"
+                         + ("s" if summary["extra_caches"] > 1 else ""))
+        for entry in summary.get("uniques") or []:
+            lines.append(f"\u2605 Trophy: {entry['name']}")
+        consumables = summary.get("consumables") or []
+        if consumables:
+            lines.append("Consumables: " + ", ".join(
+                c["name"] for c in consumables))
+        flowers = summary.get("flowers") or []
+        if flowers:
+            counts = {}
+            for entry in flowers:
+                counts[entry["name"]] = counts.get(entry["name"], 0) + 1
+            lines.append("Flowers: " + ", ".join(
+                f"{label} \u00d7{count}" if count > 1 else label
+                for label, count in counts.items()))
+        if summary.get("left_behind"):
+            lines.append("Bag full \u2014 left behind: "
+                         + ", ".join(summary["left_behind"]))
+        return lines
+
+    def _show_map_boss_victory(self):
+        """Reform window: face the next Echo or leave the arena (§7.10)."""
+        from pandemonium.world import map_boss as mb
+        from pandemonium.gui.widgets.confirm_dialog import choice_dialog
+        from pandemonium.core.character import player_max_hp
+
+        loot = self.player.pop("_map_boss_victory", None) if self.player else None
+        site = mb.get_active_boss(self.player) or {}
+        name = site.get("warden_name", "The Warden")
+        season = site.get("season_name", "")
+        echo_lbl = map_boss_echo_label(site.get("echo", 0))
+        level = site.get("level", "?")
+        hp = int(self.player.get("current_hp", 0) or 0)
+        max_hp = max(1, int(player_max_hp(self.player) or 1))
+        hp_pct = int(round(100.0 * max(0, hp) / max_hp))
+
+        lines = [
+            f"{name} collapses \u2014 and the hours run backward.",
+            f"Echo {echo_lbl} (Lv {level}) stands where it fell.",
+            f"Party HP: {max(0, hp)}/{max_hp} ({hp_pct}%).",
+        ]
+        loot_lines = self._map_boss_loot_lines(loot)
+        if loot_lines:
+            lines.append("")
+            lines.extend(loot_lines)
+        if hp_pct <= 35:
+            lines.append("")
+            lines.append("The party is badly wounded. Fleeing keeps this "
+                         "Echo's HP \u2014 winning does not refill it.")
+
+        parent = self.sm.get_top_screen() or self.sm.root
+
+        def _on_choice(key):
+            if key == "fight":
+                self._map_boss_reenter()
+            else:
+                self._map_boss_leave_to_city()
+
+        choice_dialog(
+            parent=parent,
+            title="The Warden Reforms",
+            heading="THE WARDEN REFORMS",
+            subtitle=f"{season} Echo {echo_lbl} \u00b7 Lv {level}",
+            details="\n".join(lines),
+            options=[("fight", "Face the next Echo"),
+                     ("leave", "Leave Arena")],
+            on_choice=_on_choice,
+            default_choice="leave",
+        )
+
+    def _show_map_boss_season_shift(self):
+        """The time commit turned the season: the old Echo ladder is gone."""
+        from pandemonium.world import map_boss as mb
+        from pandemonium.gui.widgets.confirm_dialog import ok_dialog
+
+        loot = self.player.pop("_map_boss_victory", None) if self.player else None
+        site = mb.get_active_boss(self.player) or {}
+        name = site.get("warden_name", "a new Warden")
+        city = CITIES.get(site.get("nearest_city"), {}).get(
+            "name", site.get("nearest_city", "the wilds"))
+
+        parent = self.sm.get_top_screen() or self.sm.root
+
+        message = (f"The season turns. The old Warden steps out of the calendar \u2014\n"
+                   f"the {name} stirs near {city}, at Echo 0.\n\n"
+                   "The fallen Echo's spoils are yours; its ladder is gone.")
+        loot_lines = self._map_boss_loot_lines(loot)
+        if loot_lines:
+            message += "\n\n" + "\n".join(loot_lines)
+
+        ok_dialog(
+            parent,
+            "The Season Turns",
+            message,
+            on_ok=self._map_boss_leave_to_city,
+        )
+
+    def _show_arena_sealed(self):
+        """Interim window while the encounter itself is still in development.
+
+        Parented to the LIVE top screen — the WorldMapScreen that started the
+        journey may already be destroyed (wild-completion lesson, 2026-10-23).
+        """
+        from pandemonium.gui.widgets.confirm_dialog import ok_dialog
+        parent = self.sm.get_top_screen() or self.sm.root
+
+        def _to_city():
+            from pandemonium.gui.screens.city_screen import CityScreen
+            self.sm.switch_to(CityScreen, push_history=False)
+
+        ok_dialog(
+            parent,
+            "The Arena Is Sealed",
+            ("The Warden turns its slow attention on you \u2014 but the hours "
+             "have not yet come due.\n\n"
+             "The duel itself arrives with the next build. This Echo is "
+             "unchanged: no time passed and no progress was lost."),
+            on_ok=_to_city,
+        )
+
+    def _scrub_map_boss_run(self):
+        """Drop arena transients and restore the pre-arena floor cursor."""
+        p = self.player
+        p.pop("_map_boss_site", None)
+        p.pop("_map_boss_in_fight", None)
+        p.pop("_map_boss_clock_blocks", None)
+        p.pop("_combat_time_label", None)
+        p.pop("_combat_floor_label", None)
+        prev_floor = p.pop("_map_boss_prev_floor", None)
+        if prev_floor is not None:
+            p["floor"] = prev_floor
+        p.pop("pandemonium_mode", None)
+        p["cutlass_high_tide_stacks"] = 0
+        p.pop("cutlass_high_tide_floor", None)
+        if p.get("location") == "dungeon":
+            p["location"] = p.get("origin_city", "solmere")
+
     def _stop_travel_visuals(self):
         """Cancel travel animation jobs/reset travel mode (no navigation)."""
         if self._travel_anim_job:
@@ -2821,16 +3569,21 @@ class WorldMapScreen(BaseScreen):
         self._travel_segments = []
         self._travel_paused = False
 
-    def _finish_travel(self, dead=False, wild_arrival=False):
+    def _finish_travel(self, dead=False, wild_arrival=False, map_boss_arrival=False):
         self._stop_travel_visuals()
         self._travel_wild = None
         self._travel_horizon = None
+        self._travel_map_boss = None
 
         if dead:
             self._handle_death()
         elif wild_arrival:
             from pandemonium.gui.screens.dungeon_screen import DungeonScreen
             self.sm.switch_to(DungeonScreen, on_result=self._on_wild_result,
+                              push_history=False)
+        elif map_boss_arrival:
+            from pandemonium.gui.screens.dungeon_screen import DungeonScreen
+            self.sm.switch_to(DungeonScreen, on_result=self._on_map_boss_result,
                               push_history=False)
         else:
             if self.player:
@@ -2925,7 +3678,7 @@ class WorldMapScreen(BaseScreen):
         from pandemonium.gui.screens.city_screen import CityScreen
         self.sm.switch_to(CityScreen, push_history=False)
 
-    def _handle_death(self, death_type="travel", floor=None):
+    def _handle_death(self, death_type="travel", floor=None, **death_kwargs):
         from pandemonium.gui.screens.death_screen import DeathScreen
 
         def _cont():
@@ -2946,6 +3699,7 @@ class WorldMapScreen(BaseScreen):
             DeathScreen,
             floor=floor,
             city_id=city_id, death_type=death_type, on_continue=_cont, on_quit=_quit,
+            **death_kwargs,
         )
 
     def _show_legend(self):
@@ -2955,10 +3709,14 @@ class WorldMapScreen(BaseScreen):
             "\u2605  = Your current location\n"
             "\u2693  = Port city (sea travel)\n"
             "\u2620  = Wild dungeon (glyph shows its biome)\n"
+            "\U0001F300  = EVENT HORIZON (endless rift)\n"
+            "\U0001F331\U0001F525\U0001F342\u2744  = Seasonal Warden\n"
             "\u2014\u2014 Solid line = Land route\n"
             "- - Dashed line = Sea route\n\n"
-            "Click a city or wild dungeon to view details.\n"
-            "Click 'Travel Here' to journey there.\n"
+            "A killed Warden reforms the next, stronger Echo.\n"
+            "A new Warden takes over each season.\n\n"
+            "Click a city, ruin, rift or Warden to view details.\n"
+            "Click 'Travel Here' or 'Travel to the Warden' to journey there.\n"
             "Drag the map to pan around.\n"
             "Press Esc to deselect / go back."
         )

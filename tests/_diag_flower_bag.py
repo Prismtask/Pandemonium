@@ -98,8 +98,8 @@ flower_texts = _label_texts(scr.bag_sub, flower_idx)
 joined = " | ".join(flower_texts)
 check("flower stack shows count", "Emberbloom (x3)  (Flower)" in joined, joined)
 check("flower sorted by element",
-      [t for t in flower_texts if "(Flower)" in t]
-      == ["Ironbriar  (Flower)", "Emberbloom (x3)  (Flower)", "Frostlotus  (Flower)"],
+      [" ".join(t.split()) for t in flower_texts if "(Flower)" in t]
+      == ["Ironbriar (Flower)", "Emberbloom (x3) (Flower)", "Frostlotus (Flower)"],
       joined)
 
 key_idx = tabs.index(" Key Items ")

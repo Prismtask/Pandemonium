@@ -208,17 +208,28 @@ def sell_items(player):
     if not all_items:
         term.print("No sellable items.")
         return
-    for i, item in enumerate(all_items):
+    sell_rows = []
+    for item in all_items:
         unit_price = _sell_price(item, player)
         count = item.get("count", 1)
-        stack_price = unit_price * count
-        tag = f"[{item.get('rarity','common')}]"
         count_str = f" (x{count})" if count > 1 else ""
-        if item.get("type") == "equipment":
-            stat = _item_stat_line(item)
-            term.print(f"{i+1}. {item['name']}{count_str} ({item['slot']}) {stat} {tag} — {stack_price} gold")
-        else:
-            term.print(f"{i+1}. {item['name']}{count_str} ({item['type']}) {tag} — {stack_price} gold")
+        is_equipment = item.get("type") == "equipment"
+        sell_rows.append((
+            f"{item['name']}{count_str}",
+            f"({item['slot']})" if is_equipment else f"({item['type']})",
+            _item_stat_line(item) if is_equipment else "",
+            f"[{item.get('rarity', 'common')}]",
+            unit_price * count,
+        ))
+    name_w = max(len(r[0]) for r in sell_rows)
+    tag_w = max(len(r[1]) for r in sell_rows)
+    stat_w = max(len(r[2]) for r in sell_rows)
+    rarity_w = max(len(r[3]) for r in sell_rows)
+    price_w = max(len(str(r[4])) for r in sell_rows)
+    for i, (name_part, tag_part, stat, rarity_tag, stack_price) in enumerate(sell_rows, 1):
+        term.print(f"  {i:>2}. {name_part:<{name_w}}  {tag_part:<{tag_w}}  "
+                   f"{stat:<{stat_w}}  {rarity_tag:<{rarity_w}}  "
+                   f"— {stack_price:>{price_w}} gold")
     
     term.print("Tip: you can sell by rarity/type — e.g. 'common', 'uncommon weapon', 'rare armor'.")
     raw = term.input("Sell which items? (e.g. '1 3 5', '1-4', or 'all'). 0 to cancel: ").strip().lower()
@@ -508,10 +519,19 @@ def city_shop(player, city_id="solmere"):
         if player.get("daily_effects", {}).get("shop_surcharge"):
             term.print("🧾 Tax Day: the crown takes a 15% cut on all goods!\n")
         term.print("--- Shop Stock ---")
-        for i, (item, base_price) in enumerate(shop_stock, 1):
+        stock_rows = []
+        for item, base_price in shop_stock:
             final_price = get_discounted_price(base_price, player, city_id)  # Pass city_id here!
-            stat = _item_stat_line(item)
-            term.print(f"{i}. {item['name']}  {stat} — {final_price} gold (base: {base_price})")
+            stock_rows.append((item["name"], _item_stat_line(item),
+                               final_price, base_price))
+        stock_name_w = max(len(r[0]) for r in stock_rows)
+        stock_stat_w = max(len(r[1]) for r in stock_rows)
+        stock_price_w = max(len(str(r[2])) for r in stock_rows)
+        stock_base_w = max(len(str(r[3])) for r in stock_rows)
+        for i, (name, stat, final_price, base_price) in enumerate(stock_rows, 1):
+            term.print(f"  {i:>2}. {name:<{stock_name_w}}  {stat:<{stock_stat_w}}  "
+                       f"— {final_price:>{stock_price_w}} gold "
+                       f"(base: {base_price:>{stock_base_w}})")
 
     while True:
         show_shop()

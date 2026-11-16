@@ -12,6 +12,7 @@ Validates:
 import sys
 import threading
 import queue
+import time
 import tkinter as tk
 from unittest.mock import MagicMock
 
@@ -206,16 +207,23 @@ def test_gui_combat_io_bridge():
     assert events[0] == ("OUTPUT", "Hello combat")
     assert events[1] == ("OUTPUT", "Enemy attacks")
 
-    # Input should block until provided
-    def provide_input():
-        io.send_input("a")
+    # Input should block until provided. The bridge only accepts an answer
+    # while a prompt is open, so the reader starts first and the GUI answers
+    # after it sees INPUT_NEEDED — exactly like the real screen.
+    got = []
 
-    t = threading.Thread(target=provide_input)
+    def read_input():
+        got.append(io.input("Choose: "))
+
+    t = threading.Thread(target=read_input)
     t.start()
-    val = io.input("Choose: ")
-    t.join()
-
-    assert val == "a"
+    while io.output_queue.empty():
+        time.sleep(0.005)
+    assert io.output_queue.get() == ("INPUT_NEEDED", "Choose: ")
+    io.send_input("a")
+    t.join(timeout=2)
+    assert not t.is_alive(), "the bridge never delivered the answer"
+    assert got == ["a"]
     print("PASS: test_gui_combat_io_bridge")
 
 

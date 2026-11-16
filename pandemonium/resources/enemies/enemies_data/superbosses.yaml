@@ -446,3 +446,98 @@ Superbosses:
     elemental_res:
       dark: 0.5
       light: 1.3
+
+# ── Seasonal Map Boss: The Wardens of the Long Day ──────────────────────────
+# docs/map_boss_design.md. combat/map_boss.py builds these WITHOUT a player
+# (no Morning/Noon/Night or Full Moon scaling) and then overrides level, HP,
+# STR, armour, elemental resistance and status resistance with the Echo values
+# from player["map_boss"]["active"]. The numbers below are the Echo 0
+# (level 20) baseline only. ai_disabled: the arena drives them through
+# superboss_common's hooks instead of the generic enemy AI.
+warden_spring_bloom:
+  name: "Warden of the First Bloom"
+  race: Elemental
+  level: 20
+  base_hp: 1000
+  mods:
+    Strength: 30
+    Constitution: 12
+    Dexterity: 10
+    Wisdom: 8
+    Learning: 8
+    Charisma: 12
+  boss: true
+  super_boss: false
+  ai_disabled: true
+  status_res: 0.20
+  elemental_dmg:
+    earth: 1.3
+  elemental_res:
+    earth: 1.3
+    fire: 0.7
+
+warden_summer_noon:
+  name: "Warden of the Long Noon"
+  race: Elemental
+  level: 20
+  base_hp: 1000
+  mods:
+    Strength: 30
+    Constitution: 12
+    Dexterity: 10
+    Wisdom: 8
+    Learning: 8
+    Charisma: 12
+  boss: true
+  super_boss: false
+  ai_disabled: true
+  status_res: 0.20
+  elemental_dmg:
+    fire: 1.3
+  elemental_res:
+    fire: 1.3
+    water: 0.7
+
+warden_autumn_crown:
+  name: "Warden of the Falling Crown"
+  race: Elemental
+  level: 20
+  base_hp: 1000
+  mods:
+    Strength: 30
+    Constitution: 12
+    Dexterity: 10
+    Wisdom: 8
+    Learning: 8
+    Charisma: 12
+  boss: true
+  super_boss: false
+  ai_disabled: true
+  status_res: 0.20
+  elemental_dmg:
+    wind: 1.3
+  elemental_res:
+    wind: 1.3
+    thunder: 0.7
+
+warden_winter_light:
+  name: "Warden of the Last Light"
+  race: Elemental
+  level: 20
+  base_hp: 1000
+  mods:
+    Strength: 30
+    Constitution: 12
+    Dexterity: 10
+    Wisdom: 8
+    Learning: 8
+    Charisma: 12
+  boss: true
+  super_boss: false
+  ai_disabled: true
+  status_res: 0.20
+  elemental_dmg:
+    water: 1.3
+  elemental_res:
+    water: 1.3
+    fire: 0.7

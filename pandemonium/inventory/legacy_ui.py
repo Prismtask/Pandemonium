@@ -69,12 +69,24 @@ def prompt_acquire_item(player, item):
         return False
 
     _tprint(f"\n{header}")
-    for idx, itm in enumerate(candidates):
-        extra = f" ({itm['slot']})" if is_equip else f" ({itm['type']})"
-        count_str = f" (x{itm.get('count', 1)})" if not is_equip and itm.get('count', 1) > 1 else ""
-        stat = _format_equipment_stat_line(itm) if is_equip else ""
-        stat_part = f" {stat}" if stat else ""
-        _tprint(f"  {idx+1}. {itm['name']}{count_str}{extra}{stat_part} [{itm.get('rarity','common')}]")
+    rows = []
+    for itm in candidates:
+        count_str = (f" (x{itm.get('count', 1)})"
+                     if not is_equip and itm.get('count', 1) > 1 else "")
+        rows.append((
+            f"{itm['name']}{count_str}",
+            f"({itm['slot']})" if is_equip else f"({itm['type']})",
+            _format_equipment_stat_line(itm) if is_equip else "",
+        ))
+    name_w = max(len(r[0]) for r in rows)
+    tag_w = max(len(r[1]) for r in rows)
+    stat_w = max(len(r[2]) for r in rows)
+    for idx, (itm, (name_part, tag_part, stat)) in enumerate(zip(candidates, rows)):
+        line = f"  {idx+1:>2}. {name_part:<{name_w}}  {tag_part:<{tag_w}}"
+        if stat_w:
+            line += f"  {stat:<{stat_w}}"
+        line += f"  [{itm.get('rarity','common')}]"
+        _tprint(line)
 
     _tprint(f"\n[D]rop the new item  or  enter a number (1-{len(candidates)}) to discard that item instead.")
     choice = _tinput("Choice: ").strip().lower()

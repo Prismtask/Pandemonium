@@ -86,8 +86,9 @@ def _section_inventory():
         "Finish the tutorial and you'll receive a class starter",
         "weapon to get you going.",
         "",
-        "Your Skill Book (city action bar) shows the class skills you",
-        "have unlocked so far.",
+        "The Inventory's Skills tab (I key) lists the class skills you",
+        "have unlocked, shows their details, and lets you choose your",
+        "Battle Loadout - the skills you bring into combat.",
     ])
     term.pause("Continue")
 

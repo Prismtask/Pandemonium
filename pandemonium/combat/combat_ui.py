@@ -816,7 +816,13 @@ def current_time_label(player):
     `☀ Morning ▮▮▮▮▮▮▮▯` track the top bar uses instead of a stale clock
     reading. Wonderland is a time pocket (no track) — its whimsical clock
     flavour is kept as the fallback.
+
+    The map boss arena projects its clock (1 round = 1 block) without spending
+    time, and publishes the rendered label as a display-only override.
     """
+    override = (player or {}).get("_combat_time_label")
+    if override:
+        return override
     try:
         from pandemonium.core.time_blocks import format_block_track
         track = format_block_track(player, include_day=False)

@@ -41,7 +41,7 @@ README_MD = os.path.join(ROOT, "README.md")
 DREAMS_MD = os.path.join(ROOT, "docs", "dreams_wiki.md")
 SKILLS_MD = os.path.join(ROOT, "docs", "monster_girls_skills_wiki.md")
 OUT_HTML = os.path.join(ROOT, "wiki", "index.html")
-ENEMY_DIR = os.path.join(ROOT, "resources", "enemies", "enemies_data")
+ENEMY_DIR = os.path.join(ROOT, "pandemonium", "resources", "enemies", "enemies_data")
 
 HEADING_RE = re.compile(r"^(#{1,4})\s+(.*?)\s*$")
 LIST_RE = re.compile(r"^(\s*)(-|\d+\.)\s+(.*)$")
@@ -330,7 +330,7 @@ def load_enemy_data():
 
 def _enrich_enemies(enemies):
     """Attach innate skills / awakening kit / growth label + trim empty fields."""
-    innate = _load_yaml(os.path.join(ROOT, "resources", "skill_book", "innate_skills.yaml"))
+    innate = _load_yaml(os.path.join(ROOT, "pandemonium", "resources", "skill_book", "innate_skills.yaml"))
     skill_map = innate.get("innate_skills", {})
     defs = innate.get("innate_skill_defs", {})
     awakenings = innate.get("awakenings", {})
@@ -1698,8 +1698,8 @@ def build_site(out_path=None, footer_note=None):
     _enrich_enemies(enemies)
     skills_body = _linkify_skill_roster(skills_body, enemies)
 
-    enemy_races = _load_py_dict(os.path.join(ROOT, "resources", "enemies", "enemy_races.py"), "ENEMY_RACES")
-    biome_races = _load_py_dict(os.path.join(ROOT, "resources", "enemies", "biome_races.py"), "BIOME_RACES")
+    enemy_races = _load_py_dict(os.path.join(ROOT, "pandemonium", "resources", "enemies", "enemy_races.py"), "ENEMY_RACES")
+    biome_races = _load_py_dict(os.path.join(ROOT, "pandemonium", "resources", "enemies", "biome_races.py"), "BIOME_RACES")
     races = {
         name: {
             "mods": r.get("mods", {}),

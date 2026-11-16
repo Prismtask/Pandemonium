@@ -1274,6 +1274,75 @@ ITEMS = {
         ),
     },
 
+    # === Seasonal Map Boss Drops (docs/map_boss_design.md §9) ===
+    # Cumulative Warden victories unlock these in order: 1 / 3 / 6 / 10.
+    "warden_signet": {
+        "name": "Warden's Signet",
+        "type": "equipment",
+        "slot": "accessory",
+        "unique": True,
+        "base_mods": {"Dexterity": 5, "Wisdom": 4},
+        "elemental_res": {"dark": 1.10, "light": 1.10},
+        "special": "long_day_signet",
+        "drop_source": "warden_long_day",
+        "drop_rarity": "unique",
+        "description": (
+            "A band of hour-iron, still warm. The Warden wore it while it " +
+            "counted the hours the world owed — and it still counts. Damage " +
+            "rises with the sun: nothing at dawn, more at noon, most at night."
+        ),
+    },
+    "long_day": {
+        "name": "Long Day's Edge",
+        "weapon_type": "sword",
+        "type": "equipment",
+        "slot": "weapon",
+        "unique": True,
+        "base_mods": {"Strength": 8, "Dexterity": 4},
+        "scaling_stat": "Strength",
+        "elemental_dmg": {"physical": 1.15, "fire": 1.15, "light": 1.15},
+        "special": "long_day_blade",
+        "drop_source": "warden_long_day",
+        "drop_rarity": "unique",
+        "description": (
+            "The blade of the hour that would not end. It remembers every " +
+            "round it has been swung, growing heavier and surer by the " +
+            "moment — until dawn empties it again."
+        ),
+    },
+    "echo_mantle": {
+        "name": "Echo Mantle",
+        "type": "equipment",
+        "slot": "armor",
+        "unique": True,
+        "base_mods": {"Constitution": 8, "Wisdom": 4},
+        "elemental_res": {"physical": 1.12, "dark": 1.10, "light": 1.10},
+        "special": "echo_mantle",
+        "drop_source": "warden_long_day",
+        "drop_rarity": "unique",
+        "description": (
+            "Layered hours, stitched into a cloak. What strikes you arrives " +
+            "older and slower, and the dark hours cushion the hardest. At " +
+            "night it is almost kind."
+        ),
+    },
+    "sundial_crown": {
+        "name": "Sundial Crown",
+        "type": "equipment",
+        "slot": "accessory",
+        "unique": True,
+        "base_mods": {"Wisdom": 6, "Charisma": 4},
+        "elemental_res": {"light": 1.15, "dark": 1.15},
+        "special": "sundial_crown",
+        "drop_source": "warden_long_day",
+        "drop_rarity": "unique",
+        "description": (
+            "Four Wardens, one circle, and a shadow that will not fall. Once " +
+            "each day it can turn the hour back past a killing blow — and " +
+            "whatever curse was riding it."
+        ),
+    },
+
     # === Key Items ===
     "cracked_mirror": {
         "name": "Cracked Mirror",

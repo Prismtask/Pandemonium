@@ -216,14 +216,14 @@ def _house_lounge(player, city_id, house):
                     hp_str = "[INCAPACITATED]"
                 else:
                     hp_str = f"HP: {g['current_hp']}/{g['max_hp']}"
-                term.print(f"  {i+1}. {disp_full} (Lv {g['level']}{cap_tag}){active_tag} — {hp_str} — {status} {aff_label}: {aff_str}{ready}")
+                term.print(f"  {i+1:>2}. {disp_full} (Lv {g['level']}{cap_tag}){active_tag} — {hp_str} — {status} {aff_label}: {aff_str}{ready}")
             else:
                 duty_tag = ""
                 if g.get("dispatch_mission"):
                     duty_tag = " [AWAY]"
                 elif int(g.get("injured_until", 0) or 0) > player.get("day", 1):
                     duty_tag = " [INJURED]"
-                term.print(f"  {i+1}. {disp_full} (Lv {g['level']}){active_tag}{duty_tag} — {status} {aff_label}: {aff_str}{ready}")
+                term.print(f"  {i+1:>2}. {disp_full} (Lv {g['level']}){active_tag}{duty_tag} — {status} {aff_label}: {aff_str}{ready}")
 
         # ── Build menu: girl options + filter controls + back ───────────────
         girl_options = []
