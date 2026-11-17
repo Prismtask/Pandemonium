@@ -34,6 +34,15 @@ Per-player progress lives in the save data (never YAML)::
 
 from pandemonium.gui.terminal import term as _default_term
 from pandemonium.core.utils import display_name
+from pandemonium.inventory.core import has_item
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.combat.ally import (
+    get_ally_capacity, apply_heroine_permanent_passive, create_heroine_ally,
+    ensure_party_order, get_heroine_in_party, promote_heroine_to_permanent,
+    set_heroine_state, _return_ally_to_house,
+)
+from pandemonium.resources.items import build_item
+from pandemonium.combat.elemental import compute_ally_elemental
 
 QUEST_ID = "sylvana_mirror"
 HEROINE_KEY = "sylvana"
@@ -157,7 +166,6 @@ def is_whole(player):
 
 
 def has_mirror(player):
-    from pandemonium.inventory.core import has_item
     return has_item(player, mirror_item_id())
 
 
@@ -209,7 +217,6 @@ def mend(player):
         return {"ok": False, "reason": reason, "progress": progress(player),
                 "complete": is_whole(player), "blocks": 0, "step": 0}
 
-    import pandemonium.core.time_blocks as time_blocks
     blocks = repair_blocks()
     step = repair_step()
     time_blocks.wait_blocks(player, blocks)
@@ -239,11 +246,6 @@ def recruit(player, house=None, term=None):
     t = term or _default_term
     ensure_state(player)
 
-    from pandemonium.combat.ally import (
-        get_ally_capacity, apply_heroine_permanent_passive, create_heroine_ally,
-        ensure_party_order, get_heroine_in_party, promote_heroine_to_permanent,
-        set_heroine_state, _return_ally_to_house,
-    )
 
     existing = get_heroine_in_party(player, "sylvana")
     if existing:
@@ -295,8 +297,6 @@ def recruit(player, house=None, term=None):
     ally["no_romance"] = False
 
     # Her unique armour — the decaying mirror shield she carried as a boss.
-    from pandemonium.resources.items import build_item
-    from pandemonium.combat.elemental import compute_ally_elemental
     ally.setdefault("equipped", {})
     ally["equipped"]["armor"] = build_item("decaying_aegis", rarity="unique")
     res, dmg = compute_ally_elemental(ally)

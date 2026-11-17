@@ -36,6 +36,8 @@ Shadow effect types:
 import random
 
 from pandemonium.core.utils import display_name, _tmenu, _tprint
+from pandemonium.progression.titles import note_deed as _note_title_deed
+from pandemonium.combat.combat_io import c_print
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # WONDERLAND QUIRK DEFINITIONS
@@ -1146,7 +1148,6 @@ def trigger_shadow_choice(player, floor, term_func=None, count=1):
     # Deed titles: lifetime count (the active Shadow list resets between
     # cycles, so the title counter must not read `wonderland_shadows`).
     if chosen_shadows:
-        from pandemonium.progression.titles import note_deed as _note_title_deed
         _note_title_deed(player, "wonderland_shadows_taken", len(chosen_shadows))
 
     # Build result message
@@ -1375,11 +1376,9 @@ def roll_d20_with_looking_glass(player, verbose=True):
         new_roll = random.randint(1, 20)
         if new_roll > roll:
             if verbose:
-                from pandemonium.combat.combat_io import c_print
                 c_print(f"  🪞 The Looking Glass ripples! {roll} → {new_roll}!")
             return new_roll, True
         elif verbose:
-            from pandemonium.combat.combat_io import c_print
             c_print(f"  🪞 The Looking Glass flickers... but fate is stubborn. ({roll})")
 
     return roll, False

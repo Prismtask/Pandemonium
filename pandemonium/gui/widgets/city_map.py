@@ -8,6 +8,7 @@ service/dungeon regions clickable using tag bindings.
 import tkinter as tk
 import tkinter.font as tkfont
 from pandemonium.gui.theme import Theme
+from pandemonium.resources.city_maps import get_city_map
 
 
 class CityMapWidget(tk.Text):
@@ -24,7 +25,6 @@ class CityMapWidget(tk.Text):
         self.closed_services = set(closed_services or ())
 
         # Count map lines from the city's ASCII art
-        from pandemonium.resources.city_maps import get_city_map
         map_art = get_city_map(city_id) or ""
         self._map_lines = map_art.count('\n')
 
@@ -242,7 +242,6 @@ class CityMapWidget(tk.Text):
 
     def refresh(self, city_id, city, positions):
         """Re-render the widget for a different city."""
-        from pandemonium.resources.city_maps import get_city_map
         map_art = get_city_map(city_id) or ""
         new_lines = map_art.count('\n')
 

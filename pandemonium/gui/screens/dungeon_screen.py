@@ -19,6 +19,14 @@ from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 from pandemonium.gui.screens.city_screen import CityScreen
 from pandemonium.core.utils import strip_ansi, display_name
 from pandemonium.world.map_boss import echo_label as map_boss_echo_label
+from pandemonium.resources.cities import CITIES
+from pandemonium.world import map_boss as mb
+from pandemonium.resources.item_generation import biome_craft_hint
+from pandemonium.core.time_blocks import format_block_track
+import queue as _queue
+from pandemonium.core.character import player_max_hp
+from pandemonium.progression.titles import format_name as _format_title_name
+from pandemonium.gui.widgets.hp_bar import HPBar
 
 
 class DungeonScreen(FacilityScreen):
@@ -57,11 +65,12 @@ class DungeonScreen(FacilityScreen):
 
     def build_ui(self):
         """Override to add a side-by-side layout: map + output."""
+        import pandemonium.world.event_horizon as eh
+        from pandemonium.world.wild_dungeons import get_wild_dungeon
         self.sm.clear_log()
 
         # ── Determine dungeon name and info (city floors vs wild ruin) ───
         origin_city = self.player.get("origin_city", "solmere")
-        from pandemonium.resources.cities import CITIES
         city = CITIES.get(origin_city, CITIES["solmere"])
         region = self.player.get("dungeon_region", "temperate")
         self._wild_dungeon = None
@@ -69,7 +78,6 @@ class DungeonScreen(FacilityScreen):
         self._map_boss = None
         if self.player.get("_eh_in_run") and (self.player.get("event_horizon") or {}).get("run_active"):
             # Event Horizon: endless rooms (docs/event_horizon_design.md §8)
-            import pandemonium.world.event_horizon as eh
             state = eh.ensure_eh_state(self.player)
             self._eh_run = True
             dungeon_name = "Event Horizon"
@@ -88,7 +96,6 @@ class DungeonScreen(FacilityScreen):
                 top_line = f"{dungeon_name} — Room {floor} · ◎ {motes}"
         elif self.player.get("_map_boss_site"):
             # Seasonal map boss: one arena, no floors (docs/map_boss_design.md)
-            from pandemonium.world import map_boss as mb
             site = mb.get_active_boss(self.player)
             self._map_boss = site
             if site:
@@ -107,7 +114,6 @@ class DungeonScreen(FacilityScreen):
                 subtitle = "The arena is empty"
                 top_line = "Warden — the arena is empty"
         elif self.player.get("wild_dungeon_id"):
-            from pandemonium.world.wild_dungeons import get_wild_dungeon
             wild = get_wild_dungeon(self.player, self.player["wild_dungeon_id"])
             if wild:
                 self._wild_dungeon = wild
@@ -165,7 +171,6 @@ class DungeonScreen(FacilityScreen):
         # Regional craft signature — favoured forms drop 3x as often here.
         craft_hint = ""
         if not self._eh_run and self._map_boss is None:
-            from pandemonium.resources.item_generation import biome_craft_hint
             forms = biome_craft_hint(region)
             if forms:
                 craft_hint = f"Local crafts favour {forms}"
@@ -495,14 +500,15 @@ class DungeonScreen(FacilityScreen):
 
     def _update_top_bar(self):
         """Refresh the dungeon header (time spends / screen builds)."""
+        import pandemonium.world.event_horizon as eh
+        from pandemonium.world.wild_dungeons import get_wild_dungeon
+        from pandemonium.world.wonderland_curses import format_quirk_summary
         p = self.player
         if not p:
             return
-        from pandemonium.core.time_blocks import format_block_track
         track = format_block_track(p, include_day=False)
         # Event Horizon: endless room counter + motes (no floors)
         if getattr(self, "_eh_run", False):
-            import pandemonium.world.event_horizon as eh
             state = eh.ensure_eh_state(p)
             motes = int(state.get("motes", 0))
             if state.get("rush_mode"):
@@ -525,7 +531,6 @@ class DungeonScreen(FacilityScreen):
             return
         # Seasonal map boss: one arena, Echo HP in the header (docs §10.3)
         if getattr(self, "_map_boss", None) is not None:
-            from pandemonium.world import map_boss as mb
             site = mb.get_active_boss(p) or self._map_boss
             echo_lbl = map_boss_echo_label(site.get("echo", 0))
             self._set_subtitle(
@@ -539,7 +544,6 @@ class DungeonScreen(FacilityScreen):
             return
         # Wild ruin: floor progress lives on the dungeon record, not city_floors
         if getattr(self, "_wild_dungeon", None) is not None:
-            from pandemonium.world.wild_dungeons import get_wild_dungeon
             wild = get_wild_dungeon(p, p.get("wild_dungeon_id")) or self._wild_dungeon
             floor = int(wild.get("highest_floor_cleared", 0)) + 1
             max_floor = max(1, int(wild.get("total_floors", 1) or 1))
@@ -565,7 +569,6 @@ class DungeonScreen(FacilityScreen):
             if curse:
                 top += f" | {curse.get('icon', '☠️')} {curse.get('name', '')}"
         elif p.get("dungeon_region") == "wonderland":
-            from pandemonium.world.wonderland_curses import format_quirk_summary
             qs = format_quirk_summary(p)
             if qs:
                 top += f" | {qs}"
@@ -613,6 +616,7 @@ class DungeonScreen(FacilityScreen):
         prompt_acquire_item → intercepted for full-backpack GUI dialog.
         """
         import pandemonium.world.dungeon_rooms as dungeon_rooms
+        import pandemonium.inventory.legacy_ui as legacy_ui
         _orig_render = dungeon_rooms.render_ascii_map
         _orig_party = dungeon_rooms.render_party_status
         _orig_eh_status = dungeon_rooms.render_event_horizon_status
@@ -640,7 +644,6 @@ class DungeonScreen(FacilityScreen):
         dungeon_rooms.render_event_horizon_status = _gui_eh_status
 
         # ── Intercept full-backpack prompt ───────────────────────────────
-        import pandemonium.inventory.legacy_ui as legacy_ui
         _orig_acquire = legacy_ui.prompt_acquire_item
 
         def _gui_acquire(player, item):
@@ -652,7 +655,6 @@ class DungeonScreen(FacilityScreen):
             # this (background) dungeon thread until the player decides.
             # Creating tkinter widgets from this thread would corrupt Tk and
             # produce blank/orphaned windows.
-            import queue as _queue
             result_q = _queue.Queue()
 
             def _show():
@@ -781,8 +783,6 @@ class DungeonScreen(FacilityScreen):
         def show():
             try:
                 from pandemonium.gui.widgets.confirm_dialog import choice_dialog
-                from pandemonium.core.character import player_max_hp
-                from pandemonium.core.time_blocks import format_block_track
 
                 hp_max = player_max_hp(player)
                 details = [f"HP: {player.get('current_hp', 0)}/{hp_max}",
@@ -860,11 +860,11 @@ class DungeonScreen(FacilityScreen):
         Maps the tier number to the correct superboss combat function
         and enemy key, then launches the CombatScreen with the custom func.
         """
+        import pandemonium.world.event_horizon as eh
         result_queue = queue.Queue()
 
         # ── Boss Rush (Event Horizon): dict spec {"rush": True, ...} ─────
         if isinstance(tier, dict) and tier.get("rush"):
-            import pandemonium.world.event_horizon as eh
             boss = eh.rush_boss_by_id(tier.get("boss_id"))
             if boss is None:
                 return "victory"
@@ -896,6 +896,7 @@ class DungeonScreen(FacilityScreen):
             def start_combat():
                 from pandemonium.combat.superboss.entangled_chrysalis import combat_entangled_chrysalis
                 from pandemonium.gui.screens.combat_screen import CombatScreen
+                from pandemonium.combat.superboss.white_knight import combat_white_knight
                 self.sm.push_overlay(
                     CombatScreen,
                     enemy_keys=[boss_key, "temporal_shard_pyre", "temporal_shard_pulse", "temporal_shard_ruin"],
@@ -914,8 +915,6 @@ class DungeonScreen(FacilityScreen):
             boss_key = "white_knight"
 
             def start_combat():
-                from pandemonium.combat.superboss.white_knight import combat_white_knight
-                from pandemonium.gui.screens.combat_screen import CombatScreen
                 self.sm.push_overlay(
                     CombatScreen,
                     enemy_keys=[boss_key],
@@ -1011,7 +1010,6 @@ class DungeonScreen(FacilityScreen):
             return "victory"
 
         def start_combat():
-            from pandemonium.gui.screens.combat_screen import CombatScreen
             self.sm.push_overlay(
                 CombatScreen,
                 enemy_keys=[boss_key],
@@ -1052,6 +1050,7 @@ class DungeonScreen(FacilityScreen):
         may still be mid-Enter on the "Press Enter to descend" prompt — an
         accidental Yes used to flash the dialog away into the city (playtest).
         """
+        import pandemonium.world.event_horizon as eh
         if self._confirm_dialog_open:
             return
         self._confirm_dialog_open = True
@@ -1061,7 +1060,6 @@ class DungeonScreen(FacilityScreen):
             self._stop_facility(result="fled")
 
         if self._eh_run:
-            import pandemonium.world.event_horizon as eh
             state = eh.ensure_eh_state(self.player)
             best = max(int(state.get("best_room", 0)),
                        int(state.get("room", 0)))
@@ -1165,15 +1163,13 @@ class DungeonScreen(FacilityScreen):
         (to avoid race conditions with the background thread), then schedules
         the GUI update on the main thread via after().
         """
+        from pandemonium.combat.ally import (ensure_party_order,
+                                         get_all_active_allies_including_defeated,
+                                         get_all_reserve_allies_including_defeated)
+        from pandemonium.combat.combat_ui import _get_entity_buff_tags
         if player is None:
             return
         # ── Snapshot player data in the calling thread ───────────────────
-        from pandemonium.combat.ally import (ensure_party_order,
-                                 get_all_active_allies_including_defeated,
-                                 get_all_reserve_allies_including_defeated)
-        from pandemonium.combat.combat_ui import _get_entity_buff_tags
-        from pandemonium.core.character import player_max_hp
-        from pandemonium.progression.titles import format_name as _format_title_name
 
         ensure_party_order(player)
         front_allies = get_all_active_allies_including_defeated(player)
@@ -1237,7 +1233,6 @@ class DungeonScreen(FacilityScreen):
         Accepts a pre-built list of member dicts (already extracted from player
         data in the calling thread to avoid race conditions).
         """
-        from pandemonium.gui.widgets.hp_bar import HPBar
 
         # ── Rebuild widgets ───────────────────────────────────────────────
         try:

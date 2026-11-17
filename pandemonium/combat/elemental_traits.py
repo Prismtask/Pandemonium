@@ -183,10 +183,10 @@ def apply_trait(trait: dict, player: dict, target: dict, enemies: list,
         enemies: List of all enemy dicts (for Chain splash).
         damage: Final damage dealt to the target.
     """
+    from pandemonium.combat.status_effects import BURN_TIERS
     # ── Fire: Ignite (Burn DoT) ──
     if "on_hit_burn_tier" in trait:
         burn_tier = trait["on_hit_burn_tier"]
-        from pandemonium.combat.status_effects import BURN_TIERS
         tier_info = BURN_TIERS.get(burn_tier, BURN_TIERS[2])
         result = apply_burn(target, burn_tier, 3)
         if result == "applied":

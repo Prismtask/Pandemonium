@@ -10,6 +10,7 @@ falls back to a console input() prompt.
 import tkinter as tk
 
 from pandemonium.gui.theme import Theme
+from pandemonium.resources.items import is_unique_item
 
 # ── Standard dialog size ──────────────────────────────────────────────────
 # Fixed so the window never jumps around between drops. The width covers the
@@ -36,10 +37,9 @@ def show_acquire_dialog(parent, screen_manager, player, item, log_fn=None):
         True if the incoming item ended up in the inventory, False if dropped.
     """
     from pandemonium.inventory.core import (get_inventory_caps, count_inventory,
-                           get_sorted_equipment, get_sorted_items,
-                           remove_item_by_reference)
+                               get_sorted_equipment, get_sorted_items,
+                               remove_item_by_reference)
     from pandemonium.inventory.legacy_ui import _format_equipment_stat_line
-    from pandemonium.resources.items import is_unique_item
 
     def _log(text):
         if log_fn is not None:

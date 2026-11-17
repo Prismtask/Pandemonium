@@ -7,14 +7,14 @@ rename children. Family rules live in family.py.
 from pandemonium.core.events import format_day_delta
 from pandemonium.core.utils import display_name
 from pandemonium.gui.terminal import term
+from pandemonium.progression.family import (
+    growth_days_remaining, growth_days_to_prime, growth_stage_for_child,
+    is_prime, name_child, pregnancy_period,
+)
 
 
 def _house_family(player, city_id, house):
     """Family status: pregnant companions, children, and naming."""
-    from pandemonium.progression.family import (
-        growth_days_remaining, growth_days_to_prime, growth_stage_for_child,
-        is_prime, name_child, pregnancy_period,
-    )
 
     while True:
         term.clear()

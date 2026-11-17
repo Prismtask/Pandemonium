@@ -1,5 +1,6 @@
 from pandemonium.combat.combat_io import c_print, get_io
 from pandemonium.core.character import player_max_hp
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
 
 
 def _actor_has_tarnished_jade(actor):
@@ -70,7 +71,6 @@ def trigger_divine_lament(actor, enemies, source, is_player=True):
         return
 
     dmg = _compute_divine_lament_damage(actor, pins)
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     dmg = apply_chance_and_choice(actor, dmg)   # one flip for the burst
 
     c_print("\n  ☁ DIVINE LAMENT ☁")
@@ -104,7 +104,6 @@ def trigger_wedge_backlash(actor, enemies, attacker=None, source="", is_player=T
         return
 
     dmg = _compute_wedge_backlash_damage(actor, pins)
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     dmg = apply_chance_and_choice(actor, dmg)   # one flip for the burst
 
     # Determine target

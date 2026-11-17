@@ -28,6 +28,9 @@ import random
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat.combat_io import c_print
 from pandemonium.combat.elemental import ELEMENTS
+from pandemonium.combat.stats import get_effective_attribute
+from pandemonium.core.utils import _tprint, _tpause
+from pandemonium.combat.hallucination_dialogue import get_ally_line
 
 HALLUCINATION_NAMES = ("Hollow You", "The Watcher", "Mirror Shade")
 
@@ -138,7 +141,6 @@ def _glitch(name):
 
 def create_hallucination(player):
     """Build the illusion enemy dict (party-average stats + tier boost)."""
-    from pandemonium.combat.stats import get_effective_attribute
 
     tier = max(2, hallucination_tier(player))
     bonus = TIER_STAT_BONUS.get(tier, TIER_STAT_BONUS[2])
@@ -205,7 +207,6 @@ def hallucination_round_hook(enemy, player, enemies):
 
 def print_intro(player):
     """The locked telegraph: hazy figure + companions gone (blocking prompt)."""
-    from pandemonium.core.utils import _tprint, _tpause
     _tprint("\n" + "\u2500" * 52)
     _tprint("  A hazy figure stands where the path narrows.")
     _tprint("  You turn to call out — your companions are nowhere to be found.")
@@ -261,7 +262,6 @@ def run_encounter(player, floor=None, room_num=None, total_rooms=None,
 def _collapsed_flavor(player):
     """The pseudo-death: you wake at 1 HP with one ally mid-panic."""
     from pandemonium.core.utils import _tprint, display_name
-    from pandemonium.combat.hallucination_dialogue import get_ally_line
     _tprint("")
     _tprint("  The figure reaches for you — and the world lurches sideways.")
     _tprint("  You come to on the road, on your knees, gasping.  1 HP left.")
@@ -281,7 +281,6 @@ def resolve_outcome(player, result):
     exhaustion (playtest 2026-10-13): only real sleep does — up there the
     fight is a pure hazard, which is exactly the urgency it should carry.
     """
-    from pandemonium.core.utils import _tprint
     if result == "victory":
         try:
             import pandemonium.core.time_blocks as time_blocks
@@ -313,7 +312,6 @@ def _aftermath(player, escaped=False):
     fight either way). Non-roster records fall back by race, then generic.
     """
     from pandemonium.core.utils import _tprint, display_name
-    from pandemonium.combat.hallucination_dialogue import get_ally_line
     living = [a for a in player.get("allies", []) if a.get("current_hp", 0) > 0]
     if not living:
         return

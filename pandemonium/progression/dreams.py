@@ -25,6 +25,9 @@ All randomness goes through the injected ``rng`` so tests can seed it.
 import random as _random
 
 from pandemonium.resources.dreams import DREAMS, category_of, dream_location_allowed
+from pandemonium.resources.items import build_item
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.resources.dreams import get_dream
 
 # ── Tuning (D1, §4.2, §4.4) ─────────────────────────────────────────────────
 DREAM_CHANCE = 0.20          # base chance per sleep
@@ -107,6 +110,8 @@ def _party_has_partner(player):
 # ── Eligibility & pool ──────────────────────────────────────────────────────
 
 def _meets_conditions(dream, player, location):
+    from pandemonium.progression.family import get_content_level
+    from pandemonium.progression.family import family_system_enabled
     if not dream_location_allowed(dream, location):
         return False
     cond = dream.get("conditions") or {}
@@ -127,7 +132,6 @@ def _meets_conditions(dream, player, location):
         return False
 
     if dream.get("content_level"):
-        from pandemonium.progression.family import get_content_level
         level = get_content_level()
         wanted = dream["content_level"]
         if wanted == "any":
@@ -137,7 +141,6 @@ def _meets_conditions(dream, player, location):
         elif level != wanted:
             return False
     if dream.get("family"):
-        from pandemonium.progression.family import family_system_enabled
         if not family_system_enabled(player):
             return False
     return True
@@ -239,7 +242,6 @@ def journal_entries(player):
 
 def _grant_item(player, item_id, count):
     from pandemonium.inventory.core import add_item_to_inventory
-    from pandemonium.resources.items import build_item
     try:
         item = build_item(item_id)
     except KeyError:
@@ -275,19 +277,19 @@ def _apply_effects(player, dream, effects=None):
     ``effects`` overrides the dream's own block — choice dreams pass the
     chosen prompt's effects here.
     """
+    from pandemonium.progression.leveling import gain_exp
+    from pandemonium.progression.leveling import gain_exp_ally
     effects = dream.get("effects") or {} if effects is None else effects
     messages = []
     party = _living_party(player)
 
     xp = int(effects.get("xp", 0) or 0)
     if xp:
-        from pandemonium.progression.leveling import gain_exp
         gain_exp(player, xp)
         messages.append(f"  +{xp} XP.")
 
     ally_xp = int(effects.get("ally_xp", 0) or 0)
     if ally_xp and party:
-        from pandemonium.progression.leveling import gain_exp_ally
         gain_exp_ally(party[0], ally_xp)
         messages.append(f"  {party[0].get('name', 'Your companion')} +{ally_xp} XP.")
 
@@ -299,7 +301,6 @@ def _apply_effects(player, dream, effects=None):
 
     player_stress = int(effects.get("player_stress", 0) or 0)
     if player_stress:
-        import pandemonium.core.time_blocks as time_blocks
         band_before = time_blocks.stress_band(player)
         gained = time_blocks.add_stress(player, player_stress)
         band_now = time_blocks.stress_band(player)
@@ -452,7 +453,6 @@ def check_story_triggers(player, location="home"):
 
 def queue_story_dream(player, dream_id):
     """Queue a scripted story dream for the next sleep. Returns True if added."""
-    from pandemonium.resources.dreams import get_dream
     if get_dream(dream_id) is None:
         return False
     queue = ensure_state(player).setdefault("queue", [])
@@ -464,7 +464,6 @@ def queue_story_dream(player, dream_id):
 
 def _pop_queued_story(player):
     """Pop the next deliverable queued dream (skips unknown ids)."""
-    from pandemonium.resources.dreams import get_dream
     queue = ensure_state(player).setdefault("queue", [])
     while queue:
         dream = get_dream(queue.pop(0))
@@ -526,8 +525,8 @@ def maybe_offer_dream(player, location="home", term=None, rng=None, pause=False)
     ``time_blocks.end_day(player, slept=True)`` and before the morning pause.
     A queued story dream is delivered before the random roll.
     """
+    from pandemonium.gui.terminal import term as _term
     if term is None:
-        from pandemonium.gui.terminal import term as _term
         term = _term
     rng = rng or _random
 

@@ -19,6 +19,7 @@ called from combat/status_effects.py apply_* functions and the Paint system.
 # ═══════════════════════════════════════════════════════════════════
 
 from pandemonium.core.utils import display_name
+from pandemonium.core.character import player_max_hp
 
 SHAWL_ITEM_ID = "blank_canvas_shawl"
 
@@ -38,7 +39,6 @@ def _actor_has_blank_canvas_shawl(actor):
 
 def _max_hp_of(actor, is_player):
     if is_player:
-        from pandemonium.core.character import player_max_hp
         return player_max_hp(actor)
     return actor.get("max_hp", 1)
 
@@ -108,6 +108,7 @@ def use_blank_canvas(actor, is_player, player):
 
     Returns a list of message strings.
     """
+    from pandemonium.combat.ally import get_active_allies
 
     if not _actor_has_blank_canvas_shawl(actor):
         return ["You are not wearing the Blank Canvas Shawl."]
@@ -121,7 +122,6 @@ def use_blank_canvas(actor, is_player, player):
 
     if is_palette:
         # ── Party-wide Blank Canvas (Palette heroine upgrade) ──
-        from pandemonium.combat.ally import get_active_allies
         members = [player] + [a for a in get_active_allies(player) if a.get("current_hp", 0) > 0]
         for member in members:
             _cleanse_actor(member)

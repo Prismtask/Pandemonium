@@ -690,7 +690,6 @@ def combat_rientrante(player, floor=None, enemies=None):
                                 t_name = t["name"]
                             dmg = int(max_hp * 0.70)
                             t["current_hp"] = max(0, t["current_hp"] - dmg)
-                            from pandemonium.combat.helpers import format_damage_msg
                             c_print("\n💥 " + format_damage_msg("Rientrante", t_name, dmg, skill_name="Final Judgment"))
                             if t.get("current_hp", 0) <= 0:
                                 if t is player:

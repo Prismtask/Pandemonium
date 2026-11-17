@@ -19,6 +19,7 @@ Guest states
 The module is deliberately I/O-free. The inn prints the scene text; quests and
 combat only read the guest state.
 """
+from pandemonium.progression.titles import check_unlock
 
 GUEST_ORDER = ("red_hood", "dorothy", "alice")
 
@@ -221,7 +222,6 @@ def on_inn_enter(player):
 
     # Deed titles read guest/boss state; check as soon as a scene lands.
     if scenes:
-        from pandemonium.progression.titles import check_unlock
         check_unlock(player)
 
     return scenes
@@ -270,6 +270,10 @@ def resolve_late_arc(player, heroine_key):
     Returns (ok, message). Signature-weapon facilities are untouched, so the
     full upgrade path remains available after a late resolution.
     """
+    from pandemonium.combat.ally import (
+            create_heroine_ally, ensure_party_order, get_ally_capacity,
+            get_heroine_in_party, promote_heroine_to_permanent, set_heroine_state,
+        )
     if get_guest_state(player, heroine_key) != "late":
         return False, "There is no unfinished story to close right now."
 
@@ -278,10 +282,6 @@ def resolve_late_arc(player, heroine_key):
         set_guest_state(player, heroine_key, "resolved")
         return True, f"{GUEST_NAMES[heroine_key]}'s story is already settled."
 
-    from pandemonium.combat.ally import (
-        create_heroine_ally, ensure_party_order, get_ally_capacity,
-        get_heroine_in_party, promote_heroine_to_permanent, set_heroine_state,
-    )
 
     ally = get_heroine_in_party(player, heroine_key)
     if ally is None:

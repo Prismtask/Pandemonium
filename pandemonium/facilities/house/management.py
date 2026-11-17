@@ -5,6 +5,7 @@ from pandemonium.gui.terminal import term
 from .constants import HOUSE_LEVELS, HOUSE_MONSTER_GIRL_LIMITS
 from .core import _daily_income, _house_level_data, _pending_income
 from .rest import _rest_blocks_label
+from pandemonium.progression.titles import check_unlock as _check_title_unlock
 
 
 def _house_collect_income(player, city_id, house):
@@ -51,7 +52,6 @@ def _house_upgrade(player, city_id, house):
 
     player["gold"] -= cost
     house["level"]  = lvl + 1
-    from pandemonium.progression.titles import check_unlock as _check_title_unlock
     _check_title_unlock(player)
     term.print(f"Your home has been expanded into a fine {next_data['name']}!")
     term.print(f"  Remaining gold: {player['gold']}")

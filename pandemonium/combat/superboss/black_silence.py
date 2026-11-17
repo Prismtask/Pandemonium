@@ -12,6 +12,7 @@ from pandemonium.combat.superboss.superboss_common import get_boss, superboss_co
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.combat.combat_io import c_print, c_input
+from pandemonium.resources.items import build_item
 
 # ═══════════════════════════════════════════════════════════════════
 # CONSTANTS
@@ -366,6 +367,7 @@ def combat_black_silence(player, floor=None, enemies=None):
     Args:
         enemies: Optional pre-created enemy list for GUI mode state sharing.
     """
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     boss_key = BOSS_KEY
 
     if enemies is None:
@@ -562,8 +564,6 @@ def combat_black_silence(player, floor=None, enemies=None):
             c_print("They are warm. They are waiting.")
 
             # Grant loot
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             gloves = build_item("certain_someone_black_gloves", rarity="unique")
             c_print(f"\n  🎁 Received: {gloves['name']}!")
             prompt_acquire_item(player, gloves)

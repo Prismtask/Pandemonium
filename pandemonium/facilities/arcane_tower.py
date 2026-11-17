@@ -23,6 +23,9 @@ from pandemonium.resources.items import build_item, ITEM_RARITY
 from pandemonium.inventory.core import add_item_to_inventory
 from pandemonium.resources.cities import CITIES
 from pandemonium.core.utils import _get_wonderland_max_floor
+from pandemonium.resources.dialogues.wonderland import WONDERLAND_WIZARD_DIALOGUE as WD
+from pandemonium.progression.titles import check_unlock as _check_title_unlock
+from pandemonium.core.time_blocks import get_day_phase
 
 
 def _strip_wonderland_only_from_ally(ally):
@@ -45,8 +48,9 @@ def _wizard_interaction(player):
              Floor 20 and her Witch chapter ends at 30)
     Phase 2: Upgrade Silver Slippers → Ruby Slippers (requires Wicked Witch defeat + materials)
     """
-    from pandemonium.resources.dialogues.wonderland import WONDERLAND_WIZARD_DIALOGUE as WD
     from pandemonium.combat.ally import get_heroine_in_party
+    from pandemonium.combat.elemental import compute_ally_elemental
+    from pandemonium.combat.ally_skills import swap_dorothy_to_vorpal_skills, grant_dorothy_upgrade_skill
 
     term.clear()
 
@@ -101,12 +105,10 @@ def _wizard_interaction(player):
 
         ruby = build_item("ruby_slippers", rarity="unique", enhance=5)
         dorothy["equipped"]["accessory1"] = ruby
-        from pandemonium.combat.elemental import compute_ally_elemental
         e_res, e_dmg = compute_ally_elemental(dorothy)
         dorothy["elemental_res"] = e_res
         dorothy["elemental_dmg"] = e_dmg
 
-        from pandemonium.combat.ally_skills import swap_dorothy_to_vorpal_skills, grant_dorothy_upgrade_skill
         swap_dorothy_to_vorpal_skills(dorothy)
         grant_dorothy_upgrade_skill(dorothy)
 
@@ -324,6 +326,7 @@ def arcane_tower_service(player, city_id):
 
 def _build_menu_options(player, city_id):
     """Build the menu options list based on city and player progress."""
+    from pandemonium.progression.leveling import get_biomes_cleared_to_cap
     options = ["Research (gain XP)"]
 
     if city_id in ARCANE_TOWER_CITIES:
@@ -353,7 +356,6 @@ def _build_menu_options(player, city_id):
     if city_id == "veilholt":
         # Same-biome cities share one dungeon depth, so require two
         # different biomes (not two city records).
-        from pandemonium.progression.leveling import get_biomes_cleared_to_cap
         biomes_f20 = get_biomes_cleared_to_cap(player, 20)
         if len(biomes_f20) >= 2:
             options.append("Investigate mysterious book")
@@ -367,6 +369,7 @@ def _build_menu_options(player, city_id):
 
 def _research(player, city_id):
     """Offer tiered research options scaled to player level and gold."""
+    from pandemonium.progression.leveling import gain_exp
     player_level = player.get("level", 1)
 
     available = [(name, cost, xp, lvl) for (name, cost, xp, lvl) in RESEARCH_TIERS
@@ -401,7 +404,6 @@ def _research(player, city_id):
 
     player["gold"] -= cost
     # Use gain_exp to properly respect level caps and Learning bonus
-    from pandemonium.progression.leveling import gain_exp
     gain_exp(player, xp_gain)
 
     term.print(f"\nYou immerse yourself in {tier_name.lower()}.")
@@ -503,6 +505,7 @@ def _arcane_teleport(player, city_id):
 def _skill_mastery_research(player, city_id):
     """Pay gold to add mastery progress to a skill through arcane mentoring."""
     from pandemonium.combat.skills import MASTERY_THRESHOLDS, MASTERY_MAX_LEVEL
+    from pandemonium.combat.skills import add_skill_mastery_xp
     term.print("\n--- Skill Mastery Research ---")
     term.print("The archmage can accelerate your mastery of known skills.\n")
 
@@ -568,7 +571,6 @@ def _skill_mastery_research(player, city_id):
     player["gold"] -= cost
     # Add exactly enough uses to reach the next threshold
     for _ in range(needed):
-        from pandemonium.combat.skills import add_skill_mastery_xp
         new_lvl = add_skill_mastery_xp(player, sid)
     
     new_level = get_skill_mastery_level(player, sid)
@@ -892,6 +894,7 @@ def _investigate_mysterious_book(player, city_id):
 
     Returns True if the player entered Wonderland, False otherwise.
     """
+    from pandemonium.progression.quests import update_quests
     has_shard = any(
         item.get("id") == "looking_glass_shard"
         for item in player.get("inventory", [])
@@ -978,12 +981,10 @@ def _investigate_mysterious_book(player, city_id):
     player["wonderland_visited"] = True
 
     # Deed titles: first entry unlocks the opening Wonderland title.
-    from pandemonium.progression.titles import check_unlock as _check_title_unlock
     _check_title_unlock(player)
 
     # Quest hook: the book opens the Wonderland side-quest chain. This also
     # marks any visit_city objective immediately, before the city screen loads.
-    from pandemonium.progression.quests import update_quests
     for msg in update_quests(player, "visit_city", "wonderland"):
         term.print(msg)
 
@@ -1002,7 +1003,7 @@ def _leave_wonderland(player):
     Called when the player selects 'Return through the Looking-Glass'
     in the Wonderland Arcane Tower (Cheshire Cat).
     """
-    from pandemonium.core.time_blocks import get_day_phase
+    from pandemonium.combat.ally import get_ally_capacity, _return_ally_to_house, ensure_party_order
 
     # ── Separate permanent vs temporary heroines ─────────────────────────
     permanent_heroines = []
@@ -1047,7 +1048,6 @@ def _leave_wonderland(player):
         player["party_order"].append(len(player["allies"]) - 1)
 
     # ── Overflow check: prompt to send excess allies to the house ───────
-    from pandemonium.combat.ally import get_ally_capacity, _return_ally_to_house, ensure_party_order
     ally_capacity = get_ally_capacity(player)
     while len(player["allies"]) > ally_capacity:
         houses = player.get("houses", {})

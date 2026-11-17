@@ -11,6 +11,26 @@ from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
 from pandemonium.inventory.core import format_scaling_stat
 from pandemonium.core.utils import display_name
+from pandemonium.core.character import _reconcile_heroine_vorpal_skills
+from pandemonium.core.character import player_max_hp
+from pandemonium.resources.races_classes import ATTRIBUTES
+from pandemonium.combat.stat_milestones import format_milestone_label
+from pandemonium.progression.titles import combat_stat_bonus as title_bonus
+from pandemonium.combat.stat_milestones import format_milestone_bonuses
+from pandemonium.resources.skill_loader import PROFESSIONS
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.resources.item_generation import is_flower_item
+import pandemonium.progression.titles as _titles
+import pandemonium.progression.karma as karma
+import pandemonium.progression.titles as title_mod
+from pandemonium.core.events import format_day_delta
+from pandemonium.core.events import format_short_date
+from pandemonium.core.events import format_date
+from pandemonium.combat.form_perks import describe_item_perk
+from pandemonium.resources.items import ITEMS
+from pandemonium.resources.unique_effects import unique_effect_text
+from pandemonium.gui.widgets.confirm_dialog import ok_dialog
+from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 
 
 class InventoryScreen(BaseScreen):
@@ -255,7 +275,6 @@ class InventoryScreen(BaseScreen):
             # Safety net: ensures innate/learned skills match the vorpal flags
             # even if the load-time reconciliation in ensure_player_fields was
             # missed.
-            from pandemonium.core.character import _reconcile_heroine_vorpal_skills
             _reconcile_heroine_vorpal_skills(char, self.player)
 
         self._render_view_toggle(page["bar"])
@@ -339,7 +358,6 @@ class InventoryScreen(BaseScreen):
         """Identity/vitals, attributes + equipment side by side, milestones."""
         if is_player:
             self._render_personal_box(inner)
-            from pandemonium.core.character import player_max_hp
             hp = f"{char.get('current_hp', 0)}/{player_max_hp(char)}"
             info = f"HP: {hp}  |  Gold: {char.get('gold', 0)}"
             self.styled_label(inner, text=info).pack(anchor=tk.W, padx=4, pady=(0, 8))
@@ -360,6 +378,7 @@ class InventoryScreen(BaseScreen):
         self._render_milestones_box(inner, char)
 
     def _render_ally_header(self, inner, ally):
+        from pandemonium.combat.ally import get_growth_label
         defeated = ally.get("defeated") or ally.get("current_hp", 0) <= 0
         status_str = "  [INCAPACITATED]" if defeated else ""
 
@@ -401,7 +420,6 @@ class InventoryScreen(BaseScreen):
         ).pack(anchor=tk.W, padx=4, pady=(0, 4))
 
         # Late-bloomer growth band (previously shown in the Skill Book).
-        from pandemonium.combat.ally import get_growth_label
         growth_label = get_growth_label(ally)
         if growth_label and growth_label != "—":
             tk.Label(
@@ -413,19 +431,18 @@ class InventoryScreen(BaseScreen):
             tk.Frame(inner, bg=Theme.BG_DARK, height=4).pack()
 
     def _render_attributes_box(self, parent, char, is_player):
-        from pandemonium.inventory.core import get_total_equipment_mods
-        from pandemonium.resources.races_classes import ATTRIBUTES
-        from pandemonium.combat.stat_milestones import format_milestone_label
-        from pandemonium.combat.stats import format_crit_summary
 
+        from pandemonium.inventory.core import get_total_equipment_mods
+        from pandemonium.combat.stats import format_crit_summary
+        from pandemonium.combat.ally import compute_ally_stats
         equip_mods = get_total_equipment_mods(char)
         buff_mods = self._compute_buff_mods(char)
         if is_player:
-            from pandemonium.progression.titles import combat_stat_bonus as title_bonus
             legend = "base + equipment (+ buff / title) = total"
+            title_bonus_fn = title_bonus
         else:
-            title_bonus = None          # allies carry no deed title
             legend = "base + equipment (+ buff) = total"
+            title_bonus_fn = None     # allies carry no deed title
 
         attr_frame = tk.LabelFrame(
             parent, text=" Attributes ", bg=Theme.BG_DARK, fg=Theme.TEXT,
@@ -443,7 +460,7 @@ class InventoryScreen(BaseScreen):
             base = char["attributes"][attr]
             eq = equip_mods.get(attr, 0)
             bf = buff_mods.get(attr, 0)
-            tb = title_bonus(char, attr) if title_bonus else 0
+            tb = title_bonus_fn(char, attr) if title_bonus_fn else 0
             total = base + eq + bf + tb
             short = attr[:3].upper()
             rows.append((short, attr, base, eq, bf, tb, total))
@@ -481,7 +498,6 @@ class InventoryScreen(BaseScreen):
         if is_player:
             crit_text = format_crit_summary(char, "player")
         else:
-            from pandemonium.combat.ally import compute_ally_stats
             _str, _con, dex, lrn, _wis, _cha = compute_ally_stats(char)
             crit_text = format_crit_summary(char, "ally", dex=dex, lrn=lrn)
         tk.Frame(attr_frame, height=1, bg=Theme.BORDER).pack(
@@ -598,7 +614,6 @@ class InventoryScreen(BaseScreen):
                 ).pack(side=tk.LEFT)
 
     def _render_milestones_box(self, parent, char):
-        from pandemonium.combat.stat_milestones import format_milestone_bonuses
         mb = format_milestone_bonuses(char)
         if not mb:
             return
@@ -697,13 +712,12 @@ class InventoryScreen(BaseScreen):
 
     def _render_player_skills(self, inner):
         """Battle loadout, class passive, unlocked/locked skills, profession."""
-        p = self.player
         from pandemonium.combat.skills import (
-            get_class_skill_map, format_mastery_label, get_equipped_skill_ids,
-            MAX_SKILL_LOADOUT, get_skill_mastery_level, get_mastery_bonuses,
-            get_passive_skill,
-        )
-        from pandemonium.resources.skill_loader import PROFESSIONS
+                    get_class_skill_map, format_mastery_label, get_equipped_skill_ids,
+                    MAX_SKILL_LOADOUT, get_skill_mastery_level, get_mastery_bonuses,
+                    get_passive_skill,
+                )
+        p = self.player
 
         skill_map = get_class_skill_map(p)
         if not skill_map:
@@ -842,7 +856,6 @@ class InventoryScreen(BaseScreen):
         if not passive and ally.get("passive_skill"):
             passive = get_passive_by_id(ally["passive_skill"])
         if not passive and ally.get("key"):
-            from pandemonium.resources.enemies import ENEMIES
             template = ENEMIES.get(ally["key"], {})
             template_race = template.get("race")
             if template_race:
@@ -852,10 +865,10 @@ class InventoryScreen(BaseScreen):
     def _render_ally_skills(self, inner, ally):
         """Passive, then Innate / Upgrades / Learned, then learning progress."""
         from pandemonium.combat.ally_skills import (
-            get_innate_skill_def, get_learnable_skill_def,
-            get_ally_skill_mastery_level, format_skill_learning_progress,
-            format_ally_mastery_label,
-        )
+                    get_innate_skill_def, get_learnable_skill_def,
+                    get_ally_skill_mastery_level, format_skill_learning_progress,
+                    format_ally_mastery_label,
+                )
 
         self._render_passive_box(inner, self._ally_passive(ally))
 
@@ -942,6 +955,12 @@ class InventoryScreen(BaseScreen):
             pass
 
     def _refresh_bag_tab(self):
+        from pandemonium.inventory.core import (
+                    get_inventory_caps, count_inventory,
+                    get_sorted_equipment, get_sorted_items, get_key_items, get_cargo_items,
+                    get_flower_items,
+                )
+        from pandemonium.resources.trade_goods import cargo_total_weight, cargo_capacity
         for w in self.bag_frame.winfo_children():
             w.destroy()
 
@@ -949,12 +968,6 @@ class InventoryScreen(BaseScreen):
             self.styled_label(self.bag_frame, text="No player data.").pack(pady=20)
             return
 
-        from pandemonium.inventory.core import (
-            get_inventory_caps, count_inventory,
-            get_sorted_equipment, get_sorted_items, get_key_items, get_cargo_items,
-            get_flower_items,
-        )
-        from pandemonium.resources.trade_goods import cargo_total_weight, cargo_capacity
         eq_cap, other_cap = get_inventory_caps(self.player)
         eq_count, other_count = count_inventory(self.player)
 
@@ -971,7 +984,6 @@ class InventoryScreen(BaseScreen):
         # tell how many of each element you actually had.
         flowers = get_flower_items(self.player)
         flower_total = sum(int(i.get("count", 1) or 1) for i in flowers)
-        from pandemonium.resources.item_generation import is_flower_item
         key_items = [i for i in get_key_items(self.player)
                      if not is_flower_item(i)]
 
@@ -1029,7 +1041,6 @@ class InventoryScreen(BaseScreen):
         if item.get("unique"):
             return True
         try:
-            from pandemonium.resources.items import ITEMS
             return bool(ITEMS.get(item.get("id"), {}).get("unique"))
         except Exception:
             return False
@@ -1048,7 +1059,6 @@ class InventoryScreen(BaseScreen):
             return (name_part, f"[{item.get('slot', '?')}]",
                     f"({mod_txt})" if mod_txt else "")
 
-        from pandemonium.resources.item_generation import is_flower_item
         item_type = item.get("type", "?")
         if is_flower_item(item):
             type_label = "Flower"
@@ -1155,13 +1165,13 @@ class InventoryScreen(BaseScreen):
 
     def _toggle_skill_loadout(self, skill_id):
         """Equip/unequip a class skill for combat from your Skills view."""
+        from pandemonium.combat.skills import (
+                    get_class_skill_map, get_equipped_skill_ids, MAX_SKILL_LOADOUT,
+                )
         p = self.player
         if not p or skill_id not in p.get("skills", []):
             return
 
-        from pandemonium.combat.skills import (
-            get_class_skill_map, get_equipped_skill_ids, MAX_SKILL_LOADOUT,
-        )
 
         skill_map = get_class_skill_map(p)
         name = skill_map.get(skill_id, {}).get("name", skill_id)
@@ -1223,7 +1233,6 @@ class InventoryScreen(BaseScreen):
             personal, text=f"Race: {race}   Class: {klass}",
         ).pack(anchor=tk.W, padx=6, pady=1)
 
-        from pandemonium.resources.skill_loader import PROFESSIONS
         profs = PROFESSIONS.get(klass, {})
         prof = p.get("profession")
         if prof in profs:
@@ -1237,7 +1246,6 @@ class InventoryScreen(BaseScreen):
         ).pack(anchor=tk.W, padx=6, pady=(1, 3))
 
         # ── Deed title (docs/titles_design.md) ──────────────────────────────
-        import pandemonium.progression.titles as _titles
         active_title = _titles.get_active(p)
         if active_title:
             title_line = (f"Title: {active_title['name']} — "
@@ -1252,7 +1260,6 @@ class InventoryScreen(BaseScreen):
         ).pack(anchor=tk.W, padx=6, pady=1)
 
         # ── Karma summary (hidden when the save has the rule off) ───────────
-        import pandemonium.progression.karma as karma
         if karma.is_enabled(p):
             karma_value = karma.get_karma(p)
             tier = karma.get_karma_tier(p)
@@ -1404,7 +1411,6 @@ class InventoryScreen(BaseScreen):
 
     def _render_titles_subtab(self, parent):
         """Render the deed-title collection (docs/titles_design.md)."""
-        import pandemonium.progression.titles as title_mod
 
         rows = title_mod.list_titles(self.player)
         unlocked = sum(1 for r in rows if r["unlocked"])
@@ -1506,7 +1512,6 @@ class InventoryScreen(BaseScreen):
 
     def _title_action(self, title_id):
         """Equip (title_id) or unequip (None) from the Journal UI."""
-        import pandemonium.progression.titles as title_mod
         if title_id:
             ok, msg = title_mod.equip_title(self.player, title_id)
         else:
@@ -1546,7 +1551,6 @@ class InventoryScreen(BaseScreen):
         inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
 
         current_day = self.player.get("day", 1)
-        from pandemonium.core.events import format_day_delta
 
         for b in bounties:
             current = b.get("current", 0)
@@ -1666,14 +1670,12 @@ class InventoryScreen(BaseScreen):
                 ).pack(anchor=tk.W, padx=6, pady=0)
 
             if q.get("day"):
-                from pandemonium.core.events import format_short_date
                 self.styled_label(
                     frame, text=format_short_date(q["day"]), fg=Theme.TEXT_DIM,
                 ).pack(anchor=tk.W, padx=6, pady=(2, 2))
 
     def _render_event_subtab(self, parent):
         """Render the Event sub-tab showing all recorded events."""
-        from pandemonium.core.events import format_date
         events = self.player.get("journal", {}).get("events", [])
         if not events:
             self.styled_label(parent, text="No events recorded yet.", fg=Theme.TEXT_DIM).pack(
@@ -1732,7 +1734,6 @@ class InventoryScreen(BaseScreen):
 
     def _compute_buff_mods(self, entity):
         """Compute attribute buffs from active_buffs for any entity."""
-        from pandemonium.resources.races_classes import ATTRIBUTES
         buff_mods = {}
         for buff in entity.get("active_buffs", []):
             if buff.get("stat") == "all" or buff.get("type") == "blessing":
@@ -1745,6 +1746,8 @@ class InventoryScreen(BaseScreen):
 
     def _equip_item(self, item):
         """Equip an item on the player, or on the targeted ally if set."""
+        from pandemonium.combat.ally import equip_ally_item
+        from pandemonium.inventory.core import equip_item
         # ── Ally target path ─────────────────────────────────────────────
         if self._equip_target_ally is not None:
             ally = self._equip_target_ally
@@ -1761,14 +1764,12 @@ class InventoryScreen(BaseScreen):
                     self._prompt_accessory_choice(item, target="ally", ally=ally)
                     return
 
-            from pandemonium.combat.ally import equip_ally_item
             result = equip_ally_item(ally, item, self.player, target_slot=slot_hint)
             self.sm.log(result if isinstance(result, str) else f"Equipped {item['name']} on {display_name(ally)}.")
             self._show_character_page(ally)
             return
 
         # ── Player path (original) ───────────────────────────────────────
-        from pandemonium.inventory.core import equip_item
 
         # Handle accessory slot selection
         if item.get("slot") == "accessory":
@@ -1825,10 +1826,10 @@ class InventoryScreen(BaseScreen):
         self._refresh_eh_tab()
 
     def _refresh_eh_tab(self):
+        import pandemonium.world.event_horizon as eh
         for w in self.eh_frame.winfo_children():
             w.destroy()
 
-        import pandemonium.world.event_horizon as eh
 
         state = self._eh_meta()
         running = bool(state.get("run_active"))
@@ -2148,9 +2149,6 @@ class InventoryScreen(BaseScreen):
         No lore: just the stats the piece grants (its affinity) and what it
         actually does, so players can compare gear without the blacksmith.
         """
-        from pandemonium.combat.form_perks import describe_item_perk
-        from pandemonium.resources.items import ITEMS
-        from pandemonium.resources.unique_effects import unique_effect_text
 
         template = ITEMS.get(item.get("id"), {}) or {}
         mods = item.get("mods") or {}
@@ -2203,9 +2201,6 @@ class InventoryScreen(BaseScreen):
         Ordinary equipment gets the compact form: its display name (rarity +
         element + form + enhancement) with Affinity and Effect lines, no lore.
         """
-        from pandemonium.gui.widgets.confirm_dialog import ok_dialog
-        from pandemonium.resources.items import ITEMS
-        from pandemonium.resources.unique_effects import unique_effect_text
 
         name = item.get("name", "Key Item")
         if item.get("type") == "equipment" and not self._is_unique_item(item):
@@ -2252,7 +2247,6 @@ class InventoryScreen(BaseScreen):
             body += f"\n\n{desc}"
         if effect:
             body += f"\n\nEquip Effect: {effect}"
-        from pandemonium.combat.form_perks import describe_item_perk
         perk_line = describe_item_perk(item) or describe_item_perk(template)
         if perk_line:
             body += f"\n\nForm tradition — {perk_line}"
@@ -2327,7 +2321,6 @@ class InventoryScreen(BaseScreen):
             return
         rarity = item.get("rarity", "common")
         if rarity in ("rare", "epic", "legendary", "mythic"):
-            from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
             confirm_dialog(
                 parent=self,
                 title="Drop Rare Item?",
@@ -2355,7 +2348,6 @@ class InventoryScreen(BaseScreen):
     def _handle_unequip_result(self, result):
         """Log an unequip result; pop up a warning window if inventory is full."""
         if result and "inventory is full" in result.lower():
-            from pandemonium.gui.widgets.confirm_dialog import ok_dialog
             self.sm.log(result)
             ok_dialog(
                 parent=self,
@@ -2393,6 +2385,8 @@ class InventoryScreen(BaseScreen):
         ).pack(pady=8)
 
         def choose(slot):
+            from pandemonium.inventory.core import equip_item
+            from pandemonium.combat.ally import equip_ally_item
             if target == "player":
                 # Remove from inventory first
                 try:
@@ -2401,7 +2395,6 @@ class InventoryScreen(BaseScreen):
                 except (StopIteration, IndexError):
                     pass
 
-                from pandemonium.inventory.core import equip_item
                 result = equip_item(self.player, item, target_slot=slot)
                 if result is False:
                     self.player.setdefault("inventory", []).append(item)
@@ -2410,7 +2403,6 @@ class InventoryScreen(BaseScreen):
                     self.sm.log(f"Equipped {item['name']} in {slot}.")
             else:
                 # equip_ally_item handles inventory removal internally
-                from pandemonium.combat.ally import equip_ally_item
                 result = equip_ally_item(ally, item, self.player, target_slot=slot)
                 self.sm.log(result if isinstance(result, str) else f"Equipped {item['name']} on {display_name(ally)}.")
 

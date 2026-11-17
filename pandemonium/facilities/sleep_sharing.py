@@ -11,6 +11,7 @@ night: together / warm / quiet. Ending early gives rest.
 """
 
 import random
+from pandemonium.resources.family_scenes import ENDING_TITLES
 
 ACTIONS = ("tender", "playful", "bold", "shy", "end")
 
@@ -113,5 +114,4 @@ def apply_action(state, action, rng=None):
 
 def ending_tier(ending):
     """Short display title for an ending key."""
-    from pandemonium.resources.family_scenes import ENDING_TITLES
     return ENDING_TITLES.get(ending, "Rest")

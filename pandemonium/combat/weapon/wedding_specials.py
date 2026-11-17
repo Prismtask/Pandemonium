@@ -1,4 +1,9 @@
 from pandemonium.combat.combat_io import c_print
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.core.character import player_max_hp
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.resources.items import build_item, ITEMS
 """Wedding accessory special effect engine.
 
 Wedding items are Unique accessories gifted by married monster girls.
@@ -127,7 +132,6 @@ def apply_wedding_combat_start(player, enemies):
 
     # blizzard_song (bonded): enemies take 5 water damage at start
     if special == "blizzard_song" and bonded:
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         _cac_state = {"rolled": False, "mult": 1.0}   # one flip per invocation
         for e in enemies:
             _bliz = apply_chance_and_choice(player, 5, _cac_state)
@@ -136,7 +140,6 @@ def apply_wedding_combat_start(player, enemies):
 
     # tidal_blessing (bonded): enemies take 5 water damage at start
     if special == "tidal_blessing" and bonded:
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         _cac_state = {"rolled": False, "mult": 1.0}   # one flip per invocation
         for e in enemies:
             _tid = apply_chance_and_choice(player, 5, _cac_state)
@@ -193,7 +196,6 @@ def apply_wedding_combat_start(player, enemies):
     # grave_reign: enemies take 3 dark damage at combat start; bonded 5
     if special == "grave_reign":
         dmg = 5 if bonded else 3
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         _cac_state = {"rolled": False, "mult": 1.0}   # one flip per invocation
         dmg = apply_chance_and_choice(player, dmg, _cac_state)
         for e in enemies:
@@ -212,6 +214,7 @@ def apply_wedding_combat_start(player, enemies):
 
 def apply_wedding_end_of_round(player):
     """Call once per round after buffs/debuffs tick."""
+    from pandemonium.combat.status_effects import is_cleansable
     special, bonded = _active(player)
     if not special:
         return
@@ -219,7 +222,6 @@ def apply_wedding_end_of_round(player):
     # bloom_regen: regenerate 3 HP at end of every turn; bonded 5 HP + cure 1 poison
     if special == "bloom_regen":
         heal = 5 if bonded else 3
-        from pandemonium.core.character import player_max_hp
         old_hp = player.get("current_hp", 0)
         max_hp = player_max_hp(player)
         player["current_hp"] = min(old_hp + heal, max_hp)
@@ -236,7 +238,6 @@ def apply_wedding_end_of_round(player):
     # auto_guard: regenerate 2 HP at end of turn; bonded 3 HP
     if special == "auto_guard":
         heal = 3 if bonded else 2
-        from pandemonium.core.character import player_max_hp
         old_hp = player.get("current_hp", 0)
         max_hp = player_max_hp(player)
         player["current_hp"] = min(old_hp + heal, max_hp)
@@ -247,7 +248,6 @@ def apply_wedding_end_of_round(player):
     # seraph_light: heal 4 HP at end of turn; bonded 6 HP + cleanse 1 debuff
     if special == "seraph_light":
         heal = 6 if bonded else 4
-        from pandemonium.core.character import player_max_hp
         old_hp = player.get("current_hp", 0)
         max_hp = player_max_hp(player)
         player["current_hp"] = min(old_hp + heal, max_hp)
@@ -255,7 +255,6 @@ def apply_wedding_end_of_round(player):
         if actual > 0:
             _msg(f"Seraph's Feather — divine light restores {actual} HP.")
         if bonded and player.get("active_debuffs"):
-            from pandemonium.combat.status_effects import is_cleansable
             idx = next((i for i, d in enumerate(player["active_debuffs"]) if is_cleansable(d)), None)
             if idx is not None:
                 cleansed = player["active_debuffs"].pop(idx)
@@ -267,6 +266,7 @@ def apply_wedding_end_of_round(player):
 def apply_wedding_attack_bonus(player, target, base_dmg, is_first_attack):
     """Return flat bonus damage to add to the player's attack."""
     from pandemonium.combat.status_effects import check_status_resisted
+    from pandemonium.combat.stats import get_effective_attribute
     special, bonded = _active(player)
     if not special:
         return 0
@@ -322,7 +322,6 @@ def apply_wedding_attack_bonus(player, target, base_dmg, is_first_attack):
 
     # dragon_judgment: +10% vs flying (beast/fey/dragonkin); bonded +15% and ignore 30% res
     if special == "dragon_judgment":
-        from pandemonium.resources.enemies import ENEMIES
         key = target.get("key")
         if key:
             race = ENEMIES.get(key, {}).get("race", "")
@@ -352,7 +351,6 @@ def apply_wedding_attack_bonus(player, target, base_dmg, is_first_attack):
 
     # starfire_breath: bonus = 20% CHA (35% bonded)
     if special == "starfire_breath":
-        from pandemonium.combat.stats import get_effective_attribute
         cha = get_effective_attribute(player, "Charisma")
         pct = 0.35 if bonded else 0.20
         bonus += max(1, int(cha * pct))
@@ -412,6 +410,10 @@ def _find_burn(entity):
 def apply_wedding_on_hit(player, target, enemies, damage_dealt):
     """Call after a successful player attack lands."""
     from pandemonium.combat.status_effects import check_status_resisted
+    from pandemonium.combat.status_effects import apply_slow_to_enemy
+    from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
+    from pandemonium.combat.status_effects import apply_dread
+    from pandemonium.combat.status_effects import apply_poison
     special, bonded = _active(player)
     if not special:
         return
@@ -430,7 +432,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # coil_bind: 25% slow 2 turns; bonded slowed enemies +2 damage taken
     if special == "coil_bind" and random.random() < 0.25:
-        from pandemonium.combat.status_effects import apply_slow_to_enemy
         apply_slow_to_enemy(target, duration=2)
         _msg(f"Coiled Serpent Ring — {target['name']} is slowed!")
         if bonded:
@@ -449,7 +450,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # flame_dance: 30% burn 3 turns (5/turn); bonded 8/turn and spread
     if special == "flame_dance" and random.random() < 0.30:
-        from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
         burn_dmg = 8 if bonded else 5
         b_tier = damage_to_burn_tier(burn_dmg)
         apply_burn(target, b_tier, 3)
@@ -463,7 +463,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # dream_drain: 20% dread 2 turns; bonded dreaded enemies 40% miss
     if special == "dream_drain" and random.random() < 0.20 and not check_status_resisted(target):
-        from pandemonium.combat.status_effects import apply_dread
         apply_dread(player, duration=2)  # Wait, dread applies to PLAYER, not enemy
         # Actually dread is a player debuff. The design says "inflict dread for 2 turns"
         # But dread is currently a player-only debuff. Let's apply it to the enemy via a custom flag.
@@ -509,7 +508,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
         target.setdefault("abyssal_bind_turns", 3)
         _msg(f"Abyssal Coil — tentacles bind {target['name']}! (-3 DEX, 3 turns)")
         if bonded:
-            from pandemonium.combat.status_effects import apply_slow_to_enemy
             apply_slow_to_enemy(target, duration=3)
             target.setdefault("active_debuffs", []).append({
                 "type": "poison", "damage": 3, "remaining": 3  # water damage approximated as poison
@@ -525,7 +523,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
         target["blinded"] = True
         _msg(f"Twilight Shroud — shadows blind {target['name']}! ({dur} turns)")
         if bonded:
-            from pandemonium.combat.status_effects import apply_slow_to_enemy
             apply_slow_to_enemy(target, duration=2)
             _msg(f"Twilight Shroud — {target['name']} is slowed by the dusk!")
 
@@ -556,7 +553,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # brood_swarm: 25% +6 damage and poison 3 turns (4/turn); bonded poison 8/turn and -2 DEX
     if special == "brood_swarm" and target.pop("wedding_brood_swarm_proc", False):
-        from pandemonium.combat.status_effects import apply_poison
         poison_dmg = 8 if bonded else 4
         apply_poison(target, poison_dmg, 3)
         # Bonus damage is applied in attack_bonus (+6)
@@ -575,7 +571,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
     # direct hit — instantly escalating whole packs to Inferno via the burn
     # system's same-tier reapplication rule.
     if special == "legendary_flame":
-        from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
         burn_dmg = 10 if bonded else 6
         b_tier = damage_to_burn_tier(burn_dmg)
 
@@ -621,7 +616,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
     # original spec but never implemented until 2026-10-04 (the blurb
     # advertised it regardless; now the effect is real).
     if special == "starfire_breath" and bonded:
-        from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
         b_tier = damage_to_burn_tier(6)
         apply_burn(target, b_tier, 3)
         _msg(f"Stardust Crown — {target['name']} is bathed in starfire! ({get_burn_tier_name(b_tier)})")
@@ -636,7 +630,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # dragon_heart: on hit 30% burn 3 turns (6/turn); bonded 10/turn and spread
     if special == "dragon_heart" and random.random() < 0.30:
-        from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
         burn_dmg = 10 if bonded else 6
         b_tier = damage_to_burn_tier(burn_dmg)
         apply_burn(target, b_tier, 3)
@@ -650,7 +643,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # infernal_vow: on hit 25% burn 3 turns (5/turn); bonded 35% burn 8/turn + dread
     if special == "infernal_vow" and random.random() < (0.35 if bonded else 0.25):
-        from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
         burn_dmg = 8 if bonded else 5
         b_tier = damage_to_burn_tier(burn_dmg)
         apply_burn(target, b_tier, 3)
@@ -672,7 +664,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # blood_drain: heal 15% damage dealt; bonded 25% and excess becomes HoT
     if special == "blood_drain" and damage_dealt > 0:
-        from pandemonium.core.character import player_max_hp
         pct = 0.25 if bonded else 0.15
         heal = int(damage_dealt * pct)
         old_hp = player.get("current_hp", 0)
@@ -690,7 +681,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # tidal_blessing: heal 15% damage dealt; bonded 25% + start wave
     if special == "tidal_blessing" and damage_dealt > 0:
-        from pandemonium.core.character import player_max_hp
         pct = 0.25 if bonded else 0.15
         heal = int(damage_dealt * pct)
         old_hp = player.get("current_hp", 0)
@@ -702,7 +692,6 @@ def apply_wedding_on_hit(player, target, enemies, damage_dealt):
 
     # crimson_feast: heal 15% max HP on defeat; bonded 25% and +2 CHA for 3 turns
     if special == "crimson_feast" and target.get("hp", 0) <= 0:
-        from pandemonium.core.character import player_max_hp
         max_hp = player_max_hp(player)
         heal = int(max_hp * (0.25 if bonded else 0.15))
         old_hp = player.get("current_hp", 0)
@@ -751,7 +740,6 @@ def apply_wedding_on_kill(player, target, enemies):
 
     # grave_reign: on kill heal 15% max HP; bonded 25% and gain +1 all stats (stacks 3x)
     if special == "grave_reign":
-        from pandemonium.core.character import player_max_hp
         max_hp = player_max_hp(player)
         heal_pct = 0.25 if bonded else 0.15
         heal = int(max_hp * heal_pct)
@@ -796,13 +784,13 @@ def apply_wedding_dodge_bonus(player):
 
 def apply_wedding_on_dodge(player, enemy):
     """Call when the player successfully dodges an attack."""
+    from pandemonium.combat.stats import get_effective_attribute
     special, bonded = _active(player)
     if not special:
         return
 
     # spectral_dodge (bonded): heal 5 HP on dodge
     if special == "spectral_dodge" and bonded:
-        from pandemonium.core.character import player_max_hp
         old_hp = player.get("current_hp", 0)
         max_hp = player_max_hp(player)
         player["current_hp"] = min(old_hp + 5, max_hp)
@@ -812,25 +800,19 @@ def apply_wedding_on_dodge(player, enemy):
 
     # neko_shadow (bonded): counter-attack for 50% normal damage
     if special == "neko_shadow" and bonded:
-        from pandemonium.combat.stats import get_effective_attribute
         p_str = get_effective_attribute(player, "Strength")
         counter_dmg = max(1, int((random.randint(4, 10) + p_str) * 0.5))
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         counter_dmg = apply_chance_and_choice(player, counter_dmg)
         enemy["hp"] = max(0, enemy["hp"] - counter_dmg)
-        from pandemonium.combat.helpers import format_damage_msg
         _msg(format_damage_msg(player['name'], enemy['name'], counter_dmg, skill_name="Nekomata Bell"))
 
     # star_waltz: counter-attack for 50% weapon damage; bonded 60% and +2 DEX for 2 turns
     if special == "star_waltz":
-        from pandemonium.combat.stats import get_effective_attribute
         p_str = get_effective_attribute(player, "Strength")
         pct = 0.60 if bonded else 0.50
         counter_dmg = max(1, int((random.randint(4, 10) + p_str) * pct))
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         counter_dmg = apply_chance_and_choice(player, counter_dmg)
         enemy["hp"] = max(0, enemy["hp"] - counter_dmg)
-        from pandemonium.combat.helpers import format_damage_msg
         _msg(format_damage_msg(player['name'], enemy['name'], counter_dmg, skill_name="Constellation Waltz Ring"))
         if bonded:
             player.setdefault("active_buffs", []).append({
@@ -872,7 +854,6 @@ def apply_wedding_damage_reduction(player, damage, is_elemental=False, element=N
         pct = 0.25 if bonded else 0.15
         absorb = int(damage * pct)
         damage = max(0, damage - absorb)
-        from pandemonium.core.character import player_max_hp
         old_hp = player.get("current_hp", 0)
         max_hp = player_max_hp(player)
         player["current_hp"] = min(old_hp + absorb, max_hp)
@@ -896,6 +877,7 @@ def apply_wedding_damage_reduction(player, damage, is_elemental=False, element=N
 def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
     """Call after the enemy has hit the player (but before HP check)."""
     from pandemonium.combat.status_effects import check_status_resisted
+    from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
     special, bonded = _active(player)
     if not special:
         return
@@ -903,7 +885,6 @@ def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
     # pharaohs_curse: enemies that attack you take 4 damage; bonded 8 and -10% accuracy
     if special == "pharaohs_curse" and damage > 0:
         ret = 8 if bonded else 4
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         ret = apply_chance_and_choice(player, ret)
         enemy["hp"] = max(0, enemy["hp"] - ret)
         _msg(f"Pharaoh's Band — {enemy['name']} suffers {ret} retribution damage!")
@@ -913,7 +894,6 @@ def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
     # infernal_crown: melee attackers take 5 burn; bonded 10 and 1-turn dread
     if special == "infernal_crown" and damage > 0:
         burn = 10 if bonded else 5
-        from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
         b_tier = damage_to_burn_tier(burn)
         apply_burn(enemy, b_tier, 2)
         _msg(f"Infernal Throne Seal — {enemy['name']} is scorched by hellfire! ({get_burn_tier_name(b_tier)})")
@@ -926,7 +906,6 @@ def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
     # infernal_vow: attackers take 5 fire retribution; bonded 10
     if special == "infernal_vow" and damage > 0:
         ret = 10 if bonded else 5
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         ret = apply_chance_and_choice(player, ret)
         enemy["hp"] = max(0, enemy["hp"] - ret)
         _msg(f"Infernal Vow Band — {enemy['name']} is scorched by retribution! (-{ret} HP)")
@@ -939,12 +918,10 @@ def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
             player["wedding_keening_wail_used"] = True
             dmg_range = (15, 30) if bonded else (10, 20)
             wail_dmg = random.randint(*dmg_range)
-            from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
             wail_dmg = apply_chance_and_choice(player, wail_dmg)
             # Apply to all enemies
             # We can't easily access the enemies list here, so we'll apply to the attacker
             enemy["hp"] = max(0, enemy["hp"] - wail_dmg)
-            from pandemonium.combat.helpers import format_damage_msg
             _msg(format_damage_msg(player['name'], enemy['name'], wail_dmg, skill_name="Keening Wail"))
             if random.random() < 0.30 and not check_status_resisted(enemy):
                 enemy.setdefault("active_debuffs", []).append({
@@ -954,7 +931,6 @@ def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
 
     # homeward_locket: once per combat, below 35% HP — hearth-light heal
     if special == "homeward_locket" and not player.get("wedding_homeward_used"):
-        from pandemonium.core.character import player_max_hp
         max_hp = player_max_hp(player)
         hp_ratio = player.get("current_hp", 1) / max(1, max_hp)
         if hp_ratio < 0.35:
@@ -975,7 +951,6 @@ def apply_wedding_on_damage_taken(player, enemy, damage, outcome):
             and not player.get("wedding_mirror_locket_used")):
         player["wedding_mirror_locket_used"] = True
         reflected = max(1, int(damage * 0.50))
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         reflected = apply_chance_and_choice(player, reflected)
         enemy["hp"] = max(0, enemy["hp"] - reflected)
         _msg(
@@ -1060,11 +1035,9 @@ def apply_wedding_max_hp_bonus(player):
         return 0
     if special == "matriarchs_embrace":
         # +10% max HP
-        from pandemonium.core.character import player_max_hp
         base = player_max_hp(player)
         return int(base * 0.10)
     if special == "stone_ward":
-        from pandemonium.core.character import player_max_hp
         base = player_max_hp(player)
         pct = 0.12 if bonded else 0.08
         return int(base * pct)
@@ -1093,6 +1066,7 @@ def apply_wedding_capture_affection_bonus(player):
 
 def apply_wedding_combat_end(player, victory):
     """Call after combat ends (victory, flee, or death)."""
+    from pandemonium.inventory.core import add_item_to_inventory
     if not victory:
         end_wedding_combat(player)
         return
@@ -1117,17 +1091,14 @@ def apply_wedding_combat_end(player, victory):
             if consumables:
                 dup = random.choice(consumables).copy()
                 dup.pop("id", None)  # Remove ID to avoid issues
-                from pandemonium.inventory.core import add_item_to_inventory
                 if add_item_to_inventory(player, dup):
                     _msg(f"Mimic's Tooth — your {dup['name']} somehow duplicated!")
             else:
                 _msg("Mimic's Tooth — nothing to duplicate right now.")
         if bonded and random.random() < 0.10:
-            from pandemonium.resources.items import build_item, ITEMS
             gift_ids = [k for k, v in ITEMS.items() if v.get("type") == "gift"]
             if gift_ids:
                 gift = build_item(random.choice(gift_ids), "common")
-                from pandemonium.inventory.core import add_item_to_inventory
                 if add_item_to_inventory(player, gift):
                     _msg(f"Mimic's Tooth — you found a hidden {gift['name']}!")
 
@@ -1152,6 +1123,7 @@ def apply_wedding_enemy_accuracy_penalty(player):
 
 def apply_wedding_enemy_attack_pre_damage(player, enemy):
     """Return True if the attack should miss entirely (foxfire_trick, etc.)."""
+    from pandemonium.combat.status_effects import check_status_resisted
     special, bonded = _active(player)
     if not special:
         return False
@@ -1160,12 +1132,10 @@ def apply_wedding_enemy_attack_pre_damage(player, enemy):
     if special == "foxfire_trick":
         chance = 0.35 if bonded else 0.20
         if random.random() < chance:
-            from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
             fox_dmg = apply_chance_and_choice(player, 5)
             enemy["hp"] = max(0, enemy["hp"] - fox_dmg)
             _msg(f"Foxfire Band — a foxfire clone takes the blow! {enemy['name']} burns for {fox_dmg} damage!")
             if bonded:
-                from pandemonium.combat.status_effects import check_status_resisted
                 if not check_status_resisted(enemy):
                     enemy.setdefault("active_debuffs", []).append({
                         "type": "blind", "remaining": 1

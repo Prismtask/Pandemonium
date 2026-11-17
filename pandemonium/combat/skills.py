@@ -5,6 +5,18 @@ import random
 from pandemonium.resources.skill_loader import PASSIVE_SKILLS, CLASS_SKILLS, PROFESSIONS
 from pandemonium.combat.helpers import format_damage_msg, ACTION_CANCELLED_MSG, DamageResult
 from pandemonium.core.utils import display_name
+from pandemonium.world.curse_pandemonium import get_cooldown_increase
+from pandemonium.core.character import player_max_hp
+from pandemonium.combat.form_perks import get_armor_pen_multiplier
+from pandemonium.combat.stat_milestones import get_strength_bonus
+from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
+from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
+from pandemonium.progression.titles import mod as _title_mod
+from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+from pandemonium.combat.stat_milestones import get_wisdom_bonus
+from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
 
 
 # ── Skill Queries ──────────────────────────────────────────────────────────
@@ -164,10 +176,13 @@ def tick_skill_cooldowns(player):
 def set_skill_cooldown(player, skill_id):
     """Put a skill on cooldown after use.
     Returns an optional message if a cooldown_reduction buff was consumed."""
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_skill_cooldown_skip
+    from pandemonium.combat.status_effects import consume_haste_cd_reduction
+    from pandemonium.world.wonderland_curses import get_white_rabbit_cooldown_reduction
+    from pandemonium.facilities.arcane_tower import get_arcane_cooldown_reduction
     # Death's Embrace — a kill marks the skill for a full cooldown refund.
     if player.pop("refund_cooldown_skill", None) == skill_id:
         return None
-    from pandemonium.combat.weapon.wedding_specials import apply_wedding_skill_cooldown_skip
     if apply_wedding_skill_cooldown_skip(player, skill_id):
         return None
     skill_map = get_class_skill_map(player)
@@ -183,22 +198,18 @@ def set_skill_cooldown(player, skill_id):
                 reduction_msg = f"Cooldown reduced by {reduction}!"
                 break
         # Consume haste CD reduction
-        from pandemonium.combat.status_effects import consume_haste_cd_reduction
         haste_cd = consume_haste_cd_reduction(player)
         if haste_cd > 0:
             cooldown = max(0, cooldown - haste_cd)
             if not reduction_msg:
                 reduction_msg = f"Haste cooldown reduced by {haste_cd}!"
         # Pandemonium: Mana Drain curse increases cooldowns
-        from pandemonium.world.curse_pandemonium import get_cooldown_increase
         cooldown += get_cooldown_increase(player)
         
         # Wonderland: White Rabbit's Haste reduces cooldowns
-        from pandemonium.world.wonderland_curses import get_white_rabbit_cooldown_reduction
         cooldown = max(0, cooldown - get_white_rabbit_cooldown_reduction(player))
         
         # Arcane Blessing: Mana Attunement reduces cooldowns
-        from pandemonium.facilities.arcane_tower import get_arcane_cooldown_reduction
         cooldown = max(0, cooldown - get_arcane_cooldown_reduction(player))
         
         # Event Horizon — The High Priestess: skill cooldowns −2 turns
@@ -364,7 +375,6 @@ def get_player_passive_low_hp_mult(player):
     for effect in get_player_passive_effects(player):
         if effect.get("type") != "low_hp_damage":
             continue
-        from pandemonium.core.character import player_max_hp
         max_hp = player_max_hp(player)
         if max_hp > 0 and player.get("current_hp", 0) <= max_hp * effect.get("threshold", 0.50):
             return 1.0 + effect.get("value", 0)
@@ -457,8 +467,23 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     Execute a skill and return (result_message, victory).
     victory is True if all enemies were defeated.
     """
-    from pandemonium.core.character import player_max_hp
+    from pandemonium.combat.status_effects import apply_damage_taken_up, check_status_resisted
+    from pandemonium.combat.status_effects import apply_damage_taken_up, apply_poison, check_status_resisted
     from pandemonium.combat.status_effects import apply_poison
+    from pandemonium.combat.stats import scaled_stat_buff_value as _scale_stat_buff
+    from pandemonium.combat.status_effects import check_status_resisted
+    from pandemonium.combat.status_effects import apply_healing
+    from pandemonium.combat.ally_skills import is_heal_blocked
+    from pandemonium.combat.status_effects import apply_barrier
+    from pandemonium.combat.status_effects import apply_death_ward
+    from pandemonium.combat.status_effects import apply_slow_to_enemy
+    from pandemonium.combat.status_effects import check_status_resisted as _resisted_wrath
+    from pandemonium.combat.status_effects import check_status_resisted as _resisted
+    from pandemonium.combat.status_effects import apply_weaken
+    from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
+    from pandemonium.combat.status_effects import apply_bleed
+    from pandemonium.combat.status_effects import check_status_resisted as _resisted_sunder
+    from pandemonium.combat.elemental import ELEMENTS
 
     skill_map = get_class_skill_map(player)
     skill = skill_map.get(skill_id)
@@ -485,7 +510,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         return base * status_mult
 
     # Flat stat buffs scale with the holder's level plus a small baseline bonus.
-    from pandemonium.combat.stats import scaled_stat_buff_value as _scale_stat_buff
 
     # Burn skills upgrade their burn TIER instead of multiplying damage:
     # +1 tier at ★3, +1 more at ✦✦ (capped at tier 5 / Conflagration).
@@ -579,18 +603,26 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     _cac_state = {"rolled": False, "mult": 1.0}
 
     def _calc_dmg(target, power, ignore_armor=False, element=None, guaranteed_crit=False):
-        nonlocal _damage_buff_mult, _damage_buff_checked
         from pandemonium.combat.stats import roll_skill_dodge
+        from pandemonium.world.event_horizon import joker_attack_missed
+        from pandemonium.combat.status_effects import get_damage_buff_multiplier
+        from pandemonium.world.event_horizon import joker_damage_multiplier
+        from pandemonium.combat.stats import roll_critical_hit, apply_critical_damage, CRIT_MULTIPLIER
+        from pandemonium.world.event_horizon import joker_crit_modifier
+        from pandemonium.combat.elemental import calculate_elemental_damage
+        from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
+        from pandemonium.combat.status_effects import get_damage_taken_multiplier
+        from pandemonium.combat.weapon.wedding_specials import (apply_wedding_attack_bonus_procs,
+                                                            apply_wedding_on_hit)
+        nonlocal _damage_buff_mult, _damage_buff_checked
         if roll_skill_dodge(target):
             msg_parts.append(f"  💨 {target['name']} reads the strike and slips aside!")
             return DamageResult(0, False)
         # Event Horizon: The Fool — a 10% chance the skill simply fails
-        from pandemonium.world.event_horizon import joker_attack_missed
         if joker_attack_missed(player):
             return DamageResult(0, False)
         if not _damage_buff_checked:
             _damage_buff_checked = True
-            from pandemonium.combat.status_effects import get_damage_buff_multiplier
             _damage_buff_mult = get_damage_buff_multiplier(
                 player, consume_power_buff=True, messages=msg_parts
             )
@@ -603,10 +635,8 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 armor = max(0, armor - debuff.get("penalty", 0))
         # Form tradition armour penetration (Sundering)
         if armor > 0:
-            from pandemonium.combat.form_perks import get_armor_pen_multiplier
             armor = int(armor * get_armor_pen_multiplier(player))
         # Apply Strength milestone bonus
-        from pandemonium.combat.stat_milestones import get_strength_bonus
         power = power + get_strength_bonus(player)
         # Percentage damage buffs (power_buff + damage_boost) stack additively.
         if _damage_buff_mult != 1.0:
@@ -616,12 +646,10 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         if lp_mult != 1.0:
             power = int(power * lp_mult)
         # Event Horizon: The Hierophant — skills deal +25%
-        from pandemonium.world.event_horizon import joker_damage_multiplier
         power = int(power * joker_damage_multiplier(player, "skill"))
         # Random critical hit (skip if skill already guarantees a crit).
         # Skill crit_bonus feeds the roll; chance over the cap adds crit damage.
         if not guaranteed_crit:
-            from pandemonium.combat.stats import roll_critical_hit, apply_critical_damage, CRIT_MULTIPLIER
             crit_bonus = skill.get("crit_bonus", 0)
             crit_mult = skill.get("crit_mult", CRIT_MULTIPLIER)
             is_crit, _, overflow_crit = roll_critical_hit(player, "player", bonus=crit_bonus)
@@ -631,14 +659,12 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         else:
             is_crit = True
         # Event Horizon: The Sun — crits +30%, non-crits ×0.85
-        from pandemonium.world.event_horizon import joker_crit_modifier
         power = joker_crit_modifier(player, is_crit, power)
         dmg = max(1, power - armor)
         # Apply elemental damage — read from YAML skill definition
         if element is None:
             element = skill.get("elemental")
         if element:
-            from pandemonium.combat.elemental import calculate_elemental_damage
             dmg = calculate_elemental_damage(dmg, player, target, element)
         # Apply Hunter's Mark damage bonus (Hawk's Eye buff boosts the mark)
         if target.get("hunters_mark"):
@@ -648,40 +674,30 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                     bonus += buff.get("value", 0)
             dmg = int(dmg * (1 + bonus))
         # Prescript Ledger — clash empowerment vs the Prescript's Target
-        from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
         prescript_clash = get_prescript_clash_bonus(player, target)
         if prescript_clash:
             dmg = int(dmg * (1 + prescript_clash))
         # Damage-taken amplification (e.g. Aura of Despair)
-        from pandemonium.combat.status_effects import get_damage_taken_multiplier
         dt_mult = get_damage_taken_multiplier(target)
         if dt_mult != 1.0:
             dmg = int(dmg * dt_mult)
         # Wedding accessory attack bonuses + on-hit — skills count as attacks
         # (same hooks as the basic-attack path; 2026-10-04).
-        from pandemonium.combat.weapon.wedding_specials import (apply_wedding_attack_bonus_procs,
-                                                    apply_wedding_on_hit)
         is_first = not player.get("wedding_first_attack_done")
         dmg += apply_wedding_attack_bonus_procs(player, target, dmg, is_first)
         dmg = max(0, dmg)
         # Pandemonium: Weakened Resolve curse — skills deal less damage too
-        from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
         dmg = apply_damage_dealt_multiplier(player, dmg)
         # Event Horizon trophies: Old Dopo Robe + Chance and Choice
-        from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
         dmg = int(dmg * get_robe_multiplier(player, player))
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         dmg = apply_chance_and_choice(player, dmg, _cac_state)
         # Form tradition (Cleaving / Focused)
-        from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
         dmg = int(dmg * get_outgoing_damage_multiplier(player))
         # Deed titles: small player-only outgoing-damage bonus.
-        from pandemonium.progression.titles import mod as _title_mod
         _title_dmg = _title_mod(player, "damage_pct")
         if _title_dmg:
             dmg = int(dmg * (1.0 + _title_dmg))
         # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
-        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
         dmg = apply_long_day_damage(player, dmg)
         apply_wedding_on_hit(player, target, enemies, dmg)
         player["wedding_first_attack_done"] = True
@@ -689,11 +705,12 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
 
     # ── Life Steal Helper ──
     def _apply_life_steal(damage_dealt):
+        from pandemonium.combat.status_effects import apply_healing
+        from pandemonium.combat.status_effects import apply_healing as _eh_heal_fn
         ls = get_passive_life_steal(player)
         if ls > 0 and damage_dealt > 0:
             heal = int(damage_dealt * ls)
             if heal > 0:
-                from pandemonium.combat.status_effects import apply_healing
                 actual = apply_healing(player, heal, source=player)
                 if actual < 0:
                     msg_parts.append(f"[Soul Siphon] The void twists the healing! You take {-actual} damage!")
@@ -703,7 +720,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         if _eh_ls > 0 and damage_dealt > 0:
             heal = int(damage_dealt * _eh_ls)
             if heal > 0:
-                from pandemonium.combat.status_effects import apply_healing as _eh_heal_fn
                 actual = _eh_heal_fn(player, heal, source=player)
                 if actual < 0:
                     msg_parts.append(f"[Death] The void twists the drain! You take {-actual} damage!")
@@ -714,10 +730,10 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     def _apply_on_hit_effects(target):
         """Apply a skill's YAML status keys to a struck target."""
         from pandemonium.combat.status_effects import (
-            apply_slow_to_enemy, check_status_resisted, apply_weaken,
-            apply_burn, damage_to_burn_tier, apply_poison, apply_bleed,
-            apply_damage_taken_up, apply_healing,
-        )
+                    apply_slow_to_enemy, check_status_resisted, apply_weaken,
+                    apply_burn, damage_to_burn_tier, apply_poison, apply_bleed,
+                    apply_damage_taken_up, apply_healing,
+                )
         # Slow
         if skill.get("apply_slow"):
             if apply_slow_to_enemy(target, duration=3 + duration_bonus) != "resisted":
@@ -802,7 +818,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
 
     # Smoke Bomb
     if skill_id == "rog_smoke":
-        from pandemonium.combat.status_effects import check_status_resisted
         resisted_names = []
         for e in enemies:
             if check_status_resisted(e):
@@ -864,7 +879,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             return ACTION_CANCELLED_MSG, False
         penalty = _scaled_value(2)
         dur = 3 + duration_bonus
-        from pandemonium.combat.status_effects import check_status_resisted
         if check_status_resisted(target):
             return f"The {target['name']} shrugs off your curse!", False
         target.setdefault("active_debuffs", []).append({
@@ -890,12 +904,9 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         target = _pick_ally_target()
         if not target:
             return ACTION_CANCELLED_MSG, False
-        from pandemonium.combat.stat_milestones import get_wisdom_bonus
         heal = int((base_power + scaling) * power_mult * get_passive_heal_bonus(player)) + get_wisdom_bonus(player)
-        from pandemonium.combat.status_effects import apply_healing
         name = "You" if target is player else display_name(target)
         mastery_msg = f" [{format_mastery_label(skill_id, player)}]" if mastery > 0 else ""
-        from pandemonium.combat.ally_skills import is_heal_blocked
         if is_heal_blocked(target, player):
             return f"{name}'s Unholy Resilience rejects allied healing!{mastery_msg}", False
         actual = apply_healing(target, heal, source=player)
@@ -917,11 +928,8 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     # Mass Heal
     if skill_id == "clr_mass_heal":
         party = [player] + (allies or [])
-        from pandemonium.combat.stat_milestones import get_wisdom_bonus
         heal = int((base_power + scaling) * power_mult * get_passive_heal_bonus(player)) + get_wisdom_bonus(player)
-        from pandemonium.combat.status_effects import apply_healing
         total_healed = 0
-        from pandemonium.combat.ally_skills import is_heal_blocked
         for member in party:
             if member.get("current_hp", 0) <= 0:
                 continue
@@ -949,9 +957,7 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     if skill_id == "war_second_wind":
         max_hp = player_max_hp(player)
         heal = int(max_hp * skill.get("heal_percent", 0.25))
-        from pandemonium.combat.stat_milestones import get_wisdom_bonus
         heal = heal + get_wisdom_bonus(player)
-        from pandemonium.combat.status_effects import apply_healing
         actual = apply_healing(player, heal, source=player)
         if actual < 0:
             return f"The void twists your second wind! You take {-actual} damage instead!", False
@@ -1012,7 +1018,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
 
     # Soul Fear
     if skill_id == "lck_fear":
-        from pandemonium.combat.status_effects import check_status_resisted
         dur = skill.get("fear_duration", 3) + duration_bonus
         fear_val = skill.get("fear_value", 0.20) * status_mult
         resisted_fear = 0
@@ -1091,7 +1096,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             return ACTION_CANCELLED_MSG, False
         amount = int(player_max_hp(player) * 0.25 * status_mult)
         dur = 3 + duration_bonus
-        from pandemonium.combat.status_effects import apply_barrier
         apply_barrier(target, amount, dur)
         name = "You" if target is player else display_name(target)
         return f"A blessed aegis surrounds {name}, absorbing up to {amount} damage for {dur} turns!", False
@@ -1127,9 +1131,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         target = _pick_ally_target()
         if not target:
             return ACTION_CANCELLED_MSG, False
-        from pandemonium.combat.stat_milestones import get_wisdom_bonus
-        from pandemonium.combat.status_effects import apply_healing
-        from pandemonium.combat.ally_skills import is_heal_blocked
         name = "You" if target is player else display_name(target)
         if is_heal_blocked(target, player):
             return f"{name}'s Unholy Resilience rejects allied healing!", False
@@ -1188,9 +1189,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     # Providence (Cleric capstone)
     if skill_id == "clr_cap_providence":
         party = [player] + (allies or [])
-        from pandemonium.combat.stat_milestones import get_wisdom_bonus
-        from pandemonium.combat.status_effects import apply_healing, apply_barrier
-        from pandemonium.combat.ally_skills import is_heal_blocked
         heal = int((base_power + scaling) * power_mult * get_passive_heal_bonus(player)) + get_wisdom_bonus(player)
         total_healed = 0
         for member in party:
@@ -1280,7 +1278,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
 
     # Sentinel — Unbreakable
     if skill_id == "war_sent_unbreakable":
-        from pandemonium.combat.status_effects import apply_death_ward
         apply_death_ward(player, 3 + duration_bonus)
         return "You plant your feet, unbreakable. The next lethal blow will leave you standing at 1 HP.", False
 
@@ -1308,7 +1305,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     # Chronomancer — Time Stop
     if skill_id == "mage_chr_time_stop":
         stopped = 0
-        from pandemonium.combat.status_effects import apply_slow_to_enemy
         for e in enemies:
             if e["hp"] <= 0:
                 continue
@@ -1321,7 +1317,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     if skill_id == "mage_chr_rewind":
         max_hp = player_max_hp(player)
         heal = int(max_hp * skill.get("heal_percent", 0.40))
-        from pandemonium.combat.status_effects import apply_healing
         healed = apply_healing(player, heal, source=player)
         _reduce_cooldowns_for(player, _scaled_value(4))
         if healed < 0:
@@ -1333,7 +1328,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         target = _pick_enemy_target()
         if not target:
             return ACTION_CANCELLED_MSG, False
-        from pandemonium.combat.status_effects import apply_damage_taken_up, check_status_resisted
         val = 0.30 * status_mult
         dur = 4 + duration_bonus
         if check_status_resisted(target):
@@ -1379,7 +1373,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         target["current_hp"] = revive_hp
         if target is not player:
             target["defeated"] = False
-        from pandemonium.combat.status_effects import apply_barrier
         shield = int(player_max_hp(player) * skill.get("revive_barrier_pct", 0.20))
         apply_barrier(target, shield, 3)
         name = "You" if target is player else display_name(target)
@@ -1388,9 +1381,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
     # Hierophant — Eternal Light
     if skill_id == "clr_hie_eternal_light":
         party = [player] + (allies or [])
-        from pandemonium.combat.stat_milestones import get_wisdom_bonus
-        from pandemonium.combat.status_effects import apply_healing, apply_death_ward
-        from pandemonium.combat.ally_skills import is_heal_blocked
         heal = int((base_power + scaling) * power_mult * get_passive_heal_bonus(player)) + get_wisdom_bonus(player)
         total = 0
         for member in party:
@@ -1418,7 +1408,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         party = [player] + (allies or [])
         amount = int(player_max_hp(player) * skill.get("barrier_percent", 0.15) * status_mult)
         dur = 3 + duration_bonus
-        from pandemonium.combat.status_effects import apply_barrier
         for member in party:
             if member.get("current_hp", 0) <= 0:
                 continue
@@ -1430,7 +1419,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         target = _pick_ally_target()
         if not target:
             return ACTION_CANCELLED_MSG, False
-        from pandemonium.combat.status_effects import apply_death_ward
         apply_death_ward(target, 4 + duration_bonus)
         name = "You" if target is player else display_name(target)
         return f"Unbreakable Oath! {name} cannot fall — the next lethal blow leaves them standing.", False
@@ -1464,7 +1452,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
 
     # Berserker — Undying Rage
     if skill_id == "bar_bsk_undying_rage":
-        from pandemonium.combat.status_effects import apply_death_ward
         apply_death_ward(player, 3 + duration_bonus)
         val = _scaled_value(_scale_stat_buff(3, player))
         player.setdefault("active_buffs", []).append({
@@ -1522,7 +1509,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                     msg_parts.append(format_damage_msg(player['name'], e['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
                     _apply_life_steal(dmg)
                 if e["hp"] > 0:
-                    from pandemonium.combat.status_effects import apply_slow_to_enemy
                     if apply_slow_to_enemy(e, duration=3 + duration_bonus) != "resisted":
                         msg_parts.append(f"{e['name']} is pinned by the volley!")
                 else:
@@ -1537,7 +1523,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 e["hp"] -= dmg
                 msg_parts.append(format_damage_msg(player['name'], e['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
                 if random.random() < skill.get("stun_chance", 0):
-                    from pandemonium.combat.status_effects import check_status_resisted as _resisted_wrath
                     if _resisted_wrath(e):
                         msg_parts.append(f"{e['name']} shrugs off the tremor!")
                     else:
@@ -1548,7 +1533,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 _apply_life_steal(dmg)
             max_hp = player_max_hp(player)
             heal = int(max_hp * skill.get("self_heal_percent", 0.25))
-            from pandemonium.combat.status_effects import apply_healing
             actual = apply_healing(player, heal, source=player)
             if actual < 0:
                 msg_parts.append(f"The void twists the fury! You take {-actual} damage!")
@@ -1577,7 +1561,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             })
             msg_parts.append(f"Dark power surges through you! Learning +{val}, Charisma +{val} for {dur} turns.")
             if total_dmg > 0:
-                from pandemonium.combat.status_effects import apply_healing
                 healed = apply_healing(player, total_dmg, source=player)
                 if healed > 0:
                     msg_parts.append(f"Dark Apotheosis! You devour {healed} HP from the fallen essence.")
@@ -1595,7 +1578,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 if e["hp"] <= 0:
                     msg_parts.append(f"{e['name']}'s shadow is consumed!")
             if total_dmg > 0:
-                from pandemonium.combat.status_effects import apply_healing
                 healed = apply_healing(player, total_dmg, source=player)
                 if healed > 0:
                     msg_parts.append(f"You feast on the shadows (+{healed} HP).")
@@ -1603,7 +1585,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             total_hits = 0
             fear_val = 0.30 * status_mult
             dur = 4 + duration_bonus
-            from pandemonium.combat.status_effects import apply_damage_taken_up, apply_poison, check_status_resisted
             for e in list(enemies):
                 if e["hp"] <= 0 or check_status_resisted(e):
                     continue
@@ -1656,7 +1637,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                     player['name'], target['name'], dmg, element=el, skill_name=skill['name']
                 ))
                 if el == "fire" and dmg > 0 and target["hp"] > 0 and skill.get("burn_damage"):
-                    from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier
                     b_tier = min(5, damage_to_burn_tier(skill["burn_damage"]) + burn_tier_bonus)
                     if apply_burn(target, b_tier, skill.get("burn_duration", 4)) in (
                             "applied", "upgraded", "intensified", "refreshed"):
@@ -1701,7 +1681,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             total_hits = 0
             fear_val = 0.25 * status_mult
             dur = 3 + duration_bonus
-            from pandemonium.combat.status_effects import apply_bleed, check_status_resisted
             for e in list(enemies):
                 if e["hp"] <= 0:
                     continue
@@ -1738,12 +1717,10 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                     msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get("elemental"), crit=guaranteed, skill_name=skill['name']))
                     # Apply slow
                     if skill.get("apply_slow"):
-                        from pandemonium.combat.status_effects import apply_slow_to_enemy
                         if apply_slow_to_enemy(target, duration=3 + duration_bonus) != "resisted":
                             msg_parts.append(f"{target['name']} is slowed!")
                     # Apply stun
                     if skill.get("stun_chance") and random.random() < skill["stun_chance"]:
-                        from pandemonium.combat.status_effects import check_status_resisted as _resisted
                         if _resisted(target):
                             msg_parts.append(f"{target['name']} shrugs off the stun!")
                         else:
@@ -1751,12 +1728,10 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                             msg_parts.append(f"{target['name']} is stunned!")
                     # Apply weaken
                     if skill.get("apply_weaken"):
-                        from pandemonium.combat.status_effects import apply_weaken
                         if apply_weaken(target, duration=3 + duration_bonus) != "resisted":
                             msg_parts.append(f"{target['name']} is weakened!")
                     # Apply burn (mastery upgrades the tier: +1 at ★3, +1 more at ✦✦)
                     if skill.get("burn_damage"):
-                        from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
                         b_tier = min(5, damage_to_burn_tier(skill["burn_damage"]) + burn_tier_bonus)
                         if apply_burn(target, b_tier, skill.get("burn_duration", 3)) != "resisted":
                             msg_parts.append(f"{target['name']} is set ablaze!")
@@ -1769,7 +1744,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                             msg_parts.append(f"{target['name']} is poisoned!")
                     # Apply bleed
                     if skill.get("bleed_damage"):
-                        from pandemonium.combat.status_effects import apply_bleed
                         b_dmg = skill["bleed_damage"]
                         if status_mult > 1:
                             b_dmg = int(b_dmg * status_mult)
@@ -1777,7 +1751,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                             msg_parts.append(f"{target['name']} is bleeding!")
                     # Apply sunder
                     if skill.get("apply_sunder"):
-                        from pandemonium.combat.status_effects import check_status_resisted as _resisted_sunder
                         if _resisted_sunder(target):
                             msg_parts.append(f"{target['name']} shrugs off the armor break!")
                         else:
@@ -1871,7 +1844,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             target["hp"] -= dmg
             msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
             if random.random() < skill.get("stun_chance", 0):
-                from pandemonium.combat.status_effects import check_status_resisted as _resisted
                 if _resisted(target):
                     msg_parts.append(f"The {target['name']} shrugs off the holy light!")
                 else:
@@ -1901,9 +1873,7 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             power = int((base_power + scaling) * power_mult)
             dmg = _calc_dmg(target, power)
             target["hp"] -= dmg
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = dmg + get_wisdom_bonus(player)
-            from pandemonium.combat.status_effects import apply_healing
             healed = apply_healing(player, heal, source=player)
             if healed < 0:
                 msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']) + f" (Void Drain: {-healed} damage!)")
@@ -1918,9 +1888,7 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             power = int((base_power + scaling) * power_mult)
             dmg = _calc_dmg(target, power)
             target["hp"] -= dmg
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = dmg + get_wisdom_bonus(player)
-            from pandemonium.combat.status_effects import apply_healing
             healed = apply_healing(player, heal, source=player)
             if healed < 0:
                 msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']) + f" (Void Siphon: {-healed} damage!)")
@@ -1949,9 +1917,7 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             power = int((base_power + scaling) * power_mult)
             dmg = _calc_dmg(target, power)
             target["hp"] -= dmg
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = int(dmg * 0.5 * get_passive_heal_bonus(player)) + get_wisdom_bonus(player)
-            from pandemonium.combat.status_effects import apply_healing
             actual_heal = apply_healing(player, heal, source=player)
             if actual_heal < 0:
                 msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']) + f" (Void backlash: {-actual_heal} damage!)")
@@ -1979,7 +1945,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             for e in enemies:
                 dmg = _calc_dmg(e, power)
                 e["hp"] -= dmg
-                from pandemonium.combat.status_effects import apply_slow_to_enemy
                 apply_slow_to_enemy(e, duration=3 + duration_bonus)
                 msg_parts.append(format_damage_msg(player['name'], e['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']) + " +Slowed")
                 if e["hp"] <= 0:
@@ -2030,7 +1995,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             dmg = _calc_dmg(target, power)
             target["hp"] -= dmg
             msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
-            from pandemonium.combat.status_effects import apply_poison
             poison_dmg = skill.get("poison_damage", 5)
             if status_mult > 1:
                 poison_dmg = int(poison_dmg * status_mult)
@@ -2095,7 +2059,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             for e in enemies:
                 dmg = _calc_dmg(e, power)
                 e["hp"] -= dmg
-                from pandemonium.combat.status_effects import apply_weaken
                 apply_weaken(e, duration=3 + duration_bonus)
                 msg_parts.append(format_damage_msg(player['name'], e['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
                 if e["hp"] <= 0:
@@ -2118,7 +2081,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 victory = True
             old_hp = player.get("current_hp", 0)
             max_hp = player_max_hp(player)
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = min(total_dmg + get_wisdom_bonus(player), max_hp - old_hp)
             player["current_hp"] = old_hp + heal
             if heal > 0:
@@ -2139,7 +2101,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             if not [e for e in enemies if e["hp"] > 0]:
                 victory = True
             party = [player] + (allies or [])
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal_per = (total_dmg // max(1, len(party))) + get_wisdom_bonus(player)
             for member in party:
                 if member.get("current_hp", 0) > 0:
@@ -2155,7 +2116,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             dmg = _calc_dmg(target, power)
             target["hp"] -= dmg
             msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
-            from pandemonium.combat.status_effects import apply_burn, damage_to_burn_tier, get_burn_tier_name
             b_tier = min(5, damage_to_burn_tier(skill.get("burn_damage", 6)) + burn_tier_bonus)
             if apply_burn(target, b_tier, skill.get("burn_duration", 3)) != "resisted":
                 msg_parts.append(f"{target['name']}'s soul is seared by {get_burn_tier_name(b_tier)}!")
@@ -2171,7 +2131,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             target["hp"] -= dmg
             msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
             sunder_val = _scaled_value(skill.get("sunder_value", 3))
-            from pandemonium.combat.status_effects import check_status_resisted as _resisted_sunder
             if _resisted_sunder(target):
                 msg_parts.append(f"{target['name']} shrugs off the armor break!")
             else:
@@ -2193,7 +2152,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 e["hp"] -= dmg
                 msg_parts.append(format_damage_msg(player['name'], e['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
                 if random.random() < skill.get("stun_chance", 0):
-                    from pandemonium.combat.status_effects import check_status_resisted as _resisted
                     if _resisted(e):
                         msg_parts.append(f"{e['name']} shrugs off the tremor!")
                     else:
@@ -2254,7 +2212,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             target["hp"] -= dmg
             msg_parts.append(format_damage_msg(player['name'], target['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']))
             if random.random() < skill.get("stun_chance", 0):
-                from pandemonium.combat.status_effects import check_status_resisted as _resisted
                 if _resisted(target):
                     msg_parts.append(f"The {target['name']} shrugs off the impact!")
                 else:
@@ -2291,7 +2248,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
             for e in enemies:
                 dmg = _calc_dmg(e, power)
                 e["hp"] -= dmg
-                from pandemonium.combat.status_effects import apply_slow_to_enemy
                 apply_slow_to_enemy(e, duration=3 + duration_bonus)
                 msg_parts.append(format_damage_msg(player['name'], e['name'], dmg, element=skill.get('elemental'), skill_name=skill['name']) + " +Slowed")
                 if e["hp"] <= 0:
@@ -2329,7 +2285,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 msg_parts.append(f"{target['name']} is cleaved by heaven's light!")
                 victory = True
             party = [player] + (allies or [])
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal_per = (dmg // max(1, len(party))) + get_wisdom_bonus(player)
             if heal_per > 0:
                 for member in party:
@@ -2342,7 +2297,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
 
         # Prismatic Ray (Evoker)
         elif skill_id == "mage_evo_prismatic_ray":
-            from pandemonium.combat.elemental import ELEMENTS
             element = random.choice([el for el in ELEMENTS if el not in ("physical", "magical")])
             power = int((base_power + scaling) * power_mult)
             dmg = _calc_dmg(target, power, element=element)
@@ -2428,7 +2382,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 msg_parts.append(f"{target['name']} is judged!")
                 victory = True
             party = [player] + (allies or [])
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal_per = (dmg // max(1, len(party))) + get_wisdom_bonus(player)
             if heal_per > 0:
                 for member in party:
@@ -2469,7 +2422,6 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
                 del cooldowns[skill_id]
 
     # ── Sky Piercer: execute non-superboss enemies left at/below threshold ──
-    from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
     for i, e in enumerate(enemies):
         if i < len(pre_hp) and e["hp"] < pre_hp[i]:
             check_sky_piercer_execute(player, e, pre_hp[i] - e["hp"])

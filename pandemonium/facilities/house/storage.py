@@ -14,6 +14,7 @@ from pandemonium.inventory.core import (
 from pandemonium.gui.terminal import term
 
 from .core import _house_level_data
+from pandemonium.combat.weapon.wedding_specials import is_wedding_item_soulbound
 
 
 def _house_storage(player, city_id, house):
@@ -111,7 +112,6 @@ def _house_storage(player, city_id, house):
                 continue
 
             # Check capacity before depositing
-            from pandemonium.combat.weapon.wedding_specials import is_wedding_item_soulbound
             filtered_indices = []
             for i in indices:
                 item = all_sorted[i]

@@ -21,6 +21,7 @@ from pandemonium.combat.weapon.palette_brush import (
     COLOR_NAMES,
     COLOR_TO_ELEMENT,
 )
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
 
 SIGNATURE_MULT = 2.5
 SPECTRUM_HITS = 3
@@ -90,6 +91,7 @@ def start_palette_signature(ally):
 
 def fire_palette_signature(ally, player, enemies, on_kill=None):
     """Resolve the telegraphed Signature: 2.5x, ignores defense, current color."""
+    from pandemonium.combat.ally import compute_ally_stats
     ally.pop("palette_signature_pending", None)
 
     live = [e for e in enemies if e["hp"] > 0]
@@ -97,14 +99,12 @@ def fire_palette_signature(ally, player, enemies, on_kill=None):
     if target is None:
         return f"  🖋️  {display_name(ally)}'s Signature fizzles — no enemies remain."
 
-    from pandemonium.combat.ally import compute_ally_stats
     _s, _c, _d, a_ler, a_wis, _ch = compute_ally_stats(ally)
     scaling = a_wis + a_ler // 2
     base = random.randint(4, 10) + scaling
     dmg = int(base * SIGNATURE_MULT)  # ignores defense entirely
     element = get_palette_ally_color_element(ally)
     dmg = calculate_elemental_damage(dmg, ally, target, element)
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     dmg = apply_chance_and_choice(ally, dmg)   # one flip for the Signature
     target["hp"] = max(0, target["hp"] - dmg)
 
@@ -123,18 +123,17 @@ def palette_spectrum_attack(ally, player, enemies):
 
     Returns (message, victory).
     """
+    from pandemonium.combat.ally import compute_ally_stats
     live = [e for e in enemies if e["hp"] > 0]
     target = _pick_enemy(live, "  Spectrum target: ")
     if target is None:
         return "No enemies to target.", False
 
-    from pandemonium.combat.ally import compute_ally_stats
     _s, _c, _d, a_ler, a_wis, _ch = compute_ally_stats(ally)
     scaling = a_ler + a_wis // 2
     elements = ["fire", "water", "thunder", "wind", "earth", "light", "dark"]
 
     msgs = [f"  🌈 {display_name(ally)} scatters a Spectrum of three colors!"]
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     _cac_state = {"rolled": False, "mult": 1.0}   # one flip for all 3 hits
     for _ in range(SPECTRUM_HITS):
         if target["hp"] <= 0:

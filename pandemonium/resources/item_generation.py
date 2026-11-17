@@ -1035,6 +1035,8 @@ def refresh_unique_instance(item, base_def):
 
 def refresh_infused_instance(item, base_def):
     """Rebuild an infused instance's element/res profiles and stats in place."""
+
+    # Local import: items.py imports this module at top level (cycle).
     from pandemonium.resources.items import compute_equipment_mods
 
     if base_def.get("unique") or item.get("unique"):
@@ -1487,10 +1489,12 @@ def biome_craft_hint(biome, limit=6):
     Used by the dungeon header so the regional craft signature is visible in
     play instead of only existing in data.
     """
+    # Local import: items.py imports this module at top level (cycle).
+    from pandemonium.resources.items import ITEMS
+
     keys = FORM_WEIGHTS_BY_BIOME.get(biome or "", ())
     if not keys:
         return ""
-    from pandemonium.resources.items import ITEMS
     names = []
     for key in keys[:limit]:
         name = (ITEMS.get(key) or {}).get("name") or key.replace("_", " ").title()

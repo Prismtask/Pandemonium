@@ -24,6 +24,9 @@ def get_action_menu(player, enemies):
     
     Note: Switch is only available to allies, not the player.
     """
+    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, get_brush_action_menu
+    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
+    from pandemonium.combat.weapon.moonlight_greatsword import is_moonlight_available
     actions = []
 
     # Check if Black Silence Gloves are equipped — replaces entire menu
@@ -31,7 +34,6 @@ def get_action_menu(player, enemies):
         return _get_gloves_menu(player, enemies)
 
     # Palette's Brush — replaces class skills with the brush kit
-    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, get_brush_action_menu
     if _actor_has_palette_brush(player):
         return get_brush_action_menu(player, player, enemies, True)
 
@@ -49,7 +51,6 @@ def get_action_menu(player, enemies):
         actions.append(('u', 'Use item'))
 
     # Blank Canvas Shawl – free action, once per combat (item actives are not class skills)
-    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     if _actor_has_blank_canvas_shawl(player) and not player.get("blank_canvas_used"):
         actions.append(('b', 'Blank Canvas'))
 
@@ -58,7 +59,6 @@ def get_action_menu(player, enemies):
         actions.append(('w', 'Wield the Abyss'))
 
     # Moonlight Greatsword – weapon skill (magical AoE basics for 3 turns)
-    from pandemonium.combat.weapon.moonlight_greatsword import is_moonlight_available
     if is_moonlight_available(player):
         actions.append(('m', 'Moonlight'))
 
@@ -88,6 +88,7 @@ def _get_gloves_menu(player, enemies):
     
     Returns: (menu_string, valid_keys_list, disabled_keys_list)
     """
+    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     actions = []
     disabled_keys = []
 
@@ -104,7 +105,6 @@ def _get_gloves_menu(player, enemies):
         actions.append(('u', 'Use item'))
 
     # Blank Canvas Shawl – free action, once per combat (item actives are not class skills)
-    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     if _actor_has_blank_canvas_shawl(player) and not player.get("blank_canvas_used"):
         actions.append(('b', 'Blank Canvas'))
 

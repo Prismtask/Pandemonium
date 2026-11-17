@@ -19,6 +19,7 @@ Flow
 import pandemonium.progression.quests as quests
 from pandemonium.gui.terminal import term
 from pandemonium.resources.quests import QUESTS, RESONANCE_GRADES, GRADE_REQUIREMENTS
+from pandemonium.resources.items import build_item
 
 FIELD_KIT_FLAG = "stellar_field_kit"            # issued at least once
 FIELD_KIT_USED_FLAG = "stellar_field_kit_used"  # kit consumed in battle
@@ -49,10 +50,10 @@ def star_tower_service(player, city_id):
 
 def _meet_the_archivist(player):
     """Lumen greets you; Voss sets up the Field Studies and hands over the kit."""
+    from pandemonium.facilities.archivist_intro import grant_archivist_intro
     # If the letter never found them (they walked here first), catch up now.
     catch_up = []
     if quests.quest_state(player, "mq_archivist_01") is None:
-        from pandemonium.facilities.archivist_intro import grant_archivist_intro
         catch_up = grant_archivist_intro(player)
 
     term.clear()
@@ -233,6 +234,8 @@ def _about_archive(player):
 
 def voss_epilogue(player):
     """The First Page — the Star Tower's post-MQ6 / post-Moth-arc epilogue."""
+    from pandemonium.inventory.core import add_item_to_inventory
+    from pandemonium.progression.family import journal_event
     state = quests.ensure_quest_state(player)
     if state["flags"].get(VOSS_EPILOGUE_FLAG):
         return
@@ -283,9 +286,6 @@ def voss_epilogue(player):
     term.print(' This belongs to you."')
     term.pause("Continue")
 
-    from pandemonium.resources.items import build_item
-    from pandemonium.inventory.core import add_item_to_inventory
-    from pandemonium.progression.family import journal_event
 
     item = build_item(VOSS_EPILOGUE_ITEM)
     already_owned = any(
@@ -348,6 +348,7 @@ def _field_kit_retired(player):
 
 def _give_field_kit(player):
     """Grant or reissue the Stellar Field Kit (one at a time). Returns lines."""
+    from pandemonium.inventory.core import add_item_to_inventory
     state = quests.ensure_quest_state(player)
     if _field_kit_retired(player):
         return ['VOSS: "Field Study One is closed — the Archive no longer '
@@ -355,8 +356,6 @@ def _give_field_kit(player):
     if _holds_field_kit(player):
         return ['Voss taps the ledger. "One kit at a time, field agent."']
 
-    from pandemonium.resources.items import build_item
-    from pandemonium.inventory.core import add_item_to_inventory
 
     kit = build_item(FIELD_KIT_ID)
     if not add_item_to_inventory(player, kit):

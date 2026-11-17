@@ -19,6 +19,13 @@ from pandemonium.combat.combat_io import BaseCombatIO, set_io, reset_io
 from pandemonium.combat.combat_engine import combat
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.core.utils import strip_ansi, display_name
+from pandemonium.gui.combat_pacer import CombatPacer
+from pandemonium.combat.combat_io import is_border_line
+from pandemonium.world import map_boss as mb
+import queue as _queue
+from pandemonium.core.character import _reconcile_heroine_vorpal_skills
+from pandemonium.core.time_blocks import format_block_track
+from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 
 
 # ── GUI-specific I/O bridge ──────────────────────────────────────────────────
@@ -58,7 +65,6 @@ class GUICombatIO(BaseCombatIO):
         # Presentation pacing (docs/combat_plan_phase_design.md §7): the pacer
         # sleeps on THIS (engine) thread so text, HP bars and flashes stay in
         # lockstep — the HUD poller reads live state.
-        from pandemonium.gui.combat_pacer import CombatPacer
         self.pacer = CombatPacer(active_fn=self.is_active)
 
     def is_active(self):
@@ -70,7 +76,6 @@ class GUICombatIO(BaseCombatIO):
         text = " ".join(str(a) for a in args)
         # Legacy decoration ("======", "!!!!!!", "──────") is terminal art:
         # it would eat a row of the 3-line ticker for no information.
-        from pandemonium.combat.combat_io import is_border_line
         text = "\n".join(l for l in text.splitlines() if not is_border_line(l))
         if not text.strip():
             return
@@ -181,6 +186,7 @@ class CombatScreen(BaseScreen):
         super().__init__(parent, screen_manager, **kwargs)
 
     def build_ui(self):
+        from pandemonium.world.wonderland_curses import format_quirk_summary
         self.sm.clear_log()
         if self.combat_context == "superboss":
             self.sm.update_top_bar(f"⚔ Superboss | Floor {self.floor or '?'}")
@@ -211,7 +217,6 @@ class CombatScreen(BaseScreen):
             # ── Wonderland: append active quirk + shadows ───────────────
             elif (not eh_run and self.player
                   and self.player.get("dungeon_region") == "wonderland"):
-                from pandemonium.world.wonderland_curses import format_quirk_summary
                 qs = format_quirk_summary(self.player)
                 if qs:
                     top += f" | {qs}"
@@ -474,6 +479,7 @@ class CombatScreen(BaseScreen):
 
     def _update_top_bar(self):
         """Called by the game clock tick — preserves curse/quirk info in combat."""
+        from pandemonium.world.wonderland_curses import format_quirk_summary
         if self.combat_context == "superboss":
             top = f"⚔ Superboss | Floor {self.floor or '?'}"
         elif self.combat_context == "boss_rush":
@@ -498,7 +504,6 @@ class CombatScreen(BaseScreen):
                     top += f" | {curse.get('icon', '☠️')} {curse.get('name', '')}"
             elif (not eh_run and self.player
                   and self.player.get("dungeon_region") == "wonderland"):
-                from pandemonium.world.wonderland_curses import format_quirk_summary
                 qs = format_quirk_summary(self.player)
                 if qs:
                     top += f" | {qs}"
@@ -510,7 +515,6 @@ class CombatScreen(BaseScreen):
         The phase track is the arena's *projected* clock (1 round = 1 block),
         published by the combat module as ``_combat_time_label``.
         """
-        from pandemonium.world import map_boss as mb
         from pandemonium.combat.combat_ui import current_time_label
         site = mb.get_active_boss(self.player or {}) or {}
         if not site:
@@ -664,7 +668,6 @@ class CombatScreen(BaseScreen):
         inventory_ui path would call builtins.input() on a background thread
         with no console attached.
         """
-        import queue as _queue
         result_q = _queue.Queue()
 
         def _show():
@@ -694,19 +697,19 @@ class CombatScreen(BaseScreen):
 
     def _start_combat(self):
         """Launch combat in a daemon thread."""
+        from pandemonium.inventory.legacy_ui import set_acquire_handler
         # Loot prompts from the combat thread must use the GUI dialog, not
         # the legacy console fallback in inventory_ui.
-        from pandemonium.inventory.legacy_ui import set_acquire_handler
         set_acquire_handler(self._acquire_item_gui)
 
         # ── Reconcile vorpal skills before combat ─────────────────────────
         # Safety net: ensures all heroines' innate/learned skills match their
         # vorpal flags before combat actions are built.
-        from pandemonium.core.character import _reconcile_heroine_vorpal_skills
         for ally in self.player.get("allies", []):
             _reconcile_heroine_vorpal_skills(ally, self.player)
 
         def run_combat():
+            from pandemonium.inventory.legacy_ui import set_acquire_handler
             set_io(self.io)
             try:
                 if self._combat_func:
@@ -819,6 +822,8 @@ class CombatScreen(BaseScreen):
 
     def _handle_input_needed(self, prompt: str):
         """Combat thread is waiting for input — show appropriate UI."""
+        from pandemonium.combat.ally import get_all_active_allies_including_defeated
+        from pandemonium.combat.ally import get_reserve_allies
         mode, context = self._parse_prompt(prompt)
 
         # Use output context to detect target selection when prompt is ambiguous
@@ -916,7 +921,6 @@ class CombatScreen(BaseScreen):
             # by identity — frame index ≠ engine number whenever bench allies
             # shift the list (e.g. clicking Ninetales must send her number, 6,
             # not the Lich Queen Avatar's number 3).
-            from pandemonium.combat.ally import get_all_active_allies_including_defeated
             engine_party = self._get_party_snapshot()
             if revive_mode:
                 engine_list = [m for m in engine_party
@@ -946,7 +950,6 @@ class CombatScreen(BaseScreen):
             self.item_frame.pack_forget()
             self._refresh_hud()
             # Build target mapping for reserve allies shown in enemy column
-            from pandemonium.combat.ally import get_reserve_allies
             reserve = get_reserve_allies(self.player)
             self._target_index_map = {idx: badge_num + 1 for badge_num, idx in enumerate(range(len(reserve)))}
             self.action_panel.set_target_mode(True, "Select a reserve ally to swap with")
@@ -1172,7 +1175,6 @@ class CombatScreen(BaseScreen):
             return False
 
         # Separator lines
-        from pandemonium.combat.combat_io import is_border_line
         if is_border_line(t):
             return False
         if all(c in "-─═~" for c in t) and len(t) > 10:
@@ -1218,6 +1220,7 @@ class CombatScreen(BaseScreen):
 
     def _on_round_header(self, text: str):
         """Extract round/floor/room/time from header and update top bar."""
+        from pandemonium.world.wonderland_curses import format_quirk_summary
         # Pattern: "  >> ROUND 2 | Floor 22 | Room 1/10 | Time: 09:14"
         clean = text.replace(">>", "").strip()
         if self.player and self.player.get("_eh_in_run"):
@@ -1234,7 +1237,6 @@ class CombatScreen(BaseScreen):
                 if curse:
                     clean += f" | {curse.get('icon', '☠️')} {curse.get('name', '')}"
             elif self.player and self.player.get("dungeon_region") == "wonderland":
-                from pandemonium.world.wonderland_curses import format_quirk_summary
                 qs = format_quirk_summary(self.player)
                 if qs:
                     clean += f" | {qs}"
@@ -1242,7 +1244,6 @@ class CombatScreen(BaseScreen):
         # engine now prints the phase track itself; this branch only rewrites
         # an old-format string (e.g. a stale saved log).
         if "Time:" in clean and self.player:
-            from pandemonium.core.time_blocks import format_block_track
             clean = clean.split("| Time:")[0].rstrip()
             _track = format_block_track(self.player, include_day=False)
             if _track:
@@ -1389,7 +1390,6 @@ class CombatScreen(BaseScreen):
         """Player clicked an action button."""
         if key == "f":
             # Flee — confirm first since this abandons the dungeon run
-            from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
             message = (
                 "Flee from the gate? You will return to the world map."
                 if self.combat_context == "city_guard"
@@ -1751,7 +1751,6 @@ class CombatScreen(BaseScreen):
         context_dict may contain:
             'ally_name': str — set when prompt matches an ally turn pattern
         """
-        import re
         p = prompt.strip()
         p_lower = p.lower()
 

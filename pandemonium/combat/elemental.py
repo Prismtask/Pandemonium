@@ -1,4 +1,7 @@
 import re
+from pandemonium.resources.races_classes import RACES, CLASSES
+from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
+from pandemonium.combat.form_perks import get_form_res_rating_bonus
 
 # combat/elemental.py – Elemental damage/resistance system
 """Dynamic elemental / type system. Every entity has elemental_res and elemental_dmg.
@@ -315,7 +318,6 @@ def _get_equipment_elemental(player_or_ally, which):
 
 def compute_player_elemental(player):
     """Compute player's total elemental profile from race + class + equipment."""
-    from pandemonium.resources.races_classes import RACES, CLASSES
     race_name = player.get("race", "Human")
     class_name = player.get("class", "Warrior")
     
@@ -362,7 +364,6 @@ def compute_player_elemental(player):
 
 def compute_enemy_elemental(enemy):
     """Compute enemy's total elemental profile from race + keyword + individual overrides."""
-    from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
     
     key = enemy.get("key")
     if key:
@@ -405,7 +406,8 @@ def compute_enemy_elemental(enemy):
 
 def compute_ally_elemental(ally):
     """Compute ally's total elemental profile from enemy race + keyword + equipment."""
-    from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
+    from pandemonium.combat.ally_skills import get_race_passive_effects
+    from pandemonium.progression.family import father_legacy_elemental_bonus
     
     key = ally.get("key")
     if key:
@@ -427,7 +429,6 @@ def compute_ally_elemental(ally):
     base_dmg = merge_profiles(base_dmg, kw_dmg)
 
     # Race passive elemental modifiers (Dragonkin, Demon, Elemental, Gnome)
-    from pandemonium.combat.ally_skills import get_race_passive_effects
     for effect in get_race_passive_effects(ally.get("race") or race_name):
         if effect.get("type") != "elemental":
             continue
@@ -443,7 +444,6 @@ def compute_ally_elemental(ally):
                 base_res[el] += res_v
 
     # Father's Legacy (Tiefling fire/dark, Dragonborn all-element)
-    from pandemonium.progression.family import father_legacy_elemental_bonus
     for el in ELEMENTS:
         legacy_bonus = father_legacy_elemental_bonus(ally, el)
         if legacy_bonus:
@@ -478,8 +478,8 @@ def get_attack_element(attacker, equipped_weapon=None):
 
     Returns an element string or None for neutral/physical attacks.
     """
-    # Palette's Brush: committed stance overrides the weapon's default element
     from pandemonium.combat.weapon.palette_brush import get_brush_stance_element
+    # Palette's Brush: committed stance overrides the weapon's default element
     stance_el = get_brush_stance_element(attacker)
     if stance_el:
         return stance_el
@@ -509,6 +509,9 @@ def calculate_elemental_damage(base_dmg, attacker, target, element=None):
     If no element is found, damage is neutral (1.0).
     Momentum buff (+3% per stack) applies in both cases.
     """
+    from pandemonium.facilities.arcane_tower import get_arcane_elemental_boost
+    from pandemonium.combat.skills import get_player_passive_elem_bonus
+    from pandemonium.combat.status_effects import get_momentum_stacks
     if element is None:
         element = get_attack_element(attacker)
     
@@ -520,7 +523,6 @@ def calculate_elemental_damage(base_dmg, attacker, target, element=None):
         dmg_mult = attacker_dmg.get(element, 1.0)
         
         # Arcane Blessing: Elemental Attunement boost
-        from pandemonium.facilities.arcane_tower import get_arcane_elemental_boost
         boost = get_arcane_elemental_boost(attacker)
         if boost > 0:
             dmg_mult += boost
@@ -567,11 +569,9 @@ def calculate_elemental_damage(base_dmg, attacker, target, element=None):
 
         # Profession passive elemental bonus (player only)
         if not attacker.get("is_ally"):
-            from pandemonium.combat.skills import get_player_passive_elem_bonus
             dmg_mult += get_player_passive_elem_bonus(attacker, element)
 
         # Form tradition resistance (Steadfast — only the item's primary element)
-        from pandemonium.combat.form_perks import get_form_res_rating_bonus
         res_rating += get_form_res_rating_bonus(target, element)
 
         final_dmg = int(base_dmg * dmg_mult * resistance_multiplier(res_rating))
@@ -588,7 +588,6 @@ def calculate_elemental_damage(base_dmg, attacker, target, element=None):
     
     # Momentum buff: +3% damage per stack (Chronoweave Mantle).
     # Integer math avoids float rounding (0.03 * N truncation issues).
-    from pandemonium.combat.status_effects import get_momentum_stacks
     momentum_stacks = get_momentum_stacks(attacker)
     if momentum_stacks > 0:
         final_dmg = int(final_dmg * (100 + momentum_stacks * 3) / 100)

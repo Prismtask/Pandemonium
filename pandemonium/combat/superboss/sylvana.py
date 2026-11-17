@@ -7,6 +7,8 @@ from pandemonium.combat.status_effects import (
     apply_blind
 )
 from pandemonium.combat.combat_io import c_print, c_input
+from pandemonium.resources.items import build_item
+from pandemonium.combat.helpers import format_damage_msg
 
 # ---------------------------------------------------------------------------
 # Custom Handlers
@@ -56,13 +58,12 @@ def _grant_cracked_mirror(player):
     The mirror is the recruitment hook for the house restoration arc. Key
     items bypass bag capacity, and the unique id makes this idempotent.
     """
+    from pandemonium.inventory.core import add_item_to_inventory
     if player.get("sylvana_mirror_fixed") or player.get("sylvana_recruited"):
         return
     if any(i.get("id") == "cracked_mirror"
            for i in player.get("inventory", [])):
         return
-    from pandemonium.resources.items import build_item
-    from pandemonium.inventory.core import add_item_to_inventory
     mirror = build_item("cracked_mirror", rarity="unique")
     if add_item_to_inventory(player, mirror):
         player["sylvana_mirror_obtained"] = True
@@ -224,7 +225,6 @@ def combat_sylvana(player, floor=None, enemies=None):
             fake_dmg = max(0, random.randint(2, 6) + enemy["str_mod"] - block)
             pl["current_hp"] -= fake_dmg
             if fake_dmg > 0:
-                from pandemonium.combat.helpers import format_damage_msg
                 c_print("\n🪞 " + format_damage_msg(enemy['name'], pl['name'], fake_dmg, skill_name="Mirror Strike"))
                 if apply_blind(pl, duration=2) == "applied": c_print("The illusion's touch blinds you!")
                 else: c_print("The illusion refreshes your blindness!")
@@ -252,8 +252,8 @@ def combat_sylvana(player, floor=None, enemies=None):
         temp_str = -veil_def 
 
         def sylvana_extra(e, p, dmg):
+            from pandemonium.combat.status_effects import apply_silence
             if dmg > 0 and random.random() < 0.25:
-                from pandemonium.combat.status_effects import apply_silence
                 if apply_silence(p, duration=2) == "applied":
                     return "Sylvana's fey magic seals your pack shut for 2 turns!"
             return None

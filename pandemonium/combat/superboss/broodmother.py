@@ -36,6 +36,7 @@ from pandemonium.combat.superboss.superboss_common import get_boss, superboss_co
 from pandemonium.combat.status_effects import apply_poison
 from pandemonium.combat.ally import get_living_party, compute_ally_stats
 from pandemonium.combat.combat_io import c_print, c_input
+from pandemonium.resources.items import build_item
 
 # ═══════════════════════════════════════════════════════════════════
 # CONSTANTS
@@ -341,6 +342,7 @@ def combat_broodmother(player, floor=None, enemies=None):
     Args:
         enemies: Optional pre-created enemy list for GUI mode state sharing.
     """
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     if floor is None:
         loc = player.get("location", "")
         floor = player.get("city_floors", {}).get(loc, {}).get("floor")
@@ -753,8 +755,6 @@ def combat_broodmother(player, floor=None, enemies=None):
             c_print("You reach out and claim it.")
 
             # Grant loot
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             pendant = build_item("vileheart_pendant", rarity="unique")
             c_print(f"\n  🎁 Received: {pendant['name']}!")
             c_print(f"    A dark pendant that still thrums with venomous life.")

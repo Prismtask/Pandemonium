@@ -32,6 +32,10 @@ from pandemonium.resources.trade_goods import (
     roll_cargo_good, build_cargo,
     cargo_merchant_stock_price, cargo_merchant_sell_price,
 )
+from pandemonium.combat.form_perks import describe_item_perk
+from pandemonium.core.events import get_daily_bonus_multiplier
+from pandemonium.resources.mounts import get_mount
+from pandemonium.resources.ships import get_ship
 
 # Prefer the proper inventory helper (handles capacity / stacking if implemented)
 try:
@@ -215,6 +219,7 @@ def _sell_price(item, player):
 
 def _item_stat_line(item):
     """One-line stat summary for display in merchant/discovery output."""
+    from pandemonium.inventory.core import format_scaling_stat
     itype = item.get("type", "")
 
     if itype == "equipment":
@@ -225,11 +230,9 @@ def _item_stat_line(item):
             for stat, v in mods.items()
         )
         line = f"[{slot}{(' | ' + mod_s) if mod_s else ''}]"
-        from pandemonium.combat.form_perks import describe_item_perk
         perk = describe_item_perk(item)
         if perk:
             line += f" | {perk}"
-        from pandemonium.inventory.core import format_scaling_stat
         scale = format_scaling_stat(item)
         return f"{line}  {scale}" if scale else line
 
@@ -368,6 +371,7 @@ def _handle_combat(player, travel_type, region, combat_override=None):
     If combat_override is provided, it is called instead of combat().
     This lets the GUI inject a CombatScreen overlay while the facility thread waits.
     """
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
     floor      = max(1, player.get("floor", 1))
     num        = random.randint(1, min(3, max(1, floor // 2 + 1)))
     enemy_keys = [k for k in
@@ -393,7 +397,6 @@ def _handle_combat(player, travel_type, region, combat_override=None):
         total_gold = sum(ENEMIES[k]["level"] * 5 + random.randint(3, 12)
                          for k in enemy_keys)
         # Daily events: Lucky Day / Full Moon gold bonus
-        from pandemonium.core.events import get_daily_bonus_multiplier
         total_gold = int(total_gold * get_daily_bonus_multiplier(player, "gold_bonus"))
         player["gold"] = player.get("gold", 0) + total_gold
         gain_exp(player, total_xp)
@@ -413,7 +416,6 @@ def _handle_combat(player, travel_type, region, combat_override=None):
                     term.print(f"  Found: {item['name']}  {_item_stat_line(item)}")
 
         # Wedding end-of-combat rewards
-        from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
         apply_wedding_combat_end(player, victory=True)
 
         term.pause("  Press Continue your journey...")
@@ -434,6 +436,7 @@ def _handle_discovery(player, travel_type):
     Rarity is scaled to the player's current dungeon floor.
     Items are filtered (no uniques, no scrolls) and added via add_item_to_inventory.
     """
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     roll = random.random()
 
     if travel_type == "sea":
@@ -448,7 +451,6 @@ def _handle_discovery(player, travel_type):
             item    = build_item(item_id, rarity)
             term.print(f"\n  A waterlogged satchel surfaces from the deep. You haul it aboard.")
             term.print(f"  Found: {item['name']}  {_item_stat_line(item)}")
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, item.copy())
         else:
             # Drifting cargo crate — 1-3 units of a random good
@@ -457,7 +459,6 @@ def _handle_discovery(player, travel_type):
             cargo["count"] = random.randint(1, 3)
             term.print(f"\n  A broken-open cargo crate drifts by. You fish out the salvage!")
             term.print(f"  Found: {cargo['name']} x{cargo['count']}  [Cargo, {cargo['weight']} wt each]")
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, cargo)
     else:
         if roll < 0.45:
@@ -471,7 +472,6 @@ def _handle_discovery(player, travel_type):
             item    = build_item(item_id, rarity)
             term.print(f"\n  A hollow tree stump — something's wedged inside.")
             term.print(f"  Found: {item['name']}  {_item_stat_line(item)}")
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, item.copy())
         else:
             # Abandoned wagon — 1-3 units of a random cargo good
@@ -480,7 +480,6 @@ def _handle_discovery(player, travel_type):
             cargo["count"] = random.randint(1, 3)
             term.print(f"\n  An abandoned wagon lies overturned at the roadside.")
             term.print(f"  Found: {cargo['name']} x{cargo['count']}  [Cargo, {cargo['weight']} wt each]")
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, cargo)
 
     term.pause("  Press Continue...")
@@ -759,7 +758,6 @@ def run_travel_events(player, travel_time, travel_type="land", region=None,
 
     # Mounts reduce the chance of travel events on land routes
     if travel_type == "land" and player.get("mount_id"):
-        from pandemonium.resources.mounts import get_mount
         mount = get_mount(player["mount_id"])
         if mount:
             mitigation = mount.get("event_mitigation", 0)
@@ -767,7 +765,6 @@ def run_travel_events(player, travel_time, travel_type="land", region=None,
 
     # Ships reduce the chance of travel events at sea
     if travel_type == "sea" and player.get("ship_id"):
-        from pandemonium.resources.ships import get_ship
         ship = get_ship(player["ship_id"])
         if ship:
             mitigation = ship.get("event_mitigation", 0)

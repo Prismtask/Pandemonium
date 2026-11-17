@@ -512,7 +512,7 @@ Apply all renames and level shifts from Section 8.1 **before** creating any new 
 
 | ID | Name | Level | HP | Type | Role |
 |---|---|---|---|---|---|
-| `angel_lightwarden` | Light Warden | 20 | 210 | Trash | Entry angel; tests dark damage |
+| `angel_lightwarden` | Light Keeper | 20 | 210 | Trash | Entry angel; tests dark damage |
 | `angel_radiant_acolyte` | Radiant Acolyte | 22 | 226 | Trash | Magic-focused caster; low HP |
 | `angel_hallowed_lancer` | Hallowed Lancer | 25 | 250 | Trash | Physical-light hybrid melee |
 | `angel_celestial_scribe` | Celestial Scribe | 27 | 266 | Trash | Buffer/healer support |
@@ -520,7 +520,7 @@ Apply all renames and level shifts from Section 8.1 **before** creating any new 
 | `angel_solar_arbiter` | Solar Arbiter | 31 | 329 | Trash | Fast hybrid attacker |
 | `angel_seraph_wing` | Seraph Wing | 33 | 347 | Trash | High-Dex flier; evasion focus |
 | `angel_heaven_herald` | Heaven's Herald | 35 | 365 | Trash | AoE light caster |
-| `angel_throne_warden` | Throne Warden | 37 | 383 | Trash | Elite melee guardian |
+| `angel_throne_warden` | Throne Guardian | 37 | 383 | Trash | Elite melee guardian |
 | `angel_divine_justicar` | Divine Justicar | 39 | 842 | Boss | Mid-boss gatekeeper |
 | `angel_ophanim` | Ophanim | 41 | 480 | Trash | Wheel-of-fire construct-angel hybrid |
 | `angel_dominion_lord` | Dominion Lord | 43 | 500 | Trash | Command-tier angel |

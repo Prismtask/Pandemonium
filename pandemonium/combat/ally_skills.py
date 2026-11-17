@@ -6,6 +6,19 @@ import yaml
 
 from pandemonium.combat.helpers import format_damage_msg, ACTION_CANCELLED_MSG
 from pandemonium.core.utils import display_name
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.core.character import player_max_hp
+from pandemonium.combat.form_perks import get_armor_pen_multiplier
+from pandemonium.combat.stat_milestones import get_strength_bonus
+from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
+from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
+from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+from pandemonium.combat.stat_milestones import get_wisdom_bonus
+from pandemonium.world.curse_pandemonium import apply_healing_reduction
+from pandemonium.world.curse_pandemonium import get_cooldown_increase
+from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
 
 # Maximum number of learnable skills an ally can have at once
 MAX_LEARNED_SKILLS = 3
@@ -224,7 +237,6 @@ def _target_race(target):
         return race
     key = target.get("key")
     if key:
-        from pandemonium.resources.enemies import ENEMIES
         return ENEMIES.get(key, {}).get("race")
     return None
 
@@ -283,6 +295,7 @@ def maybe_stun_on_basic(attacker, target):
 
     Returns a message string when the stun lands, else None.
     """
+    from pandemonium.combat.status_effects import check_status_resisted
     if target.get("hp", 0) <= 0:
         return None
     chance = 0.0
@@ -291,7 +304,6 @@ def maybe_stun_on_basic(attacker, target):
             chance += effect.get("chance", 0.1)
     if chance <= 0 or random.random() >= chance:
         return None
-    from pandemonium.combat.status_effects import check_status_resisted
     if check_status_resisted(target):
         return f"{target['name']} shrugs off the stun!"
     target["stunned"] = True
@@ -600,24 +612,36 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
     Returns: (result_message, victory)
     victory is True if all enemies were defeated.
     """
-    import random
+    from pandemonium.combat.status_effects import apply_silence, check_status_resisted
     from pandemonium.combat.ally import compute_ally_stats
     from pandemonium.combat.skills import get_mastery_bonuses
     from pandemonium.combat.status_effects import apply_poison, apply_burn, apply_shock, apply_barrier, apply_sleep, apply_haste, apply_paralyze, apply_entomb, apply_void_touched, apply_bleed, wake_on_damage, apply_healing, apply_death_ward
-    from pandemonium.core.character import player_max_hp
+    from pandemonium.combat.palette_ally import is_palette_ally
+    from pandemonium.combat.palette_ally import start_palette_signature
+    from pandemonium.combat.palette_ally import palette_spectrum_attack
+    from pandemonium.combat.stats import scaled_stat_buff_value
+    from pandemonium.combat.status_effects import apply_slow_to_enemy
+    from pandemonium.combat.status_effects import check_status_resisted
+    from pandemonium.combat.status_effects import apply_damage_taken_up
+    from pandemonium.combat.status_effects import check_status_resisted as _res
+    from pandemonium.combat.status_effects import get_damage_buff_multiplier
+    from pandemonium.combat.status_effects import is_bleeding
+    from pandemonium.combat.status_effects import damage_to_burn_tier
+    from pandemonium.combat.status_effects import apply_weaken
+    from pandemonium.combat.status_effects import apply_expose
+    from pandemonium.combat.status_effects import BLEED_FEAST_MULT
+    from pandemonium.combat.status_effects import apply_healing as _eh_heal_fn
+    from pandemonium.combat.status_effects import check_status_resisted as _status_resisted
+    from pandemonium.combat.status_effects import get_bleed_feast_multiplier
+    from pandemonium.combat.status_effects import is_cleansable
 
     # ── Palette heroine: custom kit (degraded boss moves) ──
-    from pandemonium.combat.palette_ally import is_palette_ally
     if is_palette_ally(ally):
         if skill_id == "palette_signature":
-            from pandemonium.combat.palette_ally import start_palette_signature
-            from pandemonium.world.curse_pandemonium import get_cooldown_increase
             ally.setdefault("skill_cooldowns", {})[skill_id] = skill_def.get("cooldown", 4) + get_cooldown_increase(player)
             add_ally_skill_mastery_xp(ally, skill_id)
             return start_palette_signature(ally), False
         if skill_id == "palette_spectrum":
-            from pandemonium.combat.palette_ally import palette_spectrum_attack
-            from pandemonium.world.curse_pandemonium import get_cooldown_increase
             ally.setdefault("skill_cooldowns", {})[skill_id] = skill_def.get("cooldown", 3) + get_cooldown_increase(player)
             add_ally_skill_mastery_xp(ally, skill_id)
             return palette_spectrum_attack(ally, player, enemies)
@@ -713,6 +737,13 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
 
     def _calc_dmg(target, power, ignore_armor=False, guaranteed_crit=False):
         from pandemonium.combat.stats import roll_skill_dodge, roll_accuracy_penalty
+        from pandemonium.combat.status_effects import is_bleeding
+        from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
+        from pandemonium.combat.status_effects import get_damage_taken_multiplier
+        from pandemonium.combat.stats import roll_critical_hit, apply_critical_damage, CRIT_MULTIPLIER
+        from pandemonium.combat.palette_ally import get_palette_ally_color_element
+        from pandemonium.combat.elemental import calculate_elemental_damage
+        from pandemonium.progression.family import father_legacy_damage_mult
         if roll_skill_dodge(target):
             msg_parts.append(f"  💨 {target['name']} reads the strike and slips aside!")
             return 0, False
@@ -731,7 +762,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             armor = int(armor * (1 - ignore_armor_pct))
         # Form tradition armour penetration (Sundering)
         if armor > 0:
-            from pandemonium.combat.form_perks import get_armor_pen_multiplier
             armor = int(armor * get_armor_pen_multiplier(ally))
         # Hunter's Mark: increased damage taken
         if target.get("hunters_mark"):
@@ -745,17 +775,14 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             msg_parts.append(f"Ambush! +{int(bonus_high * 100)}% vs an untouched foe!")
         bonus_bleed = skill_def.get("bonus_vs_bleeding")
         if bonus_bleed:
-            from pandemonium.combat.status_effects import is_bleeding
             if is_bleeding(target):
                 power = int(power * (1 + bonus_bleed))
                 msg_parts.append(f"The dark edge bites deep! +{int(bonus_bleed * 100)}% vs bleeding!")
         # Prescript Ledger — clash empowerment vs the Prescript's Target
-        from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
         prescript_clash = get_prescript_clash_bonus(ally, target)
         if prescript_clash:
             power = int(power * (1 + prescript_clash))
         # Damage-taken amplification (e.g. Aura of Despair)
-        from pandemonium.combat.status_effects import get_damage_taken_multiplier
         dt_mult = get_damage_taken_multiplier(target)
         if dt_mult != 1.0:
             power = int(power * dt_mult)
@@ -768,7 +795,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         # Random critical hit (skip if skill already guarantees a crit)
         did_crit = False
         if not guaranteed_crit:
-            from pandemonium.combat.stats import roll_critical_hit, apply_critical_damage, CRIT_MULTIPLIER
             crit_bonus = skill_def.get("crit_bonus", 0)
             crit_mult = skill_def.get("crit_mult", CRIT_MULTIPLIER)
             is_crit, _, overflow_crit = roll_critical_hit(
@@ -781,34 +807,25 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         else:
             did_crit = True
         # Apply Strength milestone bonus
-        from pandemonium.combat.stat_milestones import get_strength_bonus
         dmg = max(1, power + get_strength_bonus(ally) - armor)
         # Apply elemental damage if skill has an elemental profile
         element = skill_def.get("elemental")
         if skill_def.get("palette_dynamic_element"):
-            from pandemonium.combat.palette_ally import get_palette_ally_color_element
             element = get_palette_ally_color_element(ally)
         if element:
-            from pandemonium.combat.elemental import calculate_elemental_damage
             dmg = calculate_elemental_damage(dmg, ally, target, element)
         # Race passive damage bonuses (Angel vs Demons, Clockwork vs shocked)
         dmg = int(dmg * get_race_damage_multiplier(ally, target))
         # Pandemonium: Weakened Resolve curse — allies deal less damage too
-        from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
         dmg = apply_damage_dealt_multiplier(player, dmg)
         # Event Horizon trophies: Old Dopo Robe + Chance and Choice
-        from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
         dmg = int(dmg * get_robe_multiplier(ally, player))
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         dmg = apply_chance_and_choice(ally, dmg, _cac_state)
         # Form tradition (Cleaving / Focused)
-        from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
         dmg = int(dmg * get_outgoing_damage_multiplier(ally))
         # Father's Legacy (Orc child): +7.5% damage below 50% HP
-        from pandemonium.progression.family import father_legacy_damage_mult
         dmg = int(dmg * father_legacy_damage_mult(ally))
         # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
-        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
         dmg = apply_long_day_damage(ally, dmg)
         return dmg, did_crit
 
@@ -856,7 +873,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             if target_type == "all_allies":
                 recipients = [player] + allies
             ev_value = _scaled_mag(value)
-            from pandemonium.combat.stats import scaled_stat_buff_value
             raw_dex = effect.get("dex_bonus", 0)
             dex_bonus = (_scaled_mag(scaled_stat_buff_value(raw_dex, ally))
                          if raw_dex else 0)
@@ -887,7 +903,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             msg_parts.append(f"{r.get('name', 'ally')}'s next action is empowered!")
 
         elif effect_type == "slow":
-            from pandemonium.combat.status_effects import apply_slow_to_enemy
             if target_type == "enemy" and target:
                 apply_slow_to_enemy(target, duration=duration)
                 msg_parts.append(f"{target['name']} is slowed!")
@@ -898,7 +913,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 msg_parts.append(f"{display_name(ally)} slows all enemies!")
 
         elif effect_type == "dispel_buff":
-            from pandemonium.combat.status_effects import apply_silence, check_status_resisted
             if target_type == "enemy" and target:
                 buffs = [b for b in target.get("active_buffs", [])
                          if b.get("remaining", 1) > 0]
@@ -947,7 +961,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             )
 
         elif effect_type == "blind":
-            from pandemonium.combat.status_effects import check_status_resisted
             if target_type == "enemy" and target:
                 if check_status_resisted(target):
                     msg_parts.append(f"{target['name']} shrugs off the blinding light!")
@@ -968,7 +981,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 msg_parts.append(f"{display_name(ally)} blinds the enemies!")
 
         elif effect_type == "stun":
-            from pandemonium.combat.status_effects import check_status_resisted
             if target_type == "enemy" and target:
                 if check_status_resisted(target):
                     msg_parts.append(f"{target['name']} shrugs off the stun!")
@@ -990,7 +1002,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 msg_parts.append(f"{display_name(ally)} stuns all enemies!")
 
         elif effect_type == "stat_debuff":
-            from pandemonium.combat.status_effects import check_status_resisted
             stat = effect.get("stat", "Strength")
             debuff_value = _scaled_mag(_scale_effect_value(effect, ally.get("level", 1)))
             if target_type == "enemy" and target:
@@ -1032,7 +1043,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
 
         elif effect_type == "stat_buff":
             stat = effect.get("stat", "Strength")
-            from pandemonium.combat.stats import scaled_stat_buff_value
             buff_value = _scaled_mag(scaled_stat_buff_value(
                 effect.get("value", 0), ally,
                 per_level=effect.get("scale_per_level"),
@@ -1118,7 +1128,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         elif effect_type == "phantom_dodge":
             recipients = [target] if target else [ally]
             ev_value = _scaled_mag(value)
-            from pandemonium.combat.stats import scaled_stat_buff_value
             dex_bonus = _scaled_mag(scaled_stat_buff_value(effect.get("dex_bonus", 3), ally))
             for r in recipients:
                 r.setdefault("active_buffs", []).append({
@@ -1130,7 +1139,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             msg_parts.append(f"{display_name(ally)} becomes a phantom!")
 
         elif effect_type == "confusion":
-            from pandemonium.combat.status_effects import check_status_resisted
             live = [e for e in enemies if e["hp"] > 0]
             for e in live:
                 if check_status_resisted(e):
@@ -1259,7 +1267,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             msg_parts.append(f"{display_name(ally)} grants +{int(boost_val * 100)}% damage for {duration} turns!")
 
         elif effect_type == "elemental_weakness":
-            from pandemonium.combat.status_effects import check_status_resisted
             weak_val = _scaled_mag(value)
             if target_type == "enemy" and target:
                 if check_status_resisted(target):
@@ -1302,7 +1309,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 msg_parts.append(f"{display_name(ally)} marks {tgt['name']}! +{int(mark_val * 100)}% damage taken for {duration} turns!")
 
         elif effect_type == "damage_taken_up":
-            from pandemonium.combat.status_effects import apply_damage_taken_up
             dt_val = _scaled_mag(value)
             if target_type == "enemy" and target:
                 apply_damage_taken_up(target, dt_val, duration)
@@ -1342,7 +1348,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     msg_parts.append(f"{display_name(ally)} grants Fear immunity for {sub_duration} turns!")
                 elif sub_type == "stat_buff":
                     stat = sub.get("stat", "Strength")
-                    from pandemonium.combat.stats import scaled_stat_buff_value
                     sub_value = _scaled_mag(scaled_stat_buff_value(
                         sub_value, ally,
                         per_level=sub.get("scale_per_level"),
@@ -1416,7 +1421,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     tgt_name = display_name(recipients[0]) if recipients else display_name(ally)
                     msg_parts.append(f"{tgt_name}'s next action is empowered!")
                 elif sub_type == "blind":
-                    from pandemonium.combat.status_effects import check_status_resisted as _res
                     for e in enemy_targets:
                         if _res(e):
                             continue
@@ -1434,7 +1438,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         e["hunters_mark_turns"] = sub_duration
                     msg_parts.append(f"The prey is marked! +{int(mark_val * 100)}% damage taken for {sub_duration} turns!")
                 elif sub_type == "fear":
-                    from pandemonium.combat.status_effects import check_status_resisted as _res
                     fear_val = _scaled_mag(sub_value)
                     for e in enemy_targets:
                         if _res(e):
@@ -1444,7 +1447,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         })
                     msg_parts.append(f"Terror takes hold — enemies deal {int(fear_val * 100)}% less damage for {sub_duration} turns!")
                 elif sub_type == "stun":
-                    from pandemonium.combat.status_effects import check_status_resisted as _res
                     for e in enemy_targets:
                         if _res(e):
                             msg_parts.append(f"{e['name']} shrugs off the stun!")
@@ -1460,7 +1462,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         if apply_entomb(e, sub_duration) != "resisted":
                             msg_parts.append(f"{e['name']} is entombed in stone!")
                 elif sub_type == "stat_debuff":
-                    from pandemonium.combat.status_effects import check_status_resisted as _res
                     stat = sub.get("stat", "Strength")
                     debuff_value = _scaled_mag(_scale_effect_value(sub, ally.get("level", 1)))
                     for e in enemy_targets:
@@ -1481,7 +1482,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             "apply_void_touched", "heal_percent", "revive_percent",
             "cleanse_one_debuff", "cleanse_all_debuffs"
         )):
-            from pandemonium.world.curse_pandemonium import get_cooldown_increase
             cooldown = skill_def.get("cooldown", 1) + get_cooldown_increase(player)
             ally.setdefault("skill_cooldowns", {})[skill_id] = max(0, cooldown - cd_reduction)
             add_ally_skill_mastery_xp(ally, skill_id)
@@ -1493,7 +1493,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
     # Percentage damage buffs (power_buff + damage_boost) stack additively.
     # Heal/support casts leave power_buff in place for the next attack.
     if target_type in ("enemy", "enemies"):
-        from pandemonium.combat.status_effects import get_damage_buff_multiplier
         _damage_buff_mult = get_damage_buff_multiplier(
             ally, consume_power_buff=True, messages=msg_parts
         )
@@ -1510,7 +1509,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         live = [e for e in enemies if e["hp"] > 0]
         total_dmg = 0
         bleed_feast_dmg = 0   # portion of total dealt to already-bleeding targets
-        from pandemonium.combat.status_effects import is_bleeding
         for e in live:
             dmg, did_crit = _calc_dmg(e, power, skill_def.get("ignore_armor", False), guaranteed_crit=guaranteed)
             e["hp"] -= dmg
@@ -1528,7 +1526,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 if apply_poison(e, p_dmg, skill_def.get("poison_duration", 3)) != "resisted":
                     msg_parts.append(f"{e['name']} is poisoned!")
             if skill_def.get("burn_damage"):
-                from pandemonium.combat.status_effects import damage_to_burn_tier
                 b_tier = min(5, damage_to_burn_tier(skill_def["burn_damage"]) + burn_tier_bonus)
                 if apply_burn(e, b_tier, skill_def.get("burn_duration", 3)) != "resisted":
                     msg_parts.append(f"{e['name']} is burning!")
@@ -1539,7 +1536,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 if apply_bleed(e, bl_dmg, skill_def.get("bleed_duration", 4)) != "resisted":
                     msg_parts.append(f"{e['name']} is bleeding!")
             if skill_def.get("stun_chance") and random.random() < skill_def["stun_chance"]:
-                from pandemonium.combat.status_effects import check_status_resisted
                 if check_status_resisted(e):
                     msg_parts.append(f"{e['name']} shrugs off the stun!")
                 else:
@@ -1547,11 +1543,9 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     e.setdefault("active_debuffs", []).append({"type": "stun", "remaining": 3})
                     msg_parts.append(f"{e['name']} is stunned!")
             if skill_def.get("apply_slow"):
-                from pandemonium.combat.status_effects import apply_slow_to_enemy
                 if apply_slow_to_enemy(e, duration=3) != "resisted":
                     msg_parts.append(f"{e['name']} is slowed!")
             if skill_def.get("apply_weaken"):
-                from pandemonium.combat.status_effects import apply_weaken
                 if apply_weaken(e, duration=3) != "resisted":
                     msg_parts.append(f"{e['name']} is weakened!")
             if skill_def.get("shock_damage"):
@@ -1571,7 +1565,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     msg_parts.append(f"{e['name']} is void-touched!")
         # Expose (armour shred — Rolling Thunder)
         if skill_def.get("expose_armor"):
-            from pandemonium.combat.status_effects import apply_expose
             for e in live:
                 if e["hp"] > 0:
                     res, new_con = apply_expose(e, skill_def["expose_armor"])
@@ -1598,7 +1591,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         rp_ls = get_race_lifesteal(ally)
         race_passive = get_race_passive(ally.get("race"))
         if race_passive and rp_ls > 0 and total_dmg > 0:
-            from pandemonium.combat.status_effects import BLEED_FEAST_MULT
             feast_dmg = total_dmg + bleed_feast_dmg * (BLEED_FEAST_MULT - 1.0)
             heal = int(feast_dmg * rp_ls)
             old_hp = ally["current_hp"]
@@ -1611,7 +1603,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         if _eh_ls > 0 and total_dmg > 0:
             heal = int(total_dmg * _eh_ls)
             if heal > 0:
-                from pandemonium.combat.status_effects import apply_healing as _eh_heal_fn
                 actual = _eh_heal_fn(ally, heal, source=ally)
                 if actual > 0:
                     msg_parts.append(f"[Death] {display_name(ally)} drains {actual} HP.")
@@ -1632,7 +1623,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 victory = True
                 break
             # Status effects
-            from pandemonium.combat.status_effects import check_status_resisted as _status_resisted
             if skill_def.get("poison_damage"):
                 p_dmg = skill_def["poison_damage"]
                 if status_mult > 1:
@@ -1640,7 +1630,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 if apply_poison(target, p_dmg, skill_def.get("poison_duration", 3)) != "resisted":
                     msg_parts.append(f"{target['name']} is poisoned!")
             if skill_def.get("burn_damage"):
-                from pandemonium.combat.status_effects import damage_to_burn_tier
                 b_tier = min(5, damage_to_burn_tier(skill_def["burn_damage"]) + burn_tier_bonus)
                 if apply_burn(target, b_tier, skill_def.get("burn_duration", 3)) != "resisted":
                     msg_parts.append(f"{target['name']} is burning!")
@@ -1658,11 +1647,9 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     target.setdefault("active_debuffs", []).append({"type": "stun", "remaining": 3})
                     msg_parts.append(f"{target['name']} is stunned!")
             if skill_def.get("apply_slow"):
-                from pandemonium.combat.status_effects import apply_slow_to_enemy
                 if apply_slow_to_enemy(target, duration=3) != "resisted":
                     msg_parts.append(f"{target['name']} is slowed!")
             if skill_def.get("apply_weaken"):
-                from pandemonium.combat.status_effects import apply_weaken
                 if apply_weaken(target, duration=3) != "resisted":
                     msg_parts.append(f"{target['name']} is weakened!")
             if skill_def.get("shock_damage"):
@@ -1701,7 +1688,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     msg_parts.append(f"{target['name']} is shaken with fear!")
         # Expose (armour shred — Corrosive Deluge / awakened kits)
         if skill_def.get("expose_armor") and target["hp"] > 0:
-            from pandemonium.combat.status_effects import apply_expose
             res, new_con = apply_expose(target, skill_def["expose_armor"])
             if res == "applied":
                 msg_parts.append(f"{target['name']}'s armour shatters! (CON → {new_con})")
@@ -1724,7 +1710,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         rp_ls = get_race_lifesteal(ally)
         race_passive = get_race_passive(ally.get("race"))
         if race_passive and rp_ls > 0 and dmg > 0:
-            from pandemonium.combat.status_effects import get_bleed_feast_multiplier
             heal = int(dmg * rp_ls * get_bleed_feast_multiplier(target))
             old_hp = ally["current_hp"]
             ally["current_hp"] = min(old_hp + heal, ally["max_hp"])
@@ -1736,7 +1721,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         if _eh_ls > 0 and dmg > 0:
             heal = int(dmg * _eh_ls)
             if heal > 0:
-                from pandemonium.combat.status_effects import apply_healing as _eh_heal_fn
                 actual = _eh_heal_fn(ally, heal, source=ally)
                 if actual > 0:
                     msg_parts.append(f"[Death] {display_name(ally)} drains {actual} HP.")
@@ -1754,7 +1738,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 if heal_percent:
                     heal = int(max_hp * heal_percent)
                 else:
-                    from pandemonium.combat.stat_milestones import get_wisdom_bonus
                     heal = int((base_power + scaling) * power_mult) + get_wisdom_bonus(ally)
                 old_hp = member.get("current_hp", 0)
                 if is_heal_blocked(member, ally):
@@ -1762,7 +1745,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                     msg_parts.append(f"{name}'s Unholy Resilience rejects allied healing!")
                     continue
                 # Pandemonium: Blighted Recovery curse — allied heals reduced too
-                from pandemonium.world.curse_pandemonium import apply_healing_reduction
                 heal = apply_healing_reduction(player, heal)
                 healed = apply_healing(member, heal, source=ally)
                 if healed < 0:
@@ -1770,7 +1752,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 total_heal += max(0, healed)
                 # Cleanse all debuffs if skill has cleanse_all_debuffs
                 if skill_def.get("cleanse_all_debuffs") and member.get("active_debuffs"):
-                    from pandemonium.combat.status_effects import is_cleansable
                     blocked = [d for d in member.get("active_debuffs", []) if not is_cleansable(d)]
                     for d in list(member.get("active_debuffs", [])):
                         if is_cleansable(d):
@@ -1783,7 +1764,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         msg_parts.append(f"{name}'s debuffs are all cleansed!")
                 # Cleanse one debuff per ally if skill has cleanse_one_debuff
                 elif skill_def.get("cleanse_one_debuff") and member.get("active_debuffs"):
-                    from pandemonium.combat.status_effects import is_cleansable
                     idx = next((i for i, d in enumerate(member["active_debuffs"]) if is_cleansable(d)), None)
                     if idx is not None:
                         removed = member["active_debuffs"].pop(idx)
@@ -1819,14 +1799,12 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 if heal_percent:
                     heal = int(max_hp * heal_percent)
                 else:
-                    from pandemonium.combat.stat_milestones import get_wisdom_bonus
                     heal = int((base_power + scaling) * power_mult) + get_wisdom_bonus(ally)
                 old_hp = target.get("current_hp", 0)
                 if is_heal_blocked(target, ally):
                     msg_parts.append(f"{display_name(target)}'s Unholy Resilience rejects allied healing!")
                 else:
                     # Pandemonium: Blighted Recovery curse — allied heals reduced too
-                    from pandemonium.world.curse_pandemonium import apply_healing_reduction
                     heal = apply_healing_reduction(player, heal)
                     actual = apply_healing(target, heal, source=ally)
                     name = display_name(target)
@@ -1836,7 +1814,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         msg_parts.append(f"{name} is healed for {actual} HP!")
                 # Cleanse all debuffs if applicable
                 if skill_def.get("cleanse_all_debuffs") and target.get("active_debuffs"):
-                    from pandemonium.combat.status_effects import is_cleansable
                     blocked = [d for d in target.get("active_debuffs", []) if not is_cleansable(d)]
                     for d in list(target.get("active_debuffs", [])):
                         if is_cleansable(d):
@@ -1848,7 +1825,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         msg_parts.append(f"{name}'s debuffs are all cleansed!")
                 # Cleanse one debuff if applicable
                 elif skill_def.get("cleanse_one_debuff") and target.get("active_debuffs"):
-                    from pandemonium.combat.status_effects import is_cleansable
                     idx = next((i for i, d in enumerate(target["active_debuffs"]) if is_cleansable(d)), None)
                     if idx is not None:
                         removed = target["active_debuffs"].pop(idx)
@@ -1856,7 +1832,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                         msg_parts.append(f"{name}'s {removed.get('type', 'debuff')} cleansed!")
 
     # ── Cooldown & Mastery ──
-    from pandemonium.world.curse_pandemonium import get_cooldown_increase
     cooldown = skill_def.get("cooldown", 1) + get_cooldown_increase(player)
 
     # Consume cooldown_reduction buff if present
@@ -1875,7 +1850,6 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         msg_parts.append("Skill Mastery increased! ★")
 
     # ── Sky Piercer: execute non-superboss enemies left at/below threshold ──
-    from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
     for i, e in enumerate(enemies):
         if i < len(pre_hp) and e["hp"] < pre_hp[i]:
             check_sky_piercer_execute(ally, e, pre_hp[i] - e["hp"])

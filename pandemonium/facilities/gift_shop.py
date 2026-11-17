@@ -3,6 +3,8 @@ from pandemonium.core.utils import advance_time
 from pandemonium.inventory.core import add_item_to_inventory
 from pandemonium.world.city_dialogue import service_dialogue
 from pandemonium.gui.terminal import term
+from pandemonium.resources.items import build_item as _build_item
+from pandemonium.resources.items import build_item
 
 GIFT_TYPES = ["flowers", "jewelry", "weapon", "candy", "book"]
 
@@ -20,7 +22,6 @@ def _show_engagement_rings(player, city_id):
     term.print("A token of commitment. Propose to a girl at 100 affection.")
     term.print("The ring is consumed at the proposal — its stats become her permanent bonus.")
 
-    from pandemonium.resources.items import build_item as _build_item
     options = []
     for (item_id, name, stat, cost) in ENGAGEMENT_RINGS:
         preview_mods = _build_item(item_id).get("mods") or {}
@@ -47,7 +48,6 @@ def _show_engagement_rings(player, city_id):
         term.pause()
         return
 
-    from pandemonium.resources.items import build_item
     item = build_item(item_id, "unique")
     if add_item_to_inventory(player, item):
         player["gold"] -= cost

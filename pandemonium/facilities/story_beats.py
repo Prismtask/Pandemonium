@@ -27,9 +27,9 @@ def ensure_city_story_triggers(player, city_id=None):
     The Voss & Lumen epilogue opens on entering Skylume after Grand Resonance
     (MQ6) and the "A Moth at the Window" house arc are both complete.
     """
+    import pandemonium.progression.quests as quests
     if city_id != "skylume":
         return
-    import pandemonium.progression.quests as quests
     state = quests.ensure_quest_state(player)
     if state["flags"].get("voss_epilogue_seen"):
         return

@@ -19,6 +19,15 @@ Lifecycle is wired in ``combat/combat_engine.py`` (``_combat_inner``,
 import random
 
 from pandemonium.combat.combat_io import c_print
+from pandemonium.combat.stat_milestones import get_strength_bonus
+from pandemonium.progression.titles import mod as _title_mod
+from pandemonium.combat.form_perks import (get_outgoing_damage_multiplier,
+                               get_armor_pen_multiplier)
+from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
+from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
+from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
 
 MOONLIGHT_DURATION = 3
 MOONLIGHT_COOLDOWN = 5
@@ -167,6 +176,16 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
     Wisdom, Charisma) tuple, matching the values already computed by the
     calling turn handler.
     """
+    from pandemonium.combat.status_effects import get_damage_buff_multiplier
+    from pandemonium.combat.skills import get_player_passive_low_hp_mult
+    from pandemonium.world.event_horizon import joker_damage_multiplier, joker_crit_modifier
+    from pandemonium.combat.stats import (roll_critical_hit, apply_critical_damage,
+                                  format_critical_tag, CRIT_MULTIPLIER, roll_dodge)
+    from pandemonium.combat.elemental import calculate_elemental_damage
+    from pandemonium.combat.status_effects import get_damage_taken_multiplier, apply_healing
+    from pandemonium.world.wonderland_curses import get_jabberwock_bane_multiplier
+    from pandemonium.combat.skills import get_passive_life_steal
+    from pandemonium.combat.ally_skills import get_race_lifesteal, get_race_passive
     weapon = _actor_has_moonlight_greatsword(actor)
     if not weapon:
         return
@@ -195,13 +214,11 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
     if weapon.get("scaling_mult"):
         scaling_val = int(scaling_val * weapon["scaling_mult"])
 
-    from pandemonium.combat.stat_milestones import get_strength_bonus
     dice = (4, 10) if is_player else (3, 8)
     dmg = random.randint(*dice) + scaling_val + get_strength_bonus(actor)
 
     # ── Percentage damage buffs stack additively (power_buff + damage_boost);
     # one power_buff empowers the whole volley ──
-    from pandemonium.combat.status_effects import get_damage_buff_multiplier
     _buff_msgs = []
     _damage_buff_mult = get_damage_buff_multiplier(
         actor, consume_power_buff=True, messages=_buff_msgs
@@ -213,39 +230,27 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
 
     # Profession passive: bonus damage below a HP threshold (player only)
     if is_player:
-        from pandemonium.combat.skills import get_player_passive_low_hp_mult
         lp_mult = get_player_passive_low_hp_mult(actor)
         if lp_mult != 1.0:
             dmg = int(dmg * lp_mult)
 
     # Event Horizon: The Hierophant — basic attacks ×0.75
-    from pandemonium.world.event_horizon import joker_damage_multiplier, joker_crit_modifier
     dmg = int(dmg * joker_damage_multiplier(actor, "basic"))
 
     # Deed titles (player only)
     if is_player:
-        from pandemonium.progression.titles import mod as _title_mod
         title_dmg = _title_mod(actor, "damage_pct")
         if title_dmg:
             dmg = int(dmg * (1.0 + title_dmg))
 
-    from pandemonium.combat.form_perks import (get_outgoing_damage_multiplier,
-                                   get_armor_pen_multiplier)
     dmg = int(dmg * get_outgoing_damage_multiplier(actor))
     pen_mult = get_armor_pen_multiplier(actor)
 
     # ── Critical hit: one roll shared by the whole wave ──
-    from pandemonium.combat.stats import (roll_critical_hit, apply_critical_damage,
-                              format_critical_tag, CRIT_MULTIPLIER, roll_dodge)
     is_crit, _, overflow_crit = roll_critical_hit(
         actor, "player" if is_player else "ally", dex=p_dex, lrn=p_ler)
     crit_tag = format_critical_tag(is_crit)
 
-    from pandemonium.combat.elemental import calculate_elemental_damage
-    from pandemonium.combat.helpers import format_damage_msg
-    from pandemonium.combat.status_effects import get_damage_taken_multiplier, apply_healing
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
-    from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
 
     source = actor.get("name") or "You"
     c_print("🌙 Moonlight spills from the blade — waves of pale fire sweep the battlefield!")
@@ -283,12 +288,10 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
 
         # Pandemonium: Weakened Resolve curse — the party deals less damage
         if player_ref.get("pandemonium_curse"):
-            from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
             hit = apply_damage_dealt_multiplier(player_ref, hit)
 
         # Wonderland: Jabberwock's Bane — bonus damage vs boss enemies
         if enemy.get("boss"):
-            from pandemonium.world.wonderland_curses import get_jabberwock_bane_multiplier
             bane_mult = get_jabberwock_bane_multiplier(player_ref)
             if bane_mult > 0:
                 hit += int(hit * bane_mult)
@@ -303,7 +306,6 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
                                          element=MOONLIGHT_ELEMENT,
                                          crit=bool(crit_tag)))
         # ── Sky Piercer: execute non-superboss enemies left at/below threshold ──
-        from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
         check_sky_piercer_execute(actor, enemy, final_dmg)
         if enemy["hp"] <= 0:
             c_print(f"  {enemy['name']} is overwhelmed by the moonlight!")
@@ -314,7 +316,6 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
     if dealt <= 0:
         return
     if is_player:
-        from pandemonium.combat.skills import get_passive_life_steal
         ls = get_passive_life_steal(actor)
         if ls > 0:
             heal = int(dealt * ls)
@@ -325,7 +326,6 @@ def execute_moonlight_aoe_attack(actor, player_ref, enemies, stats,
                 elif actual > 0:
                     c_print(f"  [Soul Siphon] You recover {actual} HP.")
     else:
-        from pandemonium.combat.ally_skills import get_race_lifesteal, get_race_passive
         rp_ls = get_race_lifesteal(actor)
         if get_race_passive(actor.get("race")) and rp_ls > 0:
             heal = int(dealt * rp_ls)

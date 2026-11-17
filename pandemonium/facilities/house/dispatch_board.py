@@ -10,6 +10,15 @@ from pandemonium.core.utils import advance_time, display_name
 from pandemonium.gui.terminal import term
 
 from .core import _resolve_house
+from pandemonium.resources.cities import CITIES
+from pandemonium.facilities.dispatch import (
+    ensure_offers, slot_cap, star_cap, refresh_day, get_dispatch_state,
+    sanitize_flags, collect_reports, return_time_text,
+)
+from pandemonium.facilities.dispatch import (
+    eligible_girls, team_cap, success_chance_for, create_instance,
+    girl_status_line,
+)
 
 
 def _dispatch_board(player, city_id, house):
@@ -18,11 +27,6 @@ def _dispatch_board(player, city_id, house):
     Operates on the effective home house (explicit city → origin → first
     owned, via _resolve_house) even if the player opened a secondary house.
     """
-    from pandemonium.resources.cities import CITIES
-    from pandemonium.facilities.dispatch import (
-        ensure_offers, slot_cap, star_cap, refresh_day, get_dispatch_state,
-        sanitize_flags, collect_reports, return_time_text,
-    )
 
     home_city, home_house = _resolve_house(player)
     if home_house is None:
@@ -95,10 +99,6 @@ def _dispatch_board(player, city_id, house):
 
 def _dispatch_team_select(player, home_city, house, offer):
     """Toggle-select a team, preview success, and launch the mission."""
-    from pandemonium.facilities.dispatch import (
-        eligible_girls, team_cap, success_chance_for, create_instance,
-        girl_status_line,
-    )
     cap = team_cap(house.get("level", 1))
     team = []
 

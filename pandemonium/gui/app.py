@@ -19,6 +19,11 @@ from pandemonium.gui.theme import (
 )
 from pandemonium.gui.screen_manager import ScreenManager
 from pandemonium.gui.settings import load_settings, save_settings
+import traceback
+from pandemonium.gui.screens.dungeon_screen import DungeonScreen
+from pandemonium.gui.screens.inventory_screen import InventoryScreen
+from pandemonium.gui.screens.splash_screen import SplashScreen
+from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
 
 
 class PandemoniumApp:
@@ -51,7 +56,6 @@ class PandemoniumApp:
         # when after() callbacks fire after a widget's Tcl context is torn down.
         # These are harmless and unrecoverable at the application level.
         def _tk_error_handler(exc_type, exc_val, exc_tb):
-            import traceback
             msg = str(exc_val)
             # Known Tcl-level race conditions during widget destruction
             if ("can't delete Tcl command" in msg or
@@ -126,8 +130,6 @@ class PandemoniumApp:
         NOTE: CityScreen has its own local 'I' handler in _on_city_key,
         so we skip CityScreen here to avoid double-dispatch.
         """
-        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
-        from pandemonium.gui.screens.inventory_screen import InventoryScreen
 
         screen = self.screen_manager.get_top_screen()
         if isinstance(screen, DungeonScreen):
@@ -154,10 +156,8 @@ class PandemoniumApp:
     def run(self):
         """Start the tkinter main loop. Optionally shows splash screen first."""
         if self.settings.get("show_splash", True):
-            from pandemonium.gui.screens.splash_screen import SplashScreen
 
             def _after_splash():
-                from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
                 self.screen_manager.switch_to(MainMenuScreen, push_history=False)
 
             self.screen_manager.switch_to(
@@ -166,7 +166,6 @@ class PandemoniumApp:
                 on_complete=_after_splash,
             )
         else:
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.screen_manager.switch_to(MainMenuScreen, push_history=False)
         self.root.mainloop()
 

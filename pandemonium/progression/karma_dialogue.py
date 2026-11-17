@@ -8,6 +8,7 @@ service. Wonderland is excluded until its own Karma pass is designed.
 import random
 
 import pandemonium.progression.karma as karma
+from pandemonium.progression.titles import get_active
 
 _HIGH = {
     "generic": [
@@ -210,7 +211,6 @@ _TITLE_LINES = {
 
 def title_line(player, service, city_id=None):
     """Return one equipped-title greeting line, or None."""
-    from pandemonium.progression.titles import get_active
     title = get_active(player)
     if not title:
         return None

@@ -94,6 +94,7 @@ def get_elemental_debuff_params(debuff_type, enemy_level):
     Strength scales weakly with level so low-level enemies aren't oppressive
     but high-level enemies feel dangerous.
     """
+    from pandemonium.combat.status_effects import damage_to_burn_tier
     defaults = ELEMENTAL_DEBUFF_DEFAULTS.get(debuff_type, {})
     duration = defaults.get("duration", 2)
     strength = dict(defaults.get("strength", {}))
@@ -101,7 +102,6 @@ def get_elemental_debuff_params(debuff_type, enemy_level):
     # Per-debuff level scaling
     if debuff_type == "burn":
         # Burn tier scales with enemy level: tier 1 at low levels, up to tier 3 for non-boss
-        from pandemonium.combat.status_effects import damage_to_burn_tier
         raw_damage = max(3, enemy_level // 3 + 1)
         strength["tier"] = min(3, damage_to_burn_tier(raw_damage))
 

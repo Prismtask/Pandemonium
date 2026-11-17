@@ -16,6 +16,7 @@ from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 from pandemonium.core.utils import strip_ansi
+from pandemonium.gui.screens.base_screen import city_header_parts
 
 
 # ── Internal exception for clean thread abort ──────────────────────────────────
@@ -292,7 +293,6 @@ class FacilityScreen(BaseScreen):
         move the player (e.g. Arcane Tower teleport) immediately reflect the
         new city in the header.
         """
-        from pandemonium.gui.screens.base_screen import city_header_parts
         primary, secondary = city_header_parts(self.player)
         self.sm.update_top_bar_parts(primary, secondary)
 
@@ -785,10 +785,10 @@ class FacilityScreen(BaseScreen):
         _root = self.sm.root if self.sm else self.winfo_toplevel()
 
         def _do_finish():
+            from pandemonium.gui.screens.city_screen import CityScreen
             if self.on_close:
                 self.on_close(result)
             else:
-                from pandemonium.gui.screens.city_screen import CityScreen
                 self.sm.switch_to(CityScreen)
 
         # Brief delay so the player can read any final dialogue

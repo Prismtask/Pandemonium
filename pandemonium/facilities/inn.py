@@ -5,8 +5,12 @@ from pandemonium.resources.cities import CITIES
 from pandemonium.world.city_dialogue import service_dialogue   # changed
 import pandemonium.progression.karma_dialogue as karma_dialogue
 from pandemonium.gui.terminal import term
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.combat.party_stress import on_party_sleep
 
 def inn_menu(player, city_id="solmere"):
+    from pandemonium.progression.dreams import maybe_offer_dream
+    from pandemonium.facilities.casino_ui import tavern_games_menu
     term.clear()
     service_dialogue(city_id, "inn", "enter")
     inn_line = karma_dialogue.service_line(player, "inn", city_id)
@@ -45,10 +49,8 @@ def inn_menu(player, city_id="solmere"):
             term.pause("You feel refreshed. Press Continue...")
             break
         elif choice == 1:
-            import pandemonium.core.time_blocks as time_blocks
             if time_blocks.get_day_phase(player) == "night":
                 # Combat stress: settle falls, then let the party rest.
-                from pandemonium.combat.party_stress import on_party_sleep
                 for _stress_msg in on_party_sleep(player):
                     term.print(_stress_msg)
                 player["current_hp"] = player_max_hp(player)
@@ -58,7 +60,6 @@ def inn_menu(player, city_id="solmere"):
                 service_dialogue(city_id, "inn", "sleep")
                 time_blocks.end_day(player, slept=True)
                 # Dream events (docs/dream_events_design.md) — one roll per sleep.
-                from pandemonium.progression.dreams import maybe_offer_dream
                 maybe_offer_dream(player, "inn", term)
                 term.pause("You wake up refreshed the next morning...")
                 break
@@ -66,7 +67,6 @@ def inn_menu(player, city_id="solmere"):
                 service_dialogue(city_id, "inn", "early_sleep")
                 term.pause()
         elif choice == 2:
-            from pandemonium.facilities.casino_ui import tavern_games_menu
             tavern_games_menu(player, city_id)
         elif choice == 3 or choice == -1:
             service_dialogue(city_id, "inn", "leave")
@@ -196,9 +196,9 @@ _HEROINE_FULL_DIALOGUE = {
 def _wonderland_inn_menu(player, city, inn_config):
     """Mad Hatter's Tea Party — staged Wonderland guest room."""
     from pandemonium.combat.ally import (
-        ensure_party_order, get_heroine_in_party,
-        set_heroine_state,
-    )
+            ensure_party_order, get_heroine_in_party,
+            set_heroine_state,
+        )
     import pandemonium.world.wonderland_guests as guests_mod
 
     city_id = "wonderland"
@@ -277,7 +277,6 @@ def _wonderland_inn_menu(player, city, inn_config):
 
         elif choice == 1:
             # Sleep (Wonderland time pocket: the outside day is untouched)
-            import pandemonium.core.time_blocks as time_blocks
             player["current_hp"] = player_max_hp(player)
             for ally in player.get("allies", []):
                 ally["current_hp"] = ally["max_hp"]
@@ -306,8 +305,8 @@ def _wonderland_inn_menu(player, city, inn_config):
 
 def _print_wonderland_guest_scene(scene, player):
     """Print the one-time Hatter scenes for a guest arrival."""
+    import pandemonium.world.wonderland_guests as guests_mod
     if scene == "three_guests":
-        import pandemonium.world.wonderland_guests as guests_mod
         red_state = guests_mod.get_guest_state(player, "red_hood")
         term.print("The Hatter looks up as you enter. \"There you are.\"")
         term.print("\"Three guests came asking for you while the Queen was losing her head.\"")
@@ -391,9 +390,13 @@ def _sync_heroine_quest(player, heroine_key, obj_type):
 def _heroine_interaction(player, heroine_key, inn_config):
     """Handle dialogue with a Wonderland heroine."""
     from pandemonium.combat.ally import (
-        create_heroine_ally, get_heroine_in_party,
-        get_heroine_state, set_heroine_state,
-    )
+            create_heroine_ally, get_heroine_in_party,
+            get_heroine_state, set_heroine_state,
+        )
+    from pandemonium.combat.ally import ensure_party_order
+    from pandemonium.combat.ally import ensure_party_order, _HEROINE_TEMPLATE_KEYS
+    import pandemonium.world.wonderland_guests as guests_mod
+    from pandemonium.combat.ally import equip_ally_item
 
     dialogue = _HEROINE_FULL_DIALOGUE.get(heroine_key, {})
     state = get_heroine_state(player, heroine_key)
@@ -401,7 +404,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
 
     term.clear()
 
-    import pandemonium.world.wonderland_guests as guests_mod
     guest_state = guests_mod.get_guest_state(player, heroine_key)
     if guest_state == "late":
         _late_arc_interaction(player, heroine_key)
@@ -444,7 +446,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
                     '"I\'m not ready to part with it yet."',
                 ], prompt="")
                 if sub == 0:
-                    from pandemonium.combat.ally import equip_ally_item
                     blade_item = next(
                         (item for item in player.get("inventory", [])
                          if item.get("id") == "vorpal_blade_rusted"), None
@@ -492,7 +493,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
                     '"I\'m still not sure it\'s safe."',
                 ], prompt="")
                 if sub == 0:
-                    from pandemonium.combat.ally import equip_ally_item
                     axe_item = next(
                         (item for item in player.get("inventory", [])
                          if item.get("id") == "woodcutters_broken_axe"), None
@@ -542,7 +542,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
                     '"Let me hold onto them a little longer."',
                 ], prompt="")
                 if sub == 0:
-                    from pandemonium.combat.ally import equip_ally_item
                     slippers_item = next(
                         (item for item in player.get("inventory", [])
                          if item.get("id") == "silver_slippers"), None
@@ -610,7 +609,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
                     term.print("")
 
                     # Equip vorpal_blade_rusted on Alice
-                    from pandemonium.combat.ally import equip_ally_item
                     blade_item = next(
                         (item for item in player.get("inventory", [])
                          if item.get("id") == "vorpal_blade_rusted"), None
@@ -677,7 +675,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
                     term.print('"Let\'s find the Wolf. I want to show him what this axe still remembers."')
                     term.print("")
 
-                    from pandemonium.combat.ally import equip_ally_item
                     axe_item = next(
                         (item for item in player.get("inventory", [])
                          if item.get("id") == "woodcutters_broken_axe"), None
@@ -740,7 +737,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
                     term.print('She slips them on. A warm wind circles her ankles. '
                                '"They\'re not home. But they\'re the road there. Let\'s walk it."')
                     term.print("")
-                    from pandemonium.combat.ally import equip_ally_item
                     slippers_item = next(
                         (item for item in player.get("inventory", [])
                          if item.get("id") == "silver_slippers"), None
@@ -830,7 +826,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
             if ally:
                 player.setdefault("allies", []).append(ally)
                 # Ensure party_order
-                from pandemonium.combat.ally import ensure_party_order
                 ensure_party_order(player)
                 set_heroine_state(player, heroine_key, "temp")
                 guests_mod.set_guest_state(player, heroine_key, "accepted")
@@ -865,7 +860,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
             ally = create_heroine_ally(player, heroine_key, floor=current_floor)
             if ally:
                 player.setdefault("allies", []).append(ally)
-                from pandemonium.combat.ally import ensure_party_order
                 ensure_party_order(player)
                 set_heroine_state(player, heroine_key, "temp")
                 guests_mod.set_guest_state(player, heroine_key, "accepted")
@@ -895,7 +889,6 @@ def _heroine_interaction(player, heroine_key, inn_config):
                 '"Not right now." (Step away)',
             ], prompt="")
             if sub == 0:
-                from pandemonium.combat.ally import ensure_party_order, _HEROINE_TEMPLATE_KEYS
                 current_floor = player.get("saved_dungeon_floor", 1)
                 ally = create_heroine_ally(player, heroine_key, floor=current_floor)
                 if ally:

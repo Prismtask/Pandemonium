@@ -483,7 +483,10 @@ def check_wonderland_unlock_conditions(player):
     # Condition 1: Floor 20+ cleared in ≥2 biomes. Same-biome cities share
     # one dungeon depth (2026-11-04), so counting city records would let two
     # entrances of the same dungeon satisfy this gate.
+    # Local import: progression.leveling imports core.character, which imports
+    # combat/progression modules back — top-level would close a cycle.
     from pandemonium.progression.leveling import get_biomes_cleared_to_cap
+
     if len(get_biomes_cleared_to_cap(player, 20)) < 2:
         return False
 
@@ -526,7 +529,10 @@ def process_day_rollover(player, days_passed, old_day):
     # ── Wild dungeons: weekly spawn cycle (docs/wild_dungeon_design.md) ──
     # Expires overdue dungeons and rolls 3-7 new ones every 7 game days.
     # Idempotent — a cycle already rolled this week does not roll again.
+    # Local imports: both runtimes import core.events back at module level.
     from pandemonium.world.wild_dungeons import maybe_spawn_cycle
+    from pandemonium.world.map_boss import maybe_spawn as maybe_spawn_map_boss
+
     _, spawn_event = maybe_spawn_cycle(player)
     if spawn_event:
         all_events.append(spawn_event)
@@ -535,7 +541,6 @@ def process_day_rollover(player, days_passed, old_day):
     # Spawns the current season's Warden once Floor 20 is cleared, and swaps
     # to the next season's Warden on a season boundary (days 1/91/181/271).
     # Idempotent; journal entries are written by the runtime itself.
-    from pandemonium.world.map_boss import maybe_spawn as maybe_spawn_map_boss
     maybe_spawn_map_boss(player)
 
     return all_events

@@ -71,11 +71,11 @@ def snapshot_party_hp(player):
     Stored as player["_authors_pen_hp_snapshot"] = {ref_id: hp, ...}
     where ref_id is 0 for the player or the ally's name for allies.
     """
+    from pandemonium.combat.ally import get_active_allies
     snapshot = {}
     # Player
     snapshot[0] = player.get("current_hp", 0)
     # Active (front-row) allies
-    from pandemonium.combat.ally import get_active_allies
     for ally in get_active_allies(player):
         # Use the ally dict's id() as a tracking key
         snapshot[id(ally)] = {
@@ -92,6 +92,7 @@ def compute_last_round_damage(player):
     Format: {0: player_dmg, id(ally): {"name": ..., "damage": ...}, ...}
     Damage is counted even for members who died (healing won't revive them).
     """
+    from pandemonium.combat.ally import get_active_allies
     snapshot = player.pop("_authors_pen_hp_snapshot", None)
     if snapshot is None:
         player["_authors_pen_last_round_damage"] = {}
@@ -100,7 +101,6 @@ def compute_last_round_damage(player):
     damage_map = {}
     # Build a lookup of current HP for all entities
     current_hp_map = {0: player.get("current_hp", 0)}
-    from pandemonium.combat.ally import get_active_allies
     for ally in get_active_allies(player):
         current_hp_map[id(ally)] = ally.get("current_hp", 0)
 
@@ -169,6 +169,7 @@ def _use_rewrite_actor(actor, player=None, is_player=True):
 
     Returns (result, defending) tuple.
     """
+    from pandemonium.combat.ally import get_active_allies
     pen = _actor_has_authors_pen(actor)
     if not pen:
         if is_player:
@@ -214,7 +215,6 @@ def _use_rewrite_actor(actor, player=None, is_player=True):
             c_print(f"  ~*~ You: +{heal} HP -> {tracker['current_hp']}/{p_max} HP")
 
     # Heal active allies
-    from pandemonium.combat.ally import get_active_allies
     for ally in get_active_allies(tracker):
         ally_key = id(ally)
         ally_data = damage_map.get(ally_key)

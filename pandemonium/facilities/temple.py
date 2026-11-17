@@ -6,6 +6,8 @@ from pandemonium.facilities.shop import get_discounted_price
 from pandemonium.resources.items import build_item
 from pandemonium.inventory.core import add_item_to_inventory, get_inventory_caps, count_inventory
 from pandemonium.gui.terminal import term
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.resources.dialogues.wonderland import WONDERLAND_GODMOTHER_DIALOGUE as GD
 
 
 def _get_global_max_floor(player):
@@ -121,7 +123,6 @@ def recover_allies(player, city_id):
         ally["defeated"] = False
         ally["current_hp"] = ally["max_hp"]
         # Print is_recovered dialogue
-        from pandemonium.resources.enemies import ENEMIES
         template = ENEMIES.get(ally.get("key", ""), {})
         dialogue = template.get("dialogue", {})
         recovered_line = dialogue.get("is_recovered", f"{display_name(ally)} is back on their feet!")
@@ -141,8 +142,9 @@ def _godmother_interaction(player, city_id):
              arrives after Floor 30 and her Jabberwock chapter ends at 40)
     Phase 2: Upgrade ??? Blade → Vorpal Blade (requires Jabberwock defeat + fragment)
     """
-    from pandemonium.resources.dialogues.wonderland import WONDERLAND_GODMOTHER_DIALOGUE as GD
     from pandemonium.combat.ally import get_heroine_in_party
+    from pandemonium.combat.elemental import compute_ally_elemental
+    from pandemonium.combat.ally_skills import swap_alice_to_vorpal_skills, grant_vorpal_upgrade_skill
 
     term.clear()
 
@@ -210,13 +212,11 @@ def _godmother_interaction(player, city_id):
         alice["equipped"]["weapon"] = vorpal
 
         # Recalculate elemental profile
-        from pandemonium.combat.elemental import compute_ally_elemental
         e_res, e_dmg = compute_ally_elemental(alice)
         alice["elemental_res"] = e_res
         alice["elemental_dmg"] = e_dmg
 
         # Grant Frabjous Day skill
-        from pandemonium.combat.ally_skills import swap_alice_to_vorpal_skills, grant_vorpal_upgrade_skill
         swap_alice_to_vorpal_skills(alice)
         grant_vorpal_upgrade_skill(alice)
 

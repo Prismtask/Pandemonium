@@ -7,6 +7,8 @@ from pandemonium.resources.items import random_equipment, build_item, market_val
 from pandemonium.world.city_dialogue import service_dialogue
 from pandemonium.gui.terminal import term
 import random
+from pandemonium.progression.titles import mod as _title_mod
+from pandemonium.resources.dialogues.wonderland import WONDERLAND_WOODCUTTER_DIALOGUE as WD
 
 
 # ── Capture Net tier definitions ─────────────────────────────────────────────
@@ -23,7 +25,6 @@ def _karma_price(player, cost):
     discount = 0.0
     if karma.is_enabled(player):
         discount = min(20, max(0, -karma.get_karma(player) * 0.2))
-    from pandemonium.progression.titles import mod as _title_mod
     title_discount = min(10, max(0, _title_mod(player, "black_market_pct") * 100))
     discount = min(30, discount + title_discount)
     if discount <= 0:
@@ -119,8 +120,9 @@ def _woodcutter_interaction(player):
              arrives after Floor 10 and her Wolf chapter ends at 20)
     Phase 2: Upgrade Broken Axe → Grandmother's Axe (requires Big Bad Wolf defeat + materials)
     """
-    from pandemonium.resources.dialogues.wonderland import WONDERLAND_WOODCUTTER_DIALOGUE as WD
     from pandemonium.combat.ally import get_heroine_in_party
+    from pandemonium.combat.elemental import compute_ally_elemental
+    from pandemonium.combat.ally_skills import swap_redhood_to_vorpal_skills, grant_redhood_upgrade_skill
 
     term.clear()
 
@@ -190,12 +192,10 @@ def _woodcutter_interaction(player):
         axe = build_item("grandmothers_axe", rarity="unique", enhance=5)
         red_hood["equipped"]["weapon"] = axe
 
-        from pandemonium.combat.elemental import compute_ally_elemental
         e_res, e_dmg = compute_ally_elemental(red_hood)
         red_hood["elemental_res"] = e_res
         red_hood["elemental_dmg"] = e_dmg
 
-        from pandemonium.combat.ally_skills import swap_redhood_to_vorpal_skills, grant_redhood_upgrade_skill
         swap_redhood_to_vorpal_skills(red_hood)
         grant_redhood_upgrade_skill(red_hood)
 
@@ -245,6 +245,9 @@ def _woodcutter_interaction(player):
 
 def black_market_service(player, city_id):
     """Black market: buy rare/illegal items at high prices."""
+    from pandemonium.progression.leveling import get_biomes_cleared_to_cap
+    from pandemonium.facilities.casino_ui import print_back_room_refusal
+    from pandemonium.facilities.casino_ui import back_room_menu
     service_dialogue(city_id, "black_market", "enter")
     market_line = karma_dialogue.service_line(player, "black_market", city_id)
     if market_line:
@@ -272,7 +275,6 @@ def black_market_service(player, city_id):
     if city_id == "veilholt" and not player.get("wonderland_unlocked"):
         # Two different biomes at Floor 20+ — same-biome cities share one
         # dungeon depth, so city records are not a valid count any more.
-        from pandemonium.progression.leveling import get_biomes_cleared_to_cap
         biomes_f20 = get_biomes_cleared_to_cap(player, 20)
         has_shard = any(
             item.get("id") == "looking_glass_shard"
@@ -380,12 +382,10 @@ def black_market_service(player, city_id):
     elif back_room_available and choice == back_room_opt:
         status = casino.back_room_status(player)
         if not status.get("ok"):
-            from pandemonium.facilities.casino_ui import print_back_room_refusal
             print_back_room_refusal(player, status)
             term.pause()
             advance_time(player, 30)
             return
-        from pandemonium.facilities.casino_ui import back_room_menu
         back_room_menu(player, city_id)
         term.pause()
         # The back-room sub-menu charges 20 minutes per hand; skip the

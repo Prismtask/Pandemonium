@@ -18,6 +18,17 @@ from pandemonium.combat.weapon.moonlight_greatsword import (
     tick_moonlight,
     clear_moonlight_state,
 )
+from pandemonium.combat.weapon.map_boss_uniques import (
+    begin_map_boss_uniques, clear_map_boss_unique_state,
+)
+from pandemonium.combat.party_stress import begin_encounter
+from pandemonium.combat.weapon.decaying_aegis import begin_decaying_aegis_combat
+from pandemonium.combat.sylvana_heroine import clear_sylvana_combat_state
+from pandemonium.combat.sylvana_heroine import apply_sylvana_party_grace
+from pandemonium.combat.weapon.decaying_aegis import apply_decaying_aegis_turn_start
+from pandemonium.combat.weapon.map_boss_uniques import refresh_echo_mantle
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.weapon.map_boss_uniques import tick_long_day
 # combat/superboss/superboss_common.py
 """Shared functions for superboss fights, extracted to break circular imports."""
 
@@ -102,6 +113,23 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
     projected clock and phase. It may return ``"dead"`` / ``"victory"`` to
     end the fight. Existing superbosses pass ``None`` (unchanged behavior).
     """
+    from pandemonium.combat.weapon.black_silence_gloves import set_first_strike, _actor_has_black_silence_gloves
+    from pandemonium.combat.weapon.tarnished_jade import _actor_has_tarnished_jade
+    from pandemonium.combat.weapon.palette_brush import init_brush_state, _actor_has_palette_brush
+    from pandemonium.combat.weapon.blank_canvas_shawl import clear_shawl_state
+    from pandemonium.combat.weapon.prescript_ledger import reset_all_state as reset_prescript_state
+    from pandemonium.combat.weapon.black_silence_gloves import init_gloves_state, _actor_has_black_silence_gloves
+    from pandemonium.combat.weapon.authors_pen import clear_authors_pen_state
+    from pandemonium.combat.weapon.captain_cutlass import _clear_captain_cutlass_state_actor
+    from pandemonium.combat.palette_ally import clear_palette_ally_state
+    from pandemonium.combat.skills import apply_profession_battle_start
+    from pandemonium.combat.weapon.chronoweave import apply_chronoweave_turn_start
+    from pandemonium.combat.weapon.prescript_ledger import issue_prescripts
+    from pandemonium.combat.weapon.tarnished_jade import apply_tarnished_jade_turn_start
+    from pandemonium.combat.weapon.prescript_ledger import report_damage as report_prescript_damage
+    from pandemonium.combat.status_effects import get_aggro_multiplier
+    from pandemonium.combat.weapon.prescript_ledger import evaluate_round as evaluate_prescript_round
+    from pandemonium.combat.weapon.captain_cutlass import _tick_captain_cutlass_actor
     def _bestiary_and_boss_kill(target, elist):
         from pandemonium.progression.bestiary import record_defeat
         record_defeat(player, target)
@@ -115,7 +143,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         lambda target, elist, attacker=None: on_player_hit_hook(target, elist, context, attacker=attacker)
         if on_player_hit_hook else None
     )
-    from pandemonium.combat.weapon.tarnished_jade import _actor_has_tarnished_jade
     # Pins only start accumulating if the Jade is actually equipped
     player["tarnished_jade_pins"] = 1 if _actor_has_tarnished_jade(player) else 0
     player["tarnished_jade_weakened"] = False
@@ -124,9 +151,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
     clear_captain_cutlass_state(player)
     clear_moonlight_state(player)
     # Seasonal map boss uniques (Signet / Long Day's Edge / Echo Mantle)
-    from pandemonium.combat.weapon.map_boss_uniques import (
-        begin_map_boss_uniques, clear_map_boss_unique_state,
-    )
     clear_map_boss_unique_state(player)
     begin_map_boss_uniques(player)
     # Stun never crosses an encounter boundary (stale save / previous fight).
@@ -134,15 +158,10 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
 
     # Party stress: settle the previous fight's falls, then let Burned Out
     # companions refuse this one (docs/stress_system_design.md).
-    from pandemonium.combat.party_stress import begin_encounter
     for _stress_msg in begin_encounter(player):
         c_print(_stress_msg)
 
     # Palette's Brush + Blank Canvas Shawl state (player)
-    from pandemonium.combat.weapon.palette_brush import init_brush_state, _actor_has_palette_brush
-    from pandemonium.combat.weapon.blank_canvas_shawl import clear_shawl_state
-    from pandemonium.combat.weapon.decaying_aegis import begin_decaying_aegis_combat
-    from pandemonium.combat.sylvana_heroine import clear_sylvana_combat_state
     clear_shawl_state(player)
     clear_sylvana_combat_state(player)
     begin_decaying_aegis_combat(player)
@@ -150,13 +169,9 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         init_brush_state(player)
 
     # Prescript Ledger: clear stale state, then keep reset helper in scope
-    from pandemonium.combat.weapon.prescript_ledger import reset_all_state as reset_prescript_state
     reset_prescript_state(player)
 
     # Init/clear ally unique-equipment state (mirrors combat_engine._combat_inner)
-    from pandemonium.combat.weapon.black_silence_gloves import init_gloves_state, _actor_has_black_silence_gloves
-    from pandemonium.combat.weapon.authors_pen import clear_authors_pen_state
-    from pandemonium.combat.weapon.captain_cutlass import _clear_captain_cutlass_state_actor
     for ally in player.get("allies", []):
         clear_stun(ally)
         if ally.get("current_hp", 0) > 0:
@@ -172,7 +187,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                 init_gloves_state(ally)
             clear_shawl_state(ally)
             begin_decaying_aegis_combat(ally)
-            from pandemonium.combat.palette_ally import clear_palette_ally_state
             clear_palette_ally_state(ally)
             if _actor_has_palette_brush(ally):
                 init_brush_state(ally)
@@ -183,7 +197,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         player["cutlass_high_tide_floor"] = floor
 
     # Profession passives: battle start (Chronomancer start-CD, regen, …)
-    from pandemonium.combat.skills import apply_profession_battle_start
     apply_profession_battle_start(player)
 
     round_num = 0
@@ -200,15 +213,12 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         snapshot_party_hp(player)
 
         # Chronoweave Mantle: turn-start Momentum gain (player + allies)
-        from pandemonium.combat.weapon.chronoweave import apply_chronoweave_turn_start
         apply_chronoweave_turn_start(player)
         for ally in get_active_allies(player):
             apply_chronoweave_turn_start(ally)
 
         # Sylvana's Queen's Grace + Decaying Aegis upkeep
-        from pandemonium.combat.sylvana_heroine import apply_sylvana_party_grace
         apply_sylvana_party_grace(player)
-        from pandemonium.combat.weapon.decaying_aegis import apply_decaying_aegis_turn_start
         apply_decaying_aegis_turn_start(player)
         for ally in get_active_allies(player):
             apply_decaying_aegis_turn_start(ally)
@@ -260,11 +270,9 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
             return "victory"
 
         # Prescript Ledger — issue this round's Prescripts and mark the Target
-        from pandemonium.combat.weapon.prescript_ledger import issue_prescripts
         issue_prescripts(player, enemies)
 
         # Warden of the Long Day — Echo Mantle follows the clock each round
-        from pandemonium.combat.weapon.map_boss_uniques import refresh_echo_mantle
         refresh_echo_mantle(player)
         for ally in get_alive_allies(player):
             refresh_echo_mantle(ally)
@@ -275,7 +283,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
             print_combat_hud(player, enemies, header=f"Superboss: {boss_name}")
 
         # --- Tarnished Jade: turn-start pin damage ---
-        from pandemonium.combat.weapon.tarnished_jade import apply_tarnished_jade_turn_start
         tj_triggered = apply_tarnished_jade_turn_start(player, enemies)
         if tj_triggered:
             enemies[:] = prune_dead(enemies, player)
@@ -293,7 +300,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         turn_order = roll_initiative(player, enemies)
 
         # Black Silence Gloves: First Strike detection
-        from pandemonium.combat.weapon.black_silence_gloves import set_first_strike, _actor_has_black_silence_gloves
         if _actor_has_black_silence_gloves(player):
             # Player acts first only if they are the very first combatant (before allies too)
             player_idx = next((i for i, c in enumerate(turn_order) if c["type"] == "player"), None)
@@ -390,7 +396,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                     # Hit hook: fires for every enemy damaged by the action
                     # (any attack type — basic, skill, glove workshop, brush)
                     if result != "retry":
-                        from pandemonium.combat.weapon.prescript_ledger import report_damage as report_prescript_damage
                         for e in live_enemies:
                             if hp_before_action.get(id(e), e.get("hp", 0)) > e.get("hp", 0):
                                 report_prescript_damage(player, e)
@@ -440,7 +445,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                     )
                     # Hit hook: fires for every enemy damaged by the ally's action
                     if result != "retry":
-                        from pandemonium.combat.weapon.prescript_ledger import report_damage as report_prescript_damage
                         for e in live_enemies:
                             if hp_before_action.get(id(e), e.get("hp", 0)) > e.get("hp", 0):
                                 report_prescript_damage(ally, e)
@@ -507,7 +511,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                         if len(alive_party) == 1:
                             target = alive_party[0]
                         else:
-                            from pandemonium.combat.status_effects import get_aggro_multiplier
                             weights = [
                                 (2.0 if m is player else 1.0) * get_aggro_multiplier(m)
                                 for m in alive_party
@@ -543,7 +546,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                                 target["defeated"] = True
                                 target["current_hp"] = 0
                                 # Print is_defeated dialogue if available
-                                from pandemonium.resources.enemies import ENEMIES
                                 template = ENEMIES.get(target.get("key", ""), {})
                                 dialogue = template.get("dialogue", {})
                                 defeated_line = dialogue.get("is_defeated", f"{target['name']} has fallen!")
@@ -574,7 +576,6 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
             return "victory"
 
         # ── Prescript Ledger: round-end resolution (waive / punish / retribution / regen) ──
-        from pandemonium.combat.weapon.prescript_ledger import evaluate_round as evaluate_prescript_round
         if evaluate_prescript_round(player, enemies) == "dead":
             reset_prescript_state(player)
             return "dead"
@@ -585,13 +586,11 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
         tick_moonlight(player, prefix="")
 
         # Warden uniques: Long Day's Edge stacks
-        from pandemonium.combat.weapon.map_boss_uniques import tick_long_day
         tick_long_day(player)
         for ally in get_alive_allies(player):
             tick_long_day(ally)
 
         # Tick ally weapon specials (Abyss Fang, Captain's Cutlass, Abyssal Tempo)
-        from pandemonium.combat.weapon.captain_cutlass import _tick_captain_cutlass_actor
         for ally in get_alive_allies(player):
             tick_abyss_fang_cooldown(ally, prefix="")
             tick_abyssal_tempo(ally, prefix="")

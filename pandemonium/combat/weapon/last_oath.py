@@ -25,9 +25,9 @@ def try_last_oath_expose(actor, target, is_crit=False):
     A resisted application is silent (too spammy on 75%-resist superbosses);
     the HUD still shows whether the enemy's armour actually changed.
     """
+    from pandemonium.combat.status_effects import apply_expose
     if target.get("hp", 0) <= 0 or not _actor_has_last_oath(actor):
         return None
-    from pandemonium.combat.status_effects import apply_expose
     result, new_con = apply_expose(target, 2 if is_crit else 1)
     if result == "applied":
         return f"  ⚜ Last Oath finds the seam — {target['name']}'s armour: {new_con}!"

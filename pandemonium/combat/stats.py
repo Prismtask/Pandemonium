@@ -4,6 +4,10 @@ from pandemonium.resources.races_classes import ATTRIBUTES
 from pandemonium.inventory.core import get_total_equipment_mods
 from pandemonium.core.utils import get_difficulty_multiplier_from_time
 from pandemonium.combat.status_effects import get_weaken_pct
+from pandemonium.progression.titles import combat_stat_bonus
+from pandemonium.combat.form_perks import get_form_crit_chance_bonus
+from pandemonium.combat.form_perks import get_form_crit_damage_bonus
+from pandemonium.combat.form_perks import get_form_evasion
 
 
 # ===========================================================================
@@ -42,13 +46,15 @@ def compute_enemy_attributes(enemy_key):
 
 
 def enemy_stats(enemy_key, player=None):
+    from pandemonium.world.event_horizon import in_run as _eh_in_run
+    from pandemonium.combat.elemental import compute_enemy_elemental
+    from pandemonium.world.event_horizon import apply_enemy_scaling
     template = ENEMIES[enemy_key]
     attrs = compute_enemy_attributes(enemy_key)
 
     eh_frozen = False
     if player:
         # Event Horizon runs freeze difficulty too (docs §2.1, 2026-10-06).
-        from pandemonium.world.event_horizon import in_run as _eh_in_run
         eh_frozen = _eh_in_run(player)
     if player and (player.get("pandemonium_mode") or eh_frozen):
         # Pandemonium / Event Horizon runs ignore phase scaling —
@@ -98,13 +104,11 @@ def enemy_stats(enemy_key, player=None):
     }
 
     # Add elemental stats
-    from pandemonium.combat.elemental import compute_enemy_elemental
     e_res, e_dmg = compute_enemy_elemental(result)
     result["elemental_res"] = e_res
     result["elemental_dmg"] = e_dmg
 
     # Event Horizon: room scaling + negative trial cards (no-op outside a run)
-    from pandemonium.world.event_horizon import apply_enemy_scaling
     apply_enemy_scaling(result, player)
 
     return result
@@ -112,12 +116,14 @@ def enemy_stats(enemy_key, player=None):
 
 def get_effective_attribute(player, attr_name):
     """Return effective attribute value after curse/weaken/buffs/equipment/passive."""
+    from pandemonium.combat.skills import get_player_passive_effects
+    from pandemonium.combat.weapon.authors_pen import get_authors_pen_stat_bonus
+    from pandemonium.combat.weapon.tarnished_jade import get_tarnished_jade_str_bonus, get_tarnished_jade_wis_bonus
     base = player["attributes"].get(attr_name, 0)
     equip_mods = get_total_equipment_mods(player)
     total = base + equip_mods.get(attr_name, 0)
 
     # Apply passive skill bonuses (class passive, or the upgraded profession passive)
-    from pandemonium.combat.skills import get_player_passive_effects
     if player.get("passive_unlocked", True):
         for effect in get_player_passive_effects(player):
             if effect.get("stat") == "all":
@@ -151,11 +157,9 @@ def get_effective_attribute(player, attr_name):
         total = int(total * pct_mult)
 
     # --- Author's Pen passive: +4 all stats while in Wonderland ---
-    from pandemonium.combat.weapon.authors_pen import get_authors_pen_stat_bonus
     total += get_authors_pen_stat_bonus(player, attr_name)
 
     # --- Tarnished Jade stat bonuses ---
-    from pandemonium.combat.weapon.tarnished_jade import get_tarnished_jade_str_bonus, get_tarnished_jade_wis_bonus
     total += get_tarnished_jade_str_bonus(player)
     total += get_tarnished_jade_wis_bonus(player)
 
@@ -176,7 +180,6 @@ def get_effective_attribute(player, attr_name):
         total -= fatigue
 
     # Deed titles: flat attribute bonus (player-only — allies carry no title).
-    from pandemonium.progression.titles import combat_stat_bonus
     total += combat_stat_bonus(player, attr_name)
 
     return total
@@ -236,6 +239,8 @@ def get_raw_critical_chance(entity, entity_type="player", dex=None, lrn=None, bo
     `bonus` is a flat additive chance (e.g. a skill's crit_bonus).
     Optional dex / lrn can be passed in to avoid circular imports for allies.
     """
+    from pandemonium.combat.skills import get_player_passive_crit_bonus
+    from pandemonium.progression.family import father_legacy_crit_chance
     if entity_type == "enemy":
         base = 0.03
         dex_val = dex if dex is not None else entity.get("dex_mod", 0)
@@ -261,14 +266,11 @@ def get_raw_critical_chance(entity, entity_type="player", dex=None, lrn=None, bo
 
     # Profession passive crit chance (player only; allies have no class passives)
     if entity_type != "enemy":
-        from pandemonium.combat.skills import get_player_passive_crit_bonus
         crit_chance += get_player_passive_crit_bonus(entity)
         # Form tradition (Keen)
-        from pandemonium.combat.form_perks import get_form_crit_chance_bonus
         crit_chance += get_form_crit_chance_bonus(entity)
         # Father's Legacy (Halfling child): +5% crit
         if entity.get("is_ally"):
-            from pandemonium.progression.family import father_legacy_crit_chance
             crit_chance += father_legacy_crit_chance(entity)
 
     return crit_chance + bonus
@@ -295,7 +297,6 @@ def resolve_critical_chance(entity, entity_type="player", dex=None, lrn=None, bo
             crit_dmg_bonus += buff.get("value", 0)
     # Form tradition (Brutal)
     if entity_type != "enemy":
-        from pandemonium.combat.form_perks import get_form_crit_damage_bonus
         crit_dmg_bonus += get_form_crit_damage_bonus(entity)
     chance = max(0.0, min(raw, CRIT_CHANCE_CAP))
     return chance, overflow * CRIT_OVERFLOW_TO_DAMAGE + crit_dmg_bonus
@@ -380,6 +381,11 @@ def get_dodge_chance(defender, attacker):
     Caps: 80% for player / allies, 50% for enemies.
     Wedding bonuses are NOT included — callers add those separately.
     """
+    from pandemonium.combat.ally_skills import get_race_evasion
+    from pandemonium.progression.family import father_legacy_evasion
+    from pandemonium.combat.skills import get_player_passive_evasion
+    from pandemonium.combat.weapon.black_silence_gloves import get_gloves_dodge_bonus
+    from pandemonium.combat.weapon.palette_brush import get_brush_dodge_bonus
     def_dex = _get_dodge_dex(defender)
     att_dex = _get_dodge_dex(attacker)
     def_wis = _get_dodge_wis(defender)
@@ -409,27 +415,21 @@ def get_dodge_chance(defender, attacker):
 
     # Race passive evasion (Goblin dodge, Shadow evade — allies only)
     if defender.get("is_ally"):
-        from pandemonium.combat.ally_skills import get_race_evasion
         base += get_race_evasion(defender)
         # Father's Legacy (Elf child): +5% dodge
-        from pandemonium.progression.family import father_legacy_evasion
         base += father_legacy_evasion(defender)
 
     # Profession passive evasion (player only)
     if not defender.get("is_ally"):
-        from pandemonium.combat.skills import get_player_passive_evasion
         base += get_player_passive_evasion(defender)
 
     # Form tradition evasion (Nimble)
-    from pandemonium.combat.form_perks import get_form_evasion
     base += get_form_evasion(defender)
 
     # Black Silence Gloves: +8% dodge when equipped
-    from pandemonium.combat.weapon.black_silence_gloves import get_gloves_dodge_bonus
     base += get_gloves_dodge_bonus(defender)
 
     # Palette's Brush: +7% dodge for Palette heroine in Verdant stance
-    from pandemonium.combat.weapon.palette_brush import get_brush_dodge_bonus
     base += get_brush_dodge_bonus(defender)
 
     # Determine cap by defender type

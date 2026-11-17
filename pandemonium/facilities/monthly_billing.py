@@ -10,6 +10,9 @@ events.get_month_day(day)[1] == 1).
 """
 
 from pandemonium.progression.karma import get_bills_mult
+from pandemonium.resources.ships import get_ship
+from pandemonium.resources.mounts import get_mount
+from pandemonium.progression.titles import mod as _title_mod
 
 
 def compute_monthly_bills(player):
@@ -22,7 +25,6 @@ def compute_monthly_bills(player):
 
     ship_id = player.get("ship_id")
     if ship_id:
-        from pandemonium.resources.ships import get_ship
         ship = get_ship(ship_id)
         if ship:
             fee = ship.get("monthly_fee", 0)
@@ -31,7 +33,6 @@ def compute_monthly_bills(player):
 
     mount_id = player.get("mount_id")
     if mount_id:
-        from pandemonium.resources.mounts import get_mount
         mount = get_mount(mount_id)
         if mount:
             fee = mount.get("monthly_fee", 0)
@@ -54,7 +55,6 @@ def process_monthly_billing(player, day):
     mult = get_bills_mult(player)
     total = max(0, int(round(base_total * mult)))
     # Deed titles: Hearthkeeper trims the monthly upkeep.
-    from pandemonium.progression.titles import mod as _title_mod
     _upkeep_cut = _title_mod(player, "upkeep_pct")
     if _upkeep_cut:
         total = max(0, int(round(total * (1.0 - _upkeep_cut))))

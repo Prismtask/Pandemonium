@@ -16,6 +16,7 @@ from pandemonium.facilities.intro_utils import print_header as _header
 # ── FacilityScreen subclass with the game clock paused ────────────────────────
 
 from pandemonium.gui.screens.facility_screen import FacilityScreen, _FacilityStopped
+from pandemonium.resources.items import build_item
 
 
 class TutorialScreen(FacilityScreen):
@@ -183,14 +184,14 @@ def _grant_starter_weapon(player, announce=True):
     Equips it to the weapon slot (or adds it to the inventory if the slot is
     already taken). Returns the item, or None if the class has no mapping.
     """
+    from pandemonium.inventory.core import add_item_to_inventory
+    from pandemonium.combat.elemental import compute_player_elemental
     item_id = STARTER_WEAPONS.get(player.get("class"))
     if not item_id:
         return None
-    from pandemonium.resources.items import build_item
     item = build_item(item_id, rarity="common")
     pclass = player.get("class", "hero")
     if player.get("equipped", {}).get("weapon"):
-        from pandemonium.inventory.core import add_item_to_inventory
         add_item_to_inventory(player, item)
         if announce:
             term.print("")
@@ -201,7 +202,6 @@ def _grant_starter_weapon(player, announce=True):
     else:
         player["equipped"]["weapon"] = item
         # Refresh the elemental profile to include the weapon's elements.
-        from pandemonium.combat.elemental import compute_player_elemental
         res, dmg = compute_player_elemental(player)
         player["elemental_res"] = res
         player["elemental_dmg"] = dmg

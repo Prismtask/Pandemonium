@@ -20,6 +20,7 @@ from pandemonium.core.character import (
     GAME_RULES, build_character, default_game_rules, player_max_hp,
 )
 from pandemonium.core.save_load import save_game, list_saves, get_next_free_slot
+from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 
 
 # ── Stat Tooltip Descriptions ────────────────────────────────────────────────
@@ -596,7 +597,6 @@ class CharCreateScreen(BaseScreen):
         slot = self.slot_var.get()
         saves = list_saves()
         if slot in saves:
-            from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
             confirm_dialog(
                 parent=self,
                 title="Overwrite Save?",
@@ -607,6 +607,10 @@ class CharCreateScreen(BaseScreen):
         self._do_create()
 
     def _do_create(self):
+        from pandemonium.facilities.tutorial import tutorial_menu, TutorialScreen
+        from pandemonium.facilities.archivist_intro import archivist_intro
+        from pandemonium.gui.screens.story_screen import StoryScreen
+        from pandemonium.gui.screens.city_screen import CityScreen
         name = self.name_var.get().strip()
         slot = self.slot_var.get()
         final_attrs = {attr: self.base_attrs[attr] + self.allocated[attr] for attr in ATTRIBUTES}
@@ -622,10 +626,6 @@ class CharCreateScreen(BaseScreen):
         # New characters get a short tutorial through the facility UI
         # (the same terminal-style wrapper used by shops, inns, etc.),
         # and the Archivist's summons plays the moment the tour ends.
-        from pandemonium.facilities.tutorial import tutorial_menu, TutorialScreen
-        from pandemonium.facilities.archivist_intro import archivist_intro
-        from pandemonium.gui.screens.story_screen import StoryScreen
-        from pandemonium.gui.screens.city_screen import CityScreen
         sm = self.sm
 
         def _after_intro(_result):

@@ -25,6 +25,9 @@ import threading
 from pandemonium.combat.combat_io import c_input
 from pandemonium.combat.helpers import format_damage_msg, ACTION_CANCELLED_MSG
 from pandemonium.combat.status_effects import apply_bleed
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.combat.stat_milestones import get_strength_bonus
+from pandemonium.core.character import player_max_hp
 
 # Per-thread combat context: lets the shared hit helper reach the full enemy
 # list (for wedding on-hit spreads) without threading a param through every
@@ -204,6 +207,9 @@ def _deal_workshop_hit(actor, target, dmg, skill_name, p_dex, p_ler, element="da
     """
     from pandemonium.combat.stats import roll_critical_hit, apply_critical_damage, CRIT_MULTIPLIER
     from pandemonium.combat.elemental import calculate_elemental_damage
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_attack_bonus_procs
+    from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_on_hit, apply_wedding_on_kill
 
     role = "ally" if actor.get("is_ally") else "player"
     is_crit, _, overflow_crit = roll_critical_hit(actor, role, dex=p_dex, lrn=p_ler)
@@ -214,13 +220,11 @@ def _deal_workshop_hit(actor, target, dmg, skill_name, p_dex, p_ler, element="da
     # basic attacks could ever proc wedding effects; glove users never saw
     # their wedding item do anything).
     if not actor.get("is_ally"):
-        from pandemonium.combat.weapon.wedding_specials import apply_wedding_attack_bonus_procs
         is_first_attack = not actor.get("wedding_first_attack_done")
         dmg += apply_wedding_attack_bonus_procs(actor, target, dmg, is_first_attack)
         dmg = max(0, dmg)
 
     # Prescript Ledger — clash empowerment vs the Prescript's Target
-    from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
     prescript_clash = get_prescript_clash_bonus(actor, target)
     if prescript_clash:
         dmg = int(dmg * (1 + prescript_clash))
@@ -230,7 +234,6 @@ def _deal_workshop_hit(actor, target, dmg, skill_name, p_dex, p_ler, element="da
 
     # Chance & Choice trophy — one flip per action. The volley wrappers set
     # actor["_gloves_cac_state"]; standalone calls roll per hit.
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     if dmg > 0:
         dmg = apply_chance_and_choice(actor, dmg, actor.get("_gloves_cac_state"))
 
@@ -241,7 +244,6 @@ def _deal_workshop_hit(actor, target, dmg, skill_name, p_dex, p_ler, element="da
 
     # Wedding on-hit / on-kill — same hooks the basic-attack path uses.
     if not actor.get("is_ally"):
-        from pandemonium.combat.weapon.wedding_specials import apply_wedding_on_hit, apply_wedding_on_kill
         enemies_ref = getattr(_combat_ctx, "enemies", None) or [target]
         apply_wedding_on_hit(actor, target, enemies_ref, dmg)
         actor["wedding_first_attack_done"] = True
@@ -270,6 +272,7 @@ def execute_workshop(player, enemies, workshop_id,
 def _execute_workshop_actor(actor, enemies, workshop_id,
                             p_str, p_con, p_dex, p_ler, p_wis, p_cha,
                             allies=None, defending=False, is_player=True):
+    from pandemonium.combat.status_effects import check_status_resisted
     _combat_ctx.enemies = enemies  # wedding on-hit spreads need the full list
     # Chance & Choice: one coin flip per workshop action (shared by all hits)
     actor["_gloves_cac_state"] = {"rolled": False, "mult": 1.0}
@@ -280,7 +283,6 @@ def _execute_workshop_actor(actor, enemies, workshop_id,
     }
     scaling_val = stat_map[ws["stat"]]
 
-    from pandemonium.combat.stat_milestones import get_strength_bonus
     str_bonus = get_strength_bonus(actor) if ws["stat"] == "Strength" else 0
 
     messages = []
@@ -335,7 +337,6 @@ def _execute_workshop_actor(actor, enemies, workshop_id,
             dmg, hit_msg = _deal_workshop_hit(actor, target, dmg, "Old Boys", p_dex, p_ler)
             messages.append(hit_msg)
             if random.random() < 0.65:
-                from pandemonium.combat.status_effects import check_status_resisted
                 if check_status_resisted(target):
                     messages.append(f"  🛡 {target['name']} shrugs off the stun!")
                 else:
@@ -399,7 +400,6 @@ def _execute_workshop_actor(actor, enemies, workshop_id,
             # Wheels Industry (2): 30% stun per target
             if workshop_id == 2 and target["hp"] > 0:
                 if random.random() < 0.30:
-                    from pandemonium.combat.status_effects import check_status_resisted
                     if check_status_resisted(target):
                         messages.append(f"  🛡 {target['name']} shrugs off the stun!")
                     else:
@@ -410,7 +410,6 @@ def _execute_workshop_actor(actor, enemies, workshop_id,
         if workshop_id == 5:
             heal = int(total_aoe_dmg * 0.50)
             if heal > 0:
-                from pandemonium.core.character import player_max_hp
                 old_hp = actor["current_hp"]
                 max_hp = player_max_hp(actor)
                 actor["current_hp"] = min(old_hp + heal, max_hp)
@@ -464,6 +463,7 @@ def execute_furioso(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha,
 
 def _execute_furioso_actor(actor, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha,
                             allies=None, is_player=True):
+    from pandemonium.combat.status_effects import check_status_resisted
     _combat_ctx.enemies = enemies  # wedding on-hit spreads need the full list
     # Chance & Choice: one coin flip per Furioso action (shared by all hits)
     actor["_gloves_cac_state"] = {"rolled": False, "mult": 1.0}
@@ -471,7 +471,6 @@ def _execute_furioso_actor(actor, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_
         "Strength": p_str, "Dexterity": p_dex, "Constitution": p_con,
         "Wisdom": p_wis, "Learning": p_ler, "Charisma": p_cha,
     }
-    from pandemonium.combat.stat_milestones import get_strength_bonus
 
     messages = ["\n" + "=" * 50]
     messages.append("⚔️  FURIOSO  ⚔️")
@@ -525,7 +524,6 @@ def _execute_furioso_actor(actor, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_
             total_dmg += dmg
             messages.append(hit_msg)
             if target["hp"] > 0 and random.random() < 0.15:
-                from pandemonium.combat.status_effects import check_status_resisted
                 if check_status_resisted(target):
                     messages.append(f"  🛡 {target['name']} shrugs off the stun!")
                 else:
@@ -551,7 +549,6 @@ def _execute_furioso_actor(actor, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_
             total_dmg += dmg
             messages.append(hit_msg)
             if target["hp"] > 0 and random.random() < 0.325:
-                from pandemonium.combat.status_effects import check_status_resisted
                 if check_status_resisted(target):
                     messages.append(f"  🛡 {target['name']} shrugs off the stun!")
                 else:
@@ -566,7 +563,6 @@ def _execute_furioso_actor(actor, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_
             messages.append(hit_msg)
             heal = int(dmg * 0.25)
             if heal > 0:
-                from pandemonium.core.character import player_max_hp
                 old_hp = actor["current_hp"]
                 max_hp = player_max_hp(actor)
                 actor["current_hp"] = min(old_hp + heal, max_hp)

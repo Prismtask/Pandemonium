@@ -25,6 +25,8 @@ Call sites
 """
 
 import random
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.progression.titles import mod as _title_mod
 
 # ── Tuning (locked 2026-10-30) ─────────────────────────────────────────────
 PLAYER_STRESS_PER_FALL = 34      # a companion falling, per fall
@@ -190,7 +192,6 @@ def settle_pending_falls(player):
                 continue
             add_ally_stress(witness, ALLY_STRESS_WITNESS)
 
-    import pandemonium.core.time_blocks as time_blocks
     gain = PLAYER_STRESS_PER_FALL * len(fallen)
     fatigue_gained = time_blocks.add_stress(player, gain)
     messages.append(f"  Stress +{gain} (now {time_blocks.get_stress(player)}).")
@@ -212,7 +213,6 @@ def on_party_sleep(player):
     messages = settle_pending_falls(player)
 
     # Deed titles: First Page improves real rest recovery.
-    from pandemonium.progression.titles import mod as _title_mod
     recovery = SLEEP_STRESS_RECOVERY + int(round(
         SLEEP_STRESS_RECOVERY * _title_mod(player, "rest_heal_pct")))
     rested = 0

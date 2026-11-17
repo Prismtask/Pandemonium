@@ -7,6 +7,8 @@ Shows item name, rarity, and stat bonuses in a compact card format.
 import tkinter as tk
 
 from pandemonium.gui.theme import Theme
+from pandemonium.combat.elemental_traits import ELEMENTAL_TRAITS
+from pandemonium.inventory.core import format_scaling_stat
 
 
 class ItemCard(tk.Frame):
@@ -104,7 +106,6 @@ class ItemCard(tk.Frame):
         # Elemental Trait line (Phase 4)
         primary_el = item.get("primary_element")
         if primary_el:
-            from pandemonium.combat.elemental_traits import ELEMENTAL_TRAITS
             trait_def = ELEMENTAL_TRAITS.get(primary_el, {})
             trait_name = trait_def.get("name", primary_el.title())
             trait_icon = {
@@ -120,7 +121,6 @@ class ItemCard(tk.Frame):
             ).pack(fill=tk.X, padx=8, pady=(0, 2))
 
         # Scaling line — which attribute boosts this weapon's damage
-        from pandemonium.inventory.core import format_scaling_stat
         scale_txt = format_scaling_stat(item)
         if scale_txt:
             tk.Label(

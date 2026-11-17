@@ -86,11 +86,11 @@ def _sell_ship(player):
 
 def shipyard_service(player, city_id):
     """Shipyard: buy, upgrade, downgrade, or sell sea-going vessels."""
+    from pandemonium.resources.trade_goods import cargo_total_weight
     service_dialogue(city_id, "shipyard", "enter")
 
     ship = get_ship(player.get("ship_id"))
 
-    from pandemonium.resources.trade_goods import cargo_total_weight
     load = cargo_total_weight(player)
     if load > 0:
         cap = ship["cargo_capacity"] if ship else 0

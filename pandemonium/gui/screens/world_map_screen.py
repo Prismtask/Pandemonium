@@ -67,6 +67,23 @@ from pandemonium.resources.world_layout import (
     NODE_W as _NODE_W,
     NODE_H as _NODE_H,
 )
+from pandemonium.core.events import format_date
+from pandemonium.core.time_blocks import format_block_track
+import pandemonium.core.time_blocks as _tb_edge
+from pandemonium.resources import map_boss_data as _mb_data
+from pandemonium.resources.items import ITEMS as _ITEMS
+import pandemonium.core.time_blocks as _tb_conn
+from pandemonium.resources.ships import get_ship
+import pandemonium.core.time_blocks as time_blocks
+import pandemonium.core.time_blocks as _tb_hop
+from pandemonium.gui.widgets.run_summary_dialog import run_summary_dialog
+import pandemonium.core.time_blocks as _tb_sea
+from pandemonium.gui.widgets.confirm_dialog import choice_dialog
+import pandemonium.progression.karma as karma
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.stat_milestones import get_learning_bonus
+from pandemonium.world import map_boss as mb
+from pandemonium.gui.widgets.confirm_dialog import ok_dialog
 
 _REGION_COLORS = {
     "North":       "#1a3a5c",
@@ -242,8 +259,6 @@ class WorldMapScreen(BaseScreen):
                      if isinstance(city, dict) else 1)
         _cur = _cf.get("floor", _start)
         _max = _cf.get("max_floor", _start)
-        from pandemonium.core.events import format_date
-        from pandemonium.core.time_blocks import format_block_track
         track = format_block_track(self.player, include_day=False)
         segments = [self.player['name'], city_name, f"Floor {_cur}/{_max}"]
         if track:
@@ -456,7 +471,6 @@ class WorldMapScreen(BaseScreen):
                 mid_x = (cx1 + cx2) / 2
                 mid_y = (cy1 + cy2) / 2
                 raw_time = conn.get("travel_time", 0)
-                import pandemonium.core.time_blocks as _tb_edge
                 edge_blocks = _tb_edge.travel_blocks(self.player, raw_time)
                 self._canvas.create_text(
                     mid_x, mid_y - 6, text=f"{edge_blocks}b",
@@ -772,6 +786,7 @@ class WorldMapScreen(BaseScreen):
 
     def _build_map_boss_info_panel(self, site):
         """Warden details, current Echo state and the previewed spoils."""
+        from pandemonium.world.map_boss import start_depth_offer
         inner = self._make_scrollable_info()
 
         season = site.get("season_name", "")
@@ -873,7 +888,6 @@ class WorldMapScreen(BaseScreen):
 
         recalled = None
         if self.player:
-            from pandemonium.world.map_boss import start_depth_offer
             recalled = start_depth_offer(self.player)
         if recalled is not None:
             tk.Label(
@@ -927,8 +941,6 @@ class WorldMapScreen(BaseScreen):
 
         milestone = next_unique_milestone(self.player) if self.player else None
         if milestone:
-            from pandemonium.resources import map_boss_data as _mb_data
-            from pandemonium.resources.items import ITEMS as _ITEMS
             trophy_id = _mb_data.MAP_BOSS_UNIQUE_ITEMS[milestone["index"]]
             trophy_name = _ITEMS.get(trophy_id, {}).get("name", trophy_id)
             already = len((self.player.get("map_boss") or {})
@@ -1337,7 +1349,6 @@ class WorldMapScreen(BaseScreen):
                 raw = conn.get("travel_time", 0)
                 icon = "\u26f5" if ctype == "sea" else "\U0001f9b6"
                 type_label = "Sea" if ctype == "sea" else "Land"
-                import pandemonium.core.time_blocks as _tb_conn
                 conn_blocks = _tb_conn.travel_blocks(self.player, raw)
                 tk.Label(inner,
                          text=f"  {icon} {dest_name} — ≈{conn_blocks} blocks ({type_label})",
@@ -1551,6 +1562,9 @@ class WorldMapScreen(BaseScreen):
     # ── Travel initiation ────────────────────────────────────────────────
 
     def _on_travel_here(self):
+        from pandemonium.resources.trade_goods import (
+                    cargo_total_weight, cargo_capacity, cargo_travel_penalty,
+                )
         if self._selected_city is None or self._selected_city == self.city_id:
             return
 
@@ -1577,9 +1591,6 @@ class WorldMapScreen(BaseScreen):
         gold = self.player.get("gold", 0)
 
         # ── Cargo load info for the embark prompt ──────────────────────
-        from pandemonium.resources.trade_goods import (
-            cargo_total_weight, cargo_capacity, cargo_travel_penalty,
-        )
         load = cargo_total_weight(self.player)
         cargo_lines = ""
         if load > 0:
@@ -1594,7 +1605,6 @@ class WorldMapScreen(BaseScreen):
             if any(s["type"] == "sea" for s in result["segments"]):
                 ship = None
                 if self.player.get("ship_id"):
-                    from pandemonium.resources.ships import get_ship
                     ship = get_ship(self.player["ship_id"])
                 scap = ship["cargo_capacity"] if ship else 0
                 pen = int(cargo_travel_penalty(self.player, scap) * 100)
@@ -1831,7 +1841,6 @@ class WorldMapScreen(BaseScreen):
 
     def _journey_blocks(self, journey):
         """Total block cost of a journey (per-hop rounding; docs §8/§16)."""
-        import pandemonium.core.time_blocks as time_blocks
         total = 0
         for seg in (journey or {}).get("segments", []) or []:
             total += time_blocks.travel_blocks(self.player,
@@ -1947,7 +1956,6 @@ class WorldMapScreen(BaseScreen):
         to_name = self._node_display_name(to_id)
         seg_type = seg["type"]
         icon = "\u26f5" if seg_type == "sea" else "\U0001f9b6"
-        import pandemonium.core.time_blocks as _tb_hop
         _hop_blocks = _tb_hop.travel_blocks(self.player, seg["effective_time"])
         self._log(f"{icon} {from_name} → {to_name}  "
                   f"(≈{_hop_blocks} blocks, {seg_type})", "text")
@@ -2023,6 +2031,8 @@ class WorldMapScreen(BaseScreen):
 
     def _arrive_at_horizon(self):
         """End the journey, then play Vesper's arrival scene (docs §6.1)."""
+        from pandemonium.gui.screens.facility_screen import FacilityScreen
+        from pandemonium.facilities.event_horizon_intro import event_horizon_arrival_service
         player = self.player
         site = self._travel_horizon or {}
         nearest = site.get("nearest_city", player.get("location", "solmere"))
@@ -2034,8 +2044,6 @@ class WorldMapScreen(BaseScreen):
                   "THE EVENT HORIZON.", "cyan")
         self._log("Vesper is waiting at the seam.", "dim")
 
-        from pandemonium.gui.screens.facility_screen import FacilityScreen
-        from pandemonium.facilities.event_horizon_intro import event_horizon_arrival_service
         self.sm.switch_to(
             FacilityScreen,
             title="The Event Horizon",
@@ -2048,12 +2056,14 @@ class WorldMapScreen(BaseScreen):
     def _after_eh_scene(self, result):
         """Route the arrival scene's choice: enter / resume / fresh / boss_rush / leave."""
         import pandemonium.world.event_horizon as eh
+        from pandemonium.gui.screens.city_screen import CityScreen
         player = self.player
         nearest = player.get("origin_city", "solmere")
 
         if result in ("enter", "resume", "fresh", "boss_rush", "boss_rush_fresh"):
             def _launch_eh_run():
                 # Never show another dungeon's log under the EH branding.
+                from pandemonium.gui.screens.dungeon_screen import DungeonScreen
                 player.pop("_dungeon_log", None)
                 # Region hygiene: stops stale Wonderland quirks / biome checks
                 # from bleeding into rift combat displays.
@@ -2070,7 +2080,6 @@ class WorldMapScreen(BaseScreen):
                 else:
                     self.sm.log("\U0001F300 Space folds open. Vesper's mark "
                                 "burns \u2014 and the world inverts.")
-                from pandemonium.gui.screens.dungeon_screen import DungeonScreen
                 self.sm.switch_to(DungeonScreen, on_result=self._on_eh_result,
                                   push_history=False)
 
@@ -2106,7 +2115,6 @@ class WorldMapScreen(BaseScreen):
                     self.sm.log("The echoes do not answer: "
                                 + "; ".join(reasons) + ".")
                     player["location"] = nearest
-                    from pandemonium.gui.screens.city_screen import CityScreen
                     self.sm.switch_to(CityScreen, push_history=False)
                     return
                 self.sm.log("\u2694 The gathered echoes rise \u2014 the Boss Rush begins.")
@@ -2116,7 +2124,6 @@ class WorldMapScreen(BaseScreen):
         # "leave" (or scene aborted) \u2014 back to the nearest city.
         player["location"] = nearest
         self.sm.log("You leave the seam to its turning.")
-        from pandemonium.gui.screens.city_screen import CityScreen
         self.sm.switch_to(CityScreen, push_history=False)
 
     def _show_eh_summary_then(self, on_close):
@@ -2125,7 +2132,6 @@ class WorldMapScreen(BaseScreen):
         if not summary:
             on_close()
             return
-        from pandemonium.gui.widgets.run_summary_dialog import run_summary_dialog
         # This screen may already be destroyed (switch_to destroys the old
         # screen before on_result/on_close fire) — parent to the app root.
         parent = getattr(getattr(self, "sm", None), "root", None) or self
@@ -2140,6 +2146,9 @@ class WorldMapScreen(BaseScreen):
 
     def _on_eh_result(self, result):
         """DungeonScreen on_result for Event Horizon runs."""
+        from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+        import pandemonium.world.event_horizon as eh
+        from pandemonium.gui.screens.city_screen import CityScreen
         if result == "dead":
             summary = self.player.get("_eh_last_summary") or {}
             room = summary.get("data", {}).get("room", "?")
@@ -2152,7 +2161,6 @@ class WorldMapScreen(BaseScreen):
         if result == "save_exit":
             self.sm.log("Game saved. Exiting to menu.")
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)
             return
 
@@ -2171,7 +2179,6 @@ class WorldMapScreen(BaseScreen):
         # Button-flee leaves the run suspended rather than ended — detach its
         # effects so no ENT/flask tags leak into cities (idempotent; the
         # eh_quit path already stripped via the wipe).
-        import pandemonium.world.event_horizon as eh
         eh.strip_event_horizon_effects(p, legacy=True)
         if result == "eh_rush_complete":
             self.sm.log("⚔ The last echo falls — the Boss Rush is complete.")
@@ -2180,7 +2187,6 @@ class WorldMapScreen(BaseScreen):
         elif result == "fled":
             self.sm.log("You step out of the rift — the run is suspended. "
                         "Resume at the Event Horizon site.")
-        from pandemonium.gui.screens.city_screen import CityScreen
 
         def _to_city():
             self.sm.switch_to(CityScreen, push_history=False)
@@ -2266,7 +2272,6 @@ class WorldMapScreen(BaseScreen):
         self._update_top_bar()  # update city in top bar
 
         # ── Segment cost in blocks; the day boundary offers camp (§8) ────
-        import pandemonium.core.time_blocks as time_blocks
         seg_blocks = time_blocks.travel_blocks(self.player, seg["effective_time"])
         if (seg_blocks >= time_blocks.blocks_remaining(self.player)
                 and time_blocks.can_camp(self.player)):
@@ -2290,6 +2295,7 @@ class WorldMapScreen(BaseScreen):
 
     def _start_camp(self, seg_blocks):
         """Open the camp FacilityScreen as an overlay; travel resumes after."""
+        from pandemonium.gui.screens.facility_screen import FacilityScreen
         try:
             from pandemonium.facilities.camp import camp_event
             from pandemonium.gui.screens.facility_screen import FacilityScreen
@@ -2314,7 +2320,6 @@ class WorldMapScreen(BaseScreen):
 
     def _resolve_segment_spend(self, seg_blocks, camp):
         """Apply the segment's block cost, then continue the journey."""
-        import pandemonium.core.time_blocks as time_blocks
         days = time_blocks.spend_travel_segment(self.player, seg_blocks, camp=camp)
         if camp:
             self._log("You sleep under canvas; the road continues at dawn.", "green")
@@ -2348,11 +2353,9 @@ class WorldMapScreen(BaseScreen):
         ship = None
         ship_id = self.player.get("ship_id")
         if ship_id:
-            from pandemonium.resources.ships import get_ship
             ship = get_ship(ship_id)
         cost = next_seg.get("cost", 0)
         eff_time = next_seg["effective_time"]
-        import pandemonium.core.time_blocks as _tb_sea
         sea_blocks = _tb_sea.travel_blocks(self.player, eff_time)
 
         if ship:
@@ -2950,8 +2953,6 @@ class WorldMapScreen(BaseScreen):
 
     def _handle_moral_gui(self, event):
         """Karma choice during travel: help, rob, or walk away."""
-        from pandemonium.gui.widgets.confirm_dialog import choice_dialog
-        import pandemonium.progression.karma as karma
 
         player = self.player
         if not karma.is_enabled(player):
@@ -3070,8 +3071,8 @@ class WorldMapScreen(BaseScreen):
     # ── Combat overlay ──────────────────────────────────────────────────
 
     def _launch_combat(self, seg):
-        from pandemonium.facilities.travel_events import _pick_travel_enemy
 
+        from pandemonium.facilities.travel_events import _pick_travel_enemy
         travel_type = seg["type"]  # "land" or "sea"
         region = seg.get("biome", None) if travel_type == "land" else None
         num = random.randint(1, min(3, max(1, self.player.get("floor", 1) // 2 + 1)))
@@ -3096,6 +3097,7 @@ class WorldMapScreen(BaseScreen):
         def _on_overlay_dismissed():
             """Called when the combat overlay is dismissed.
             Process any deferred level-ups and resume travel."""
+            from pandemonium.progression.leveling import gain_exp
             if not self.winfo_exists():
                 return
             result = self._travel_combat_result
@@ -3104,7 +3106,6 @@ class WorldMapScreen(BaseScreen):
                 self._finish_travel(dead=True)
             elif result == "victory":
                 # Process level-ups now that the overlay is gone
-                from pandemonium.progression.leveling import gain_exp
                 gain_exp(player, 0)
                 self._resume_anim()
             elif result == "fled":
@@ -3124,6 +3125,8 @@ class WorldMapScreen(BaseScreen):
         sm.root.after(0, _show)
 
         def _check():
+            from pandemonium.facilities.travel_events import _combat_drop_rarity, _add_to_inv
+            from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
             if not self.winfo_exists():
                 return
             try:
@@ -3138,9 +3141,7 @@ class WorldMapScreen(BaseScreen):
                 self._travel_combat_result = "dead"
             elif r == "victory":
                 # ── Post-combat rewards (mirrors travel_events._handle_combat) ──
-                from pandemonium.resources.enemies import ENEMIES
                 from pandemonium.resources.items import build_item
-                from pandemonium.facilities.travel_events import _combat_drop_rarity, _add_to_inv
 
                 total_xp = sum(ENEMIES[k]["level"] * 10 for k in enemy_keys)
                 total_gold = sum(ENEMIES[k]["level"] * 5 + random.randint(3, 12)
@@ -3148,7 +3149,6 @@ class WorldMapScreen(BaseScreen):
                 player["gold"] = player.get("gold", 0) + total_gold
                 # Add XP now but defer level-up processing until the overlay
                 # is dismissed (avoids freezing the GUI with input()).
-                from pandemonium.combat.stat_milestones import get_learning_bonus
                 bonus = get_learning_bonus(player)
                 player["exp"] = player.get("exp", 0) + int(total_xp * bonus)
                 self._log(f"+{total_gold} gold  |  +{total_xp} XP", "gold")
@@ -3165,7 +3165,6 @@ class WorldMapScreen(BaseScreen):
                         else:
                             self._log(f"Found: {item['name']}", "green")
 
-                from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
                 apply_wedding_combat_end(player, victory=True)
 
                 self._log("Enemies defeated!", "green")
@@ -3254,6 +3253,7 @@ class WorldMapScreen(BaseScreen):
 
     def _arrive_at_map_boss(self):
         """Enter the arena — or grace-exit when the season turned en route."""
+        from pandemonium.world.map_boss import start_depth_offer
         player = self.player
         site = self._travel_map_boss or {}
         nearest = site.get("nearest_city", "solmere")
@@ -3291,7 +3291,6 @@ class WorldMapScreen(BaseScreen):
                   f"\u2014 {site.get('season_name', '')} Echo {echo_lbl}, "
                   f"Lv {site.get('level', '?')}.", Theme.ACCENT)
 
-        from pandemonium.world.map_boss import start_depth_offer
         offer = start_depth_offer(player)
         if offer is None:
             self._open_map_boss_arena()
@@ -3303,7 +3302,6 @@ class WorldMapScreen(BaseScreen):
 
         ``focus_no`` keeps a stray Enter from skipping the warm-up climb.
         """
-        from pandemonium.world import map_boss as mb
         element = str(site.get("element", "")).title()
         weakness = str(site.get("weakness", "")).title()
         warden = site.get("warden_name", "Warden")
@@ -3339,7 +3337,8 @@ class WorldMapScreen(BaseScreen):
 
     def _on_map_boss_result(self, result):
         """DungeonScreen on_result for the seasonal arena."""
-        from pandemonium.world import map_boss as mb
+        from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+        from pandemonium.gui.screens.city_screen import CityScreen
 
         if result == "dead":
             site = mb.get_active_boss(self.player) or {}
@@ -3354,7 +3353,6 @@ class WorldMapScreen(BaseScreen):
         if result == "save_exit":
             self.sm.log("Game saved. Exiting to menu.")
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)
             return
         if result == "map_boss_locked":
@@ -3373,19 +3371,18 @@ class WorldMapScreen(BaseScreen):
         # before its cleanup runs, so scrub here too (idempotent otherwise).
         self._scrub_map_boss_run()
         self.sm.log("The Warden waits. This Echo's progress is kept.")
-        from pandemonium.gui.screens.city_screen import CityScreen
         self.sm.switch_to(CityScreen, push_history=False)
 
     def _map_boss_leave_to_city(self):
+        from pandemonium.gui.screens.city_screen import CityScreen
         p = self.player
         if p and p.get("location") == "dungeon":
             p["location"] = p.get("origin_city", "solmere")
-        from pandemonium.gui.screens.city_screen import CityScreen
         self.sm.switch_to(CityScreen, push_history=False)
 
     def _map_boss_reenter(self):
         """Start the next Echo immediately — no travel, no free heal (§7.10)."""
-        from pandemonium.world import map_boss as mb
+        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
         site = mb.get_active_boss(self.player)
         if not site:
             self._map_boss_leave_to_city()
@@ -3398,7 +3395,6 @@ class WorldMapScreen(BaseScreen):
         p["_map_boss_site"] = site["id"]
         p["_combat_floor_label"] = "Arena"
         p.setdefault("_map_boss_prev_floor", p.get("floor"))
-        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
         self.sm.switch_to(DungeonScreen, on_result=self._on_map_boss_result,
                           push_history=False)
 
@@ -3439,9 +3435,6 @@ class WorldMapScreen(BaseScreen):
 
     def _show_map_boss_victory(self):
         """Reform window: face the next Echo or leave the arena (§7.10)."""
-        from pandemonium.world import map_boss as mb
-        from pandemonium.gui.widgets.confirm_dialog import choice_dialog
-        from pandemonium.core.character import player_max_hp
 
         loot = self.player.pop("_map_boss_victory", None) if self.player else None
         site = mb.get_active_boss(self.player) or {}
@@ -3489,8 +3482,6 @@ class WorldMapScreen(BaseScreen):
 
     def _show_map_boss_season_shift(self):
         """The time commit turned the season: the old Echo ladder is gone."""
-        from pandemonium.world import map_boss as mb
-        from pandemonium.gui.widgets.confirm_dialog import ok_dialog
 
         loot = self.player.pop("_map_boss_victory", None) if self.player else None
         site = mb.get_active_boss(self.player) or {}
@@ -3520,7 +3511,6 @@ class WorldMapScreen(BaseScreen):
         Parented to the LIVE top screen — the WorldMapScreen that started the
         journey may already be destroyed (wild-completion lesson, 2026-10-23).
         """
-        from pandemonium.gui.widgets.confirm_dialog import ok_dialog
         parent = self.sm.get_top_screen() or self.sm.root
 
         def _to_city():
@@ -3570,6 +3560,8 @@ class WorldMapScreen(BaseScreen):
         self._travel_paused = False
 
     def _finish_travel(self, dead=False, wild_arrival=False, map_boss_arrival=False):
+        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
+        from pandemonium.gui.screens.city_screen import CityScreen
         self._stop_travel_visuals()
         self._travel_wild = None
         self._travel_horizon = None
@@ -3578,22 +3570,20 @@ class WorldMapScreen(BaseScreen):
         if dead:
             self._handle_death()
         elif wild_arrival:
-            from pandemonium.gui.screens.dungeon_screen import DungeonScreen
             self.sm.switch_to(DungeonScreen, on_result=self._on_wild_result,
                               push_history=False)
         elif map_boss_arrival:
-            from pandemonium.gui.screens.dungeon_screen import DungeonScreen
             self.sm.switch_to(DungeonScreen, on_result=self._on_map_boss_result,
                               push_history=False)
         else:
             if self.player:
-                import pandemonium.progression.karma as karma
                 karma.mark_city_arrival(self.player)
-            from pandemonium.gui.screens.city_screen import CityScreen
             self.sm.switch_to(CityScreen, push_history=False)
 
     def _on_wild_result(self, result):
         """Called when a wild dungeon run ends (DungeonScreen on_result)."""
+        from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+        from pandemonium.gui.screens.city_screen import CityScreen
         if result == "dead":
             # Same death flow as dungeon deaths; the penalty sends the
             # player to origin_city (the ruin's nearest city).
@@ -3606,7 +3596,6 @@ class WorldMapScreen(BaseScreen):
         if result == "save_exit":
             self.sm.log("Game saved. Exiting to menu.")
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)
             return
 
@@ -3625,7 +3614,6 @@ class WorldMapScreen(BaseScreen):
         self.player.pop("cutlass_high_tide_floor", None)
         if self.player.get("location") == "dungeon":
             self.player["location"] = self.player.get("origin_city", "solmere")
-        from pandemonium.gui.screens.city_screen import CityScreen
         self.sm.switch_to(CityScreen, push_history=False)
 
     def _show_wild_completion(self):
@@ -3658,7 +3646,6 @@ class WorldMapScreen(BaseScreen):
 
         parent = self.sm.get_top_screen() or self.sm.root
 
-        from pandemonium.gui.widgets.confirm_dialog import choice_dialog
         choice_dialog(
             parent=parent,
             title=f"\u2605 {name} Conquered",
@@ -3673,23 +3660,23 @@ class WorldMapScreen(BaseScreen):
     # ── Navigation ──────────────────────────────────────────────────────
 
     def _go_back(self):
+        from pandemonium.gui.screens.city_screen import CityScreen
         if self._mode == self.MODE_TRAVEL:
             return
-        from pandemonium.gui.screens.city_screen import CityScreen
         self.sm.switch_to(CityScreen, push_history=False)
 
     def _handle_death(self, death_type="travel", floor=None, **death_kwargs):
-        from pandemonium.gui.screens.death_screen import DeathScreen
 
+        from pandemonium.gui.screens.death_screen import DeathScreen
         def _cont():
             from pandemonium.core.utils import apply_death_penalty
-            apply_death_penalty(self.player)
             from pandemonium.gui.screens.city_screen import CityScreen
+            apply_death_penalty(self.player)
             self.sm.switch_to(CityScreen, push_history=False)
 
         def _quit():
-            self.sm.player = None
             from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+            self.sm.player = None
             self.sm.switch_to(MainMenuScreen)
 
         city_id = self.city_id
@@ -3720,7 +3707,6 @@ class WorldMapScreen(BaseScreen):
             "Drag the map to pan around.\n"
             "Press Esc to deselect / go back."
         )
-        from pandemonium.gui.widgets.confirm_dialog import ok_dialog
         ok_dialog(self, "Map Legend", legend)
 
     def destroy(self):

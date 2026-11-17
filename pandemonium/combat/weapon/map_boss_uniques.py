@@ -25,6 +25,7 @@ Lifecycle (mirrors Moonlight Greatsword):
 """
 
 from pandemonium.combat.combat_io import c_print
+from pandemonium.core.time_blocks import get_day_phase
 
 # ── Tunables (docs/map_boss_design.md §9) ──────────────────────────────────
 SIGNET_SPECIAL = "long_day_signet"
@@ -88,7 +89,6 @@ def actor_has_long_day_edge(actor):
 
 def actor_phase(actor):
     """'morning' | 'noon' | 'night' — projected arena clock first."""
-    from pandemonium.core.time_blocks import get_day_phase
     blocks = actor.get("_map_boss_clock_blocks")
     if blocks is None:
         return get_day_phase(actor)

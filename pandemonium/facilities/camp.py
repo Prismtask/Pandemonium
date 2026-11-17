@@ -10,6 +10,9 @@ or the Caravan mount (`time_blocks.can_camp`).
 
 from pandemonium.core.character import player_max_hp
 from pandemonium.gui.terminal import term
+from pandemonium.combat.party_stress import on_party_sleep
+from pandemonium.progression.titles import mod as _title_mod
+from pandemonium.progression.dreams import maybe_offer_dream
 
 
 def camp_event(player, city_id=None):
@@ -32,7 +35,6 @@ def camp_event(player, city_id=None):
 
     # Combat stress: settle outstanding falls, then let the party rest it off
     # (docs/stress_system_design.md).
-    from pandemonium.combat.party_stress import on_party_sleep
     _stress_msgs = on_party_sleep(player)
     for _msg in _stress_msgs:
         term.print(_msg)
@@ -41,7 +43,6 @@ def camp_event(player, city_id=None):
 
     if choice == 1:
         # ── Watch in shifts: half heal, small all-stats buff for 3 rooms ──
-        from pandemonium.progression.titles import mod as _title_mod
         rest_bonus = _title_mod(player, "rest_heal_pct")
         targets = [player] + [a for a in player.get("allies", [])
                               if a.get("current_hp", 0) > 0]
@@ -81,7 +82,6 @@ def camp_event(player, city_id=None):
 
     term.print("")
     # Dream events (docs/dream_events_design.md) — one roll per sleep.
-    from pandemonium.progression.dreams import maybe_offer_dream
     maybe_offer_dream(player, "camp", term)
     term.print("You break camp at first light.")
     term.pause("Press Continue to take to the road...")

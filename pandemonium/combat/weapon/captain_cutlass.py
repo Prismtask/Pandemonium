@@ -1,6 +1,8 @@
 """Captain's Cutlass weapon mechanics and combat state management."""
 import random
 from pandemonium.combat.ally import get_alive_allies
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.combat.helpers import format_damage_msg
 
 
 # ─── Equipped Check ───────────────────────────────────────────────────────
@@ -209,6 +211,7 @@ def trigger_captain_riposte(actor, enemy, is_player=True):
 
     Max 2 ripostes per turn.
     """
+    from pandemonium.combat.stats import get_effective_attribute
     if not _actor_has_captain_cutlass(actor):
         return
 
@@ -218,13 +221,10 @@ def trigger_captain_riposte(actor, enemy, is_player=True):
 
     actor["cutlass_riposte_count"] = current + 1
 
-    from pandemonium.combat.stats import get_effective_attribute
     p_str = get_effective_attribute(actor, "Strength")
     riposte_dmg = max(1, p_str // 2 + 3 + random.randint(1, 4))
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     riposte_dmg = apply_chance_and_choice(actor, riposte_dmg)
     enemy["hp"] -= riposte_dmg
-    from pandemonium.combat.helpers import format_damage_msg
     prefix = "[CAPTAIN'S AUTHORITY] "
     if is_player:
         c_print("  ⚔ " + prefix + format_damage_msg(actor['name'], enemy['name'], riposte_dmg, skill_name="Riposte"))

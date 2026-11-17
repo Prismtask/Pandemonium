@@ -33,6 +33,7 @@ from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.ally import get_living_party
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.core.character import player_max_hp
 
 # ── Keys ────────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,6 @@ def _variant_cleanse_party(player):
 
 def _variant_heal_party(player):
     """Dorothy's Emerald Road: restore 10% max HP to the living party."""
-    from pandemonium.core.character import player_max_hp
     pmax = player_max_hp(player)
     player["current_hp"] = min(pmax, player.get("current_hp", 0) + max(1, int(pmax * 0.10)))
     for ally in player.get("allies", []):
@@ -109,8 +109,8 @@ def _find_lowest_fire_res(player):
 
 def _deal_damage(target, dmg, element=None):
     """Apply damage to a target, respecting elemental resistances."""
+    from pandemonium.combat.elemental import resistance_multiplier
     if element:
-        from pandemonium.combat.elemental import resistance_multiplier
         res = target.get("elemental_res", {}).get(element, 1.0)
         dmg = max(1, int(dmg * resistance_multiplier(res)))
     target["current_hp"] = max(0, target.get("current_hp", 0) - dmg)
@@ -203,6 +203,7 @@ def _witch_scrying_smoke(witch, player):
 
 def _witch_emerald_cackle(witch, player, ctx):
     """AoE dark damage + 40% Fear on each target. +15% fire damage for 1 turn."""
+    from pandemonium.combat.status_effects import has_fear_immunity
     c_print('\n  "Eh heheheheHAHAHAHA!"')
     c_print("  The Witch's cackle echoes through the chamber!")
     for target in get_living_party(player):
@@ -211,7 +212,6 @@ def _witch_emerald_cackle(witch, player, ctx):
         _deal_damage(target, dmg, "dark")
         # 40% Fear chance (skip Dorothy; blocked by Fear immunity buffs)
         if target.get("_heroine_key") != "dorothy" and random.random() < 0.40:
-            from pandemonium.combat.status_effects import has_fear_immunity
             if has_fear_immunity(target):
                 c_print(f'    {target.get("name", "You")} stands firm — the fear is repelled!')
             else:
@@ -683,8 +683,8 @@ def combat_wicked_witch(player, floor=None, enemies=None):
 
     def on_kill_hook(target, elist, ctx):
         """Handle Witch death, Dorothy permanent unlock, and drops."""
+        from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
         if _is_witch(target) and target.get("hp", 0) <= 0:
-            from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
 
             c_print("\nThe Witch dissolves into a puddle of ink and emerald")
             c_print("smoke. Her hat floats for a moment, then sinks.")

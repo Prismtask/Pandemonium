@@ -6,6 +6,7 @@ Rules step. New characters default ON; old saves default OFF. The choice is
 final for the save — there is no in-game enable/disable path. Every gameplay
 hook must check ``is_enabled(player)`` before changing or displaying Karma.
 """
+from pandemonium.progression.titles import check_unlock as _check_title_unlock
 
 KARMA_MIN = -100
 KARMA_MAX = 100
@@ -171,7 +172,6 @@ def change_karma(player, delta, reason, bypass_cap=False):
             f"{reason} — Karma moved from {before_tier} to {after_tier}.",
         )
     # Deed titles: Honest / Unrepentant watch Karma thresholds.
-    from pandemonium.progression.titles import check_unlock as _check_title_unlock
     _check_title_unlock(player)
     return actual
 

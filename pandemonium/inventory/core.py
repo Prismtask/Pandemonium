@@ -3,6 +3,10 @@ from pandemonium.resources.items import (
     _lookup_item_def,
     compute_equipment_mods, compute_elemental_dmg, compute_elemental_res,
 )
+from pandemonium.resources.item_generation import FLOWER_ITEMS, is_flower_item
+from pandemonium.combat.stat_milestones import get_wisdom_bonus
+from pandemonium.combat.stat_milestones import get_dexterity_damage_bonus
+from pandemonium.resources.item_generation import refresh_infused_instance
 
 RARITY_ORDER = {
     "common": 0,
@@ -143,7 +147,6 @@ def is_sellable_item(item):
 
 def get_flower_items(player):
     """Return flower stacks in canonical element order (pickable at a glance)."""
-    from pandemonium.resources.item_generation import FLOWER_ITEMS, is_flower_item
     order = {fid: idx for idx, fid in enumerate(FLOWER_ITEMS.values())}
     inv = player.get("inventory", [])
     flowers = [i for i in inv if is_flower_item(i)]
@@ -190,6 +193,7 @@ def consume_stackable_items(player, predicate, amount_needed):
     return consumed
 
 def equip_item(player, item, target_slot=None):
+    from pandemonium.combat.elemental import compute_player_elemental
     item_slot = item["slot"]
     # Resolve dual accessory slots (+ unlocked third — Beating Root, docs §10.6)
     if item_slot == "accessory":
@@ -216,7 +220,6 @@ def equip_item(player, item, target_slot=None):
             return False
     player["equipped"][target_slot] = item
     # Recalculate elemental profile
-    from pandemonium.combat.elemental import compute_player_elemental
     res, dmg = compute_player_elemental(player)
     player["elemental_res"] = res
     player["elemental_dmg"] = dmg
@@ -225,12 +228,12 @@ def equip_item(player, item, target_slot=None):
 
 def unequip_slot(player, slot):
     """Unequip the given slot. Returns a result string for UI/logging."""
+    from pandemonium.combat.elemental import compute_player_elemental
     if slot in player["equipped"] and player["equipped"][slot]:
         item = player["equipped"][slot]
         if add_item_to_inventory(player, item):
             player["equipped"][slot] = None
             # Recalculate elemental profile
-            from pandemonium.combat.elemental import compute_player_elemental
             res, dmg = compute_player_elemental(player)
             player["elemental_res"] = res
             player["elemental_dmg"] = dmg
@@ -304,7 +307,6 @@ def use_consumable(player, item, combat_state=None):
             })
             msg = f"You drink {item['name']}. +{power} {stat} for {duration} turns."
         else:
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = item["power"] + get_wisdom_bonus(player)
             max_hp = player_max_hp(player)
             old_hp = player["current_hp"]
@@ -318,7 +320,6 @@ def use_consumable(player, item, combat_state=None):
                 combat_state["forced_flee"] = True
             msg = f"You throw a {item['name']} and disappear in smoke!"
         elif "bonus_vs" in item and combat_state and combat_state.get("enemy_race") == item["bonus_vs"]:
-            from pandemonium.combat.stat_milestones import get_dexterity_damage_bonus
             dmg = item["power"] + get_dexterity_damage_bonus(player)
             msg = f"{item['name']} burns the enemy for {dmg} damage!"
             if combat_state:
@@ -328,7 +329,6 @@ def use_consumable(player, item, combat_state=None):
                 combat_state["enemy_slowed"] = True
             msg = f"You throw {item['name']}. Enemy is slowed!"
         else:
-            from pandemonium.combat.stat_milestones import get_dexterity_damage_bonus
             dmg = item["power"] + get_dexterity_damage_bonus(player)
             if combat_state:
                 combat_state["enemy_hp"] -= dmg
@@ -371,7 +371,6 @@ def apply_scroll_to_item(item, scroll):
     enhance = item.get("enhance", 0)
     if base.get("base_form"):
         # Base-form gear keeps its flower infusions; rarity only rescales stats.
-        from pandemonium.resources.item_generation import refresh_infused_instance
         refresh_infused_instance(item, base)
         return True
     item["mods"] = compute_equipment_mods(base, new_rarity, enhance)

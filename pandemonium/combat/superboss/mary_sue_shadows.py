@@ -257,6 +257,7 @@ def shadow_jabberwock_turn_hook(enemy, ctx, pl, p_con, defending, enemies_list):
 
     Returns: (actions, skip_default, extra_logic, armor_mult, temp_str)
     """
+    from pandemonium.combat.elemental import resistance_multiplier
     if not _is_shadow_jabberwock(enemy):
         return 1, False, None, 1.0, 0
 
@@ -294,7 +295,6 @@ def shadow_jabberwock_turn_hook(enemy, ctx, pl, p_con, defending, enemies_list):
             return 1, True, None, 1.0, 0
         else:
             c_print('\n  💀 "VORPAL BEAM!" — A line of pale light tears through the party!')
-            from pandemonium.combat.elemental import resistance_multiplier
             for target in get_living_party(pl):
                 dmg = random.randint(40, 60)
                 res = target.get("elemental_res", {}).get("thunder", 1.0)

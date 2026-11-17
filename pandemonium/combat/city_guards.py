@@ -7,6 +7,9 @@ Guards are a consequence, not a farm:
 """
 
 import pandemonium.progression.karma as karma
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.core.character import player_max_hp
+from pandemonium.core.time_blocks import end_day
 
 _ROMAN = ("", " II", " III", " IV", " V")
 
@@ -18,9 +21,8 @@ def _guard_spec(tier):
 
 
 def _make_guard(player, key, elite, index):
-    from pandemonium.combat.stats import compute_enemy_attributes, enemy_stats
-    from pandemonium.resources.enemies import ENEMIES
 
+    from pandemonium.combat.stats import compute_enemy_attributes, enemy_stats
     template = ENEMIES[key]
     player_level = max(1, int(player.get("level", 1) or 1))
     level = player_level + (3 if elite else 0)
@@ -71,7 +73,6 @@ def resolve_gate(player, city_id, days=3, warning=False):
 
 
 def _heal_party_to_half(player):
-    from pandemonium.core.character import player_max_hp
 
     max_hp = player_max_hp(player)
     half = max(1, int(max_hp * 0.5))
@@ -139,7 +140,6 @@ def city_guard_jail(player, city_id):
             "The quiet of the cell gives you time to think.",
         )
 
-    from pandemonium.core.time_blocks import end_day
     end_day(player, slept=True)
     return {
         "fine": fine,

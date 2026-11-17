@@ -27,6 +27,15 @@ import random
 from pandemonium.resources import map_boss_data as data
 from pandemonium.resources.cities import CITIES
 from pandemonium.resources.world_layout import city_node_centers, map_bounds
+from pandemonium.core.events import get_season
+from pandemonium.core.events import next_season_day
+from pandemonium.resources.item_generation import pick_equipment_id
+from pandemonium.resources.items import cap_rarity_for_item, soften_rarity
+from pandemonium.resources.item_generation import flower_for_element
+from pandemonium.core.events import get_daily_bonus_multiplier
+from pandemonium.progression.titles import apply_gold_find
+from pandemonium.resources.items import build_item
+from pandemonium.core.events import ensure_journal
 
 # ── Placement tuning (wild-dungeon site rules) ─────────────────────────────
 MIN_CITY_DIST = 90              # px from city node centers (squared compare)
@@ -115,7 +124,6 @@ def gate_met(player):
 
 def current_season(player):
     """``(season_id, season_name)`` for the player's current day."""
-    from pandemonium.core.events import get_season
     return get_season(player)
 
 
@@ -128,9 +136,9 @@ def get_active_boss(player):
 
 def echo_label(echo):
     """Display label for an Echo index — ``0``, then ``I``…``X``, then digits."""
+    from pandemonium.core.utils import _int_to_roman
     number = max(0, _int(echo, 0))
     if 1 <= number <= 10:
-        from pandemonium.core.utils import _int_to_roman
         return _int_to_roman(number)
     return str(number)
 
@@ -154,7 +162,6 @@ def season_days_left(player, site=None):
     site = site if isinstance(site, dict) else get_active_boss(player)
     if not site:
         return 0
-    from pandemonium.core.events import next_season_day
     return max(0, next_season_day(_day(player)) - _day(player))
 
 
@@ -183,10 +190,10 @@ def build_journey_to_warden(player):
     Returns a ``find_shortest_path``-shaped dict, or None when there is no
     live Warden or no route.
     """
+    from pandemonium.world.wild_dungeons import build_journey_to_dungeon
     site = get_active_boss(player)
     if site is None:
         return None
-    from pandemonium.world.wild_dungeons import build_journey_to_dungeon
     return build_journey_to_dungeon(player, site, to="map_boss")
 
 
@@ -408,8 +415,6 @@ def roll_cache(echo, biome=None, rng=None):
     Item stats stay unrolled until acquisition (``build_item``), matching the
     wild-dungeon preview convention.
     """
-    from pandemonium.resources.item_generation import pick_equipment_id
-    from pandemonium.resources.items import cap_rarity_for_item, soften_rarity
 
     rng = rng or random
     level = max(1, min(data.MAP_BOSS_CACHE_GEAR_CAP, echo_stats(echo)["level"]))
@@ -442,7 +447,6 @@ def roll_consumables(echo, element, rng=None):
 
 def roll_flower(element):
     """The guaranteed flower — always the Warden's own element."""
-    from pandemonium.resources.item_generation import flower_for_element
     return flower_for_element(element)
 
 
@@ -468,7 +472,6 @@ def gold_xp_reward(echo, player=None, night=False):
            + data.MAP_BOSS_XP_PER_LEVEL * step
            + data.MAP_BOSS_XP_PER_ECHO * echo)
     if player is not None:
-        from pandemonium.core.events import get_daily_bonus_multiplier
         gold = int(gold * get_daily_bonus_multiplier(player, "gold_bonus"))
         exp = int(exp * get_daily_bonus_multiplier(player, "exp_bonus"))
     if night:
@@ -497,8 +500,6 @@ def grant_victory_rewards(player, snapshot, night=None):
     """
     from pandemonium.inventory.core import add_item_to_inventory
     from pandemonium.progression.leveling import gain_exp, gain_exp_ally
-    from pandemonium.progression.titles import apply_gold_find
-    from pandemonium.resources.items import build_item
 
     snapshot = snapshot if isinstance(snapshot, dict) else {}
     state = ensure_map_boss_state(player)
@@ -893,7 +894,6 @@ def decline_start_depth(player):
 
 def _journal(player, name, desc):
     """Append a ``[MAP BOSS]`` entry to the Journal's Event tab (deduped)."""
-    from pandemonium.core.events import ensure_journal
     ensure_journal(player)
     day = _day(player)
     entries = player["journal"]["events"]

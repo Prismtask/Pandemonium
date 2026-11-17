@@ -1,5 +1,7 @@
 import os
 import random
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.core.save_load import save_game
 
 # ── GUI terminal detection (headless fallbacks for tests) ──────────
 try:
@@ -122,7 +124,6 @@ def apply_death_penalty(player):
     player["gold"] = max(0, gold - penalty_gold)
 
     # Advance time for recovery (8 hours ≈ 4 blocks in the block model)
-    import pandemonium.core.time_blocks as time_blocks
     time_blocks.spend_blocks(player, 4)
 
     # Heal player to 1 HP
@@ -170,7 +171,6 @@ def apply_death_penalty(player):
         _tprint(f"  ◎ The Event Horizon's withheld fortune arrives: +{pending} gold.")
 
     # Save game
-    from pandemonium.core.save_load import save_game
     save_game(player)
 
     return penalty_gold
@@ -225,7 +225,6 @@ def advance_time(player, minutes):
     Whole days (1440+) roll the day once per 1440 (tests / scripted skips).
     Sleep is a caller-side special path: `time_blocks.end_day(player, slept=True)`.
     """
-    import pandemonium.core.time_blocks as time_blocks
     return time_blocks.advance_time(player, minutes)
 
 
@@ -254,7 +253,6 @@ def get_difficulty_multiplier_from_time(player):
     if not player:
         return 1.0
     try:
-        import pandemonium.core.time_blocks as time_blocks
         phase = time_blocks.get_day_phase(player)
     except Exception:
         phase = get_time_period(player.get("time_minutes", 8 * 60))

@@ -41,6 +41,8 @@ from pandemonium.combat.status_effects import apply_weaken
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.core.utils import display_name
+from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.resources.items import build_item
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -209,7 +211,6 @@ def _inner_dragon_combat(player, outer_enemies=None):
                 if e["hp"] > 0:
                     enemy_dmg = int(e["max_hp"] * WEDGE_HP_DMG_PCT)
                     e["hp"] = max(0, e["hp"] - enemy_dmg)
-                    from pandemonium.combat.helpers import format_damage_msg
                     c_print("  " + format_damage_msg("Heaven Pinning Wedge", e['name'], enemy_dmg, skill_name="Heaven Pinning Wedge"))
 
             if ctx["defending_this_turn"]:
@@ -275,6 +276,7 @@ def combat_yinglong(player, floor=None, enemies=None):
                  ImmortalDragonDict and used as the boss. Otherwise a new boss
                  is created.
     """
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     # ── CUSTOM HOOKS & IMMORTALITY IMPLEMENTATION ───────────────
     class ImmortalDragonDict(dict):
         def __setitem__(self, key, value):
@@ -626,8 +628,6 @@ def combat_yinglong(player, floor=None, enemies=None):
 
 
             # Award Tarnished Jade
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             tj = build_item("tarnished_jade", "unique")
             c_print("\n  ✦ You obtained: TARNISHED JADE (Unique) ✦")
             prompt_acquire_item(player, tj)

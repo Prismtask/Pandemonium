@@ -10,11 +10,18 @@ from pandemonium.core.character import player_max_hp
 from pandemonium.gui.terminal import term
 
 from .core import _house_level_data
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.combat.party_stress import on_party_sleep
+from pandemonium.progression.family import roll_sleep_initiation, share_night_eligibility
+from pandemonium.facilities.sleep_sharing_ui import run_sleep_sharing
+from pandemonium.progression.family import grant_sleep_buff
+from pandemonium.facilities.family_ui import process_pending_births
+from pandemonium.progression.dreams import maybe_offer_dream
 
 
 def _rest_blocks_label(minutes):
     """Player-facing rest cost for a house tier (blocks, not minutes)."""
-    import pandemonium.core.time_blocks as time_blocks
     blocks = time_blocks.blocks_for_minutes(minutes)
     return "free" if blocks <= 0 else f"{blocks} block{'s' if blocks > 1 else ''}"
 
@@ -36,7 +43,6 @@ def _house_rest(player, city_id, house):
             ally["defeated"] = False
             ally["current_hp"] = ally["max_hp"]
             # Print is_recovered dialogue
-            from pandemonium.resources.enemies import ENEMIES
             template = ENEMIES.get(ally.get("key", ""), {})
             dialogue = template.get("dialogue", {})
             recovered_line = dialogue.get("is_recovered", f"{display_name(ally)} is back on their feet!")
@@ -50,7 +56,6 @@ def _house_rest(player, city_id, house):
             term.print(f"  {display_name(ally)} healed {ally_healed} HP → {ally['max_hp']}/{ally['max_hp']}")
 
     advance_time(player, rest_mins)
-    import pandemonium.core.time_blocks as time_blocks
     rest_blocks = time_blocks.blocks_for_minutes(rest_mins)
 
     home_name = lvl_data["name"].lower()
@@ -74,7 +79,6 @@ def _house_sleep(player, city_id, house, partner=None):
     If `partner` is provided (player-initiated), the Shared Night event runs
     with her; otherwise an eligible girl may initiate on her own.
     """
-    import pandemonium.core.time_blocks as time_blocks
     if time_blocks.get_day_phase(player) != "night":
         term.print("You can only sleep at home during the night.")
         term.pause()
@@ -82,7 +86,6 @@ def _house_sleep(player, city_id, house, partner=None):
 
     # Combat stress: settle outstanding falls, then let the party rest it off
     # (docs/stress_system_design.md).
-    from pandemonium.combat.party_stress import on_party_sleep
     _stress_msgs = on_party_sleep(player)
     for _msg in _stress_msgs:
         term.print(_msg)
@@ -91,14 +94,12 @@ def _house_sleep(player, city_id, house, partner=None):
 
     # Shared Night (docs/family_system_design.md §4). Content-level off means
     # no event at all; family_enabled is only checked for conception.
-    from pandemonium.progression.family import roll_sleep_initiation, share_night_eligibility
     event_girl = partner
     if event_girl is not None and not share_night_eligibility(player, event_girl, True)[0]:
         event_girl = None
     if event_girl is None:
         event_girl = roll_sleep_initiation(player, house)
     if event_girl is not None:
-        from pandemonium.facilities.sleep_sharing_ui import run_sleep_sharing
         run_sleep_sharing(player, event_girl, term)
 
     lvl_data   = _house_level_data(house)
@@ -117,7 +118,6 @@ def _house_sleep(player, city_id, house, partner=None):
             ally["defeated"] = False
             ally["current_hp"] = ally["max_hp"]
             # Print is_recovered dialogue
-            from pandemonium.resources.enemies import ENEMIES
             template = ENEMIES.get(ally.get("key", ""), {})
             dialogue = template.get("dialogue", {})
             recovered_line = dialogue.get("is_recovered", f"{display_name(ally)} is back on their feet!")
@@ -133,7 +133,6 @@ def _house_sleep(player, city_id, house, partner=None):
     # Apply / refresh Well-Rested buff (Manor and above). Merge with any
     # shared_night buff — take the stronger value/duration, never stack.
     if buff_val > 0:
-        from pandemonium.progression.family import grant_sleep_buff
         grant_sleep_buff(player, "well_rested", buff_val, buff_rooms)
         for ally in player.get("allies", []):
             if ally.get("current_hp", 0) > 0:
@@ -152,11 +151,9 @@ def _house_sleep(player, city_id, house, partner=None):
     term.print("  (The night passes — you wake to a new morning.)")
 
     # Births resolve during the day roll; deliver scenes/names at this safe point.
-    from pandemonium.facilities.family_ui import process_pending_births
     process_pending_births(player, term)
 
     # Dream events (docs/dream_events_design.md) — one roll per sleep.
-    from pandemonium.progression.dreams import maybe_offer_dream
     maybe_offer_dream(player, "home", term)
 
     term.pause()

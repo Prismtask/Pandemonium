@@ -16,6 +16,7 @@ Rules
 Elements own procs (Sunder/Ignite/Chain/...); forms own these static modifiers.
 """
 import math
+from pandemonium.resources.items import ITEMS
 
 # Slot groups — weapons/armor/accessories have separate form namespaces.
 SLOT_GROUPS = {
@@ -135,7 +136,6 @@ def _item_form(item):
         return form
     item_id = item.get("id")
     if item_id:
-        from pandemonium.resources.items import ITEMS
         return (ITEMS.get(item_id) or {}).get("form")
     return None
 

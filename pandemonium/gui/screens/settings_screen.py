@@ -11,6 +11,8 @@ from tkinter import ttk
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
 from pandemonium.gui.settings import save_settings
+from pandemonium.gui.theme import set_font_size
+from pandemonium.gui.settings import DEFAULT_SETTINGS
 
 
 class SettingsScreen(BaseScreen):
@@ -261,7 +263,6 @@ class SettingsScreen(BaseScreen):
         save_settings(self.sm.settings)
 
         # Apply font size immediately
-        from pandemonium.gui.theme import set_font_size
         set_font_size(self.font_var.get())
 
         # Apply window size if changed
@@ -279,7 +280,6 @@ class SettingsScreen(BaseScreen):
 
     def _reset_defaults(self):
         """Reset all settings to defaults."""
-        from pandemonium.gui.settings import DEFAULT_SETTINGS
         self.sm.settings.update(DEFAULT_SETTINGS.copy())
         self.font_var.set(self.sm.settings["font_size"])
         self.window_var.set(self.sm.settings["window_size"])

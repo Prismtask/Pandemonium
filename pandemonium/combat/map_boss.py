@@ -47,6 +47,9 @@ from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.core.utils import display_name
 from pandemonium.resources import map_boss_data as data
 import pandemonium.world.map_boss as map_boss
+from pandemonium.core.time_blocks import get_day_phase
+from pandemonium.core.time_blocks import format_block_track
+from pandemonium.combat.weapon.map_boss_uniques import sync_party_phase
 
 # ── Encounter constants ────────────────────────────────────────────────────
 WARDEN_KEYS = {
@@ -205,12 +208,12 @@ def _is_defending(member, player, defending):
 
 def _pick_target(player):
     """Weighted random party target (the player draws twice the aggro)."""
+    from pandemonium.combat.status_effects import get_aggro_multiplier
     party = _party(player)
     if not party:
         return None
     if len(party) == 1:
         return party[0]
-    from pandemonium.combat.status_effects import get_aggro_multiplier
     weights = [(2.0 if m is player else 1.0) * get_aggro_multiplier(m)
                for m in party]
     return random.choices(party, weights=weights)[0]
@@ -250,7 +253,6 @@ def _heal(boss, amount):
 # ── Phase clock ────────────────────────────────────────────────────────────
 
 def _phase_of(blocks):
-    from pandemonium.core.time_blocks import get_day_phase
     return get_day_phase(int(blocks) % 24)
 
 
@@ -260,7 +262,6 @@ def projected_time_label(player, blocks):
     ``format_block_track`` reads ``day_blocks`` off the player dict, so the
     projection renders through a shallow copy — the real clock is untouched.
     """
-    from pandemonium.core.time_blocks import format_block_track
     proxy = dict(player)
     proxy["day_blocks"] = int(blocks) % 24
     proxy["_combat_time_label"] = ""
@@ -781,7 +782,6 @@ def _pre_round_hook(ctx, enemies):
     player["_map_boss_rounds"] = round_num
     player["_combat_time_label"] = projected_time_label(player, cursor)
     # Warden uniques read the projected phase; allies mirror the clock.
-    from pandemonium.combat.weapon.map_boss_uniques import sync_party_phase
     sync_party_phase(player)
 
     phase = _phase_of(cursor)
@@ -935,11 +935,11 @@ def _long_day(ctx, boss, player, p_con, defending):
 
 def _on_player_hit_hook(target, elist, ctx, attacker=None):
     """Ice Armor melts when fire lands on the Warden (Winter Echo 2/7)."""
+    from pandemonium.combat.elemental import get_attack_element
     if not is_boss(target) or attacker is None:
         return
     if int(ctx.get("ice_armor", 0) or 0) <= 0:
         return
-    from pandemonium.combat.elemental import get_attack_element
     if get_attack_element(attacker) != "fire":
         return
     ctx["ice_armor"] = max(0, int(ctx["ice_armor"]) - 1)

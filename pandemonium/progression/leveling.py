@@ -5,6 +5,9 @@ from pandemonium.core.character import player_max_hp
 from pandemonium.combat.skills import unlock_skills_for_level
 from pandemonium.core.utils import _tprint, _tmenu, display_name
 from pandemonium.core.events import get_daily_bonus_multiplier
+from pandemonium.progression.titles import check_unlock as _check_title_unlock
+from pandemonium.combat.stat_milestones import get_learning_bonus, check_milestone_notification
+from pandemonium.progression.titles import mod as _title_mod
 
 # ── GUI level-up dialog (safe import) ──────────────────────────────────
 try:
@@ -264,7 +267,6 @@ def check_level_cap_milestone(player, city_id):
     """Check if enough unique biomes have been cleared to the current cap.
     Prints a message when the global milestone is newly reached."""
     # Floor progression is the main deed trigger for dungeon titles.
-    from pandemonium.progression.titles import check_unlock as _check_title_unlock
     _check_title_unlock(player)
     current_cap = player.get("level_cap", 10)
     required = get_required_biomes_for_cap(current_cap)
@@ -287,7 +289,6 @@ def check_level_cap_milestone(player, city_id):
         notified[global_key] = True
 
 def gain_exp(player, amount):
-    from pandemonium.combat.stat_milestones import get_learning_bonus, check_milestone_notification
 
     # Event Horizon: character XP is frozen inside the run (docs §10.1)
     if player.get("_eh_in_run"):
@@ -301,7 +302,6 @@ def gain_exp(player, amount):
     # Daily events: Scholar's Day (+25% XP)
     amount = int(amount * get_daily_bonus_multiplier(player, "xp_bonus"))
     # Deed titles: small player-only XP bonus.
-    from pandemonium.progression.titles import mod as _title_mod
     _title_xp = _title_mod(player, "xp_pct")
     if _title_xp > 0:
         amount = int(amount * (1.0 + _title_xp))
@@ -370,12 +370,11 @@ def gain_exp_ally(ally, amount):
     """Award XP to an ally and handle level-ups using the same HUD as player."""
     from pandemonium.combat.ally import ally_max_hp, apply_ally_growth
     from pandemonium.combat.ally_skills import gain_skill_learning_exp
-    from pandemonium.combat.stat_milestones import get_learning_bonus, check_milestone_notification
+    from pandemonium.combat.ally_skills import get_learnable_skill_def
 
     # ── Skill learning always progresses regardless of level cap ──
     learned_skill = gain_skill_learning_exp(ally, amount)
     if learned_skill:
-        from pandemonium.combat.ally_skills import get_learnable_skill_def
         skill_def = get_learnable_skill_def(learned_skill)
         skill_name = skill_def.get("name", learned_skill) if skill_def else learned_skill
         _tprint(f"*** {display_name(ally)} has mastered {skill_name}! ***")

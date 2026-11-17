@@ -22,6 +22,7 @@ from pandemonium.combat.elemental_debuffs import (
     get_elemental_debuff_params,
     DEBUFF_APPLY_MAP,
 )
+from pandemonium.resources.items import build_item
 
 # ═══════════════════════════════════════════════════════════════════
 # CONSTANTS
@@ -207,6 +208,7 @@ def _add_paint(target, amount, ctx, boss, is_player, name_hint=None):
     Paint bursts at PAINT_BURST_THRESHOLD+ stacks: 5 = Pigment Burst,
     6-7 = Pigment Explosion (+50% debuff potency).
     """
+    from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
     if amount <= 0 or target.get("current_hp", 0) <= 0:
         return None
 
@@ -215,7 +217,6 @@ def _add_paint(target, amount, ctx, boss, is_player, name_hint=None):
         return None
 
     # Blank Canvas Shawl Afterimage deflects incoming paint
-    from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
     if try_consume_afterimage(target):
         c_print(f"  👻 Afterimage! {target.get('name', 'you')} brushes the paint away!")
         return None
@@ -614,6 +615,13 @@ def _apply_signature_ko(pl, ctx):
 
 def combat_palette(player, floor=None, enemies=None):
     """Superboss: Palette, the Chromatic Artisan."""
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
+    from pandemonium.combat.ally import (
+                        create_heroine_ally,
+                        promote_heroine_to_permanent,
+                        set_heroine_state,
+                        get_heroine_in_party,
+                    )
     boss_key = BOSS_KEY
 
     if enemies is None:
@@ -799,12 +807,12 @@ def combat_palette(player, floor=None, enemies=None):
         return 0, True, None, 1.0, 0
 
     def post_round_hook(ctx, elist):
+        from pandemonium.combat.status_effects import tick_enemy_debuffs
         b = next((e for e in elist if e.get("key") == boss_key), None)
         if not b:
             return
 
         # Tick the boss's own debuffs (burn/bleed from the party keep hurting)
-        from pandemonium.combat.status_effects import tick_enemy_debuffs
         msgs, died = tick_enemy_debuffs(b)
         for m in msgs:
             c_print(m)
@@ -861,8 +869,6 @@ def combat_palette(player, floor=None, enemies=None):
             c_print('"...you finished it," they whisper. "The painting is done."')
 
             # Grant loot
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
 
             brush = build_item("palette_brush", rarity="unique")
             c_print(f"\n  🎁 Received: {brush['name']}!")
@@ -909,12 +915,6 @@ def combat_palette(player, floor=None, enemies=None):
 
             choice = c_input("\nLet Palette join your party? (y/n): ").strip().lower()
             if choice == "y":
-                from pandemonium.combat.ally import (
-                    create_heroine_ally,
-                    promote_heroine_to_permanent,
-                    set_heroine_state,
-                    get_heroine_in_party,
-                )
                 existing = get_heroine_in_party(player, "palette")
                 if existing:
                     c_print(f"  {existing['name']} is already in your party!")

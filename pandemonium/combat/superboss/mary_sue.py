@@ -116,8 +116,8 @@ def _deal_damage(target, dmg, element=None, ctx=None, sue_ref=None):
     When ctx and sue_ref are provided, applies Mary Sue's Shadow-granted
     passive effects (Predator's Grin crit bonus, Wilting Presence debuff).
     """
+    from pandemonium.combat.elemental import resistance_multiplier
     if element and element != "physical":
-        from pandemonium.combat.elemental import resistance_multiplier
         res = target.get("elemental_res", {}).get(element, 1.0)
         dmg = max(1, int(dmg * resistance_multiplier(res)))
 
@@ -542,6 +542,8 @@ def combat_mary_sue(player, floor=None, enemies=None):
     Args:
         enemies: Optional pre-created enemy list for GUI mode state sharing.
     """
+    from pandemonium.world.wonderland_curses import get_mary_sue_shadow_modifiers, format_mary_sue_shadow_intro
+    from pandemonium.world.wonderland_curses import get_heroine_shadow_floor50_dialogue
     if floor is None:
         loc = player.get("location", "")
         floor = player.get("city_floors", {}).get(loc, {}).get("floor", 50)
@@ -599,7 +601,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
     c_input("\nPress Enter to face the Author...")
 
     # ── Wonderland Shadow modifiers ────────────────────────────────────
-    from pandemonium.world.wonderland_curses import get_mary_sue_shadow_modifiers, format_mary_sue_shadow_intro
     shadow_modifiers = get_mary_sue_shadow_modifiers(player)
 
     # Show shadow intro if player carries Shadows
@@ -670,7 +671,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
         sue["_wilting_stacks"] = {}
 
     # ── Heroine Floor 50 story dialogue ────────────────────────────────
-    from pandemonium.world.wonderland_curses import get_heroine_shadow_floor50_dialogue
     for ally in player.get("allies", []):
         heroine_key = ally.get("_heroine_key")
         if heroine_key:
@@ -736,6 +736,7 @@ def combat_mary_sue(player, floor=None, enemies=None):
 
     def pre_player_hook(ctx, elist):
         """Check HP thresholds, handle phase transitions, and Plot Armor regen."""
+        from pandemonium.world.wonderland_curses import has_shadow
         nonlocal plot_armor
         sue_ref = ctx["_mary_sue_ref"]
         pl = ctx.get("_player_ref", player)
@@ -759,7 +760,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
         # ── Shadow Modifier: Execution Threshold ──────────────────────────
         modifiers = ctx.get("_shadow_modifiers", {})
         if "execution_threshold" in modifiers:
-            from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "off_with_heads"):
                 targets = get_living_party(pl)
                 for t in targets:
@@ -1052,6 +1052,7 @@ def combat_mary_sue(player, floor=None, enemies=None):
 
     def enemy_turn_hook(enemy, ctx, pl, p_con, defending, turn_order=None, step_idx=None):
         """Handle Mary Sue and shadow boss AI."""
+        from pandemonium.world.wonderland_curses import has_shadow
         ctx["_player_ref"] = pl
         ctx["_enemies_ref"] = ctx.get("_enemies_ref", [enemy] if isinstance(enemy, dict) else [])
 
@@ -1098,7 +1099,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
         # ── Shadow Modifier: Maddening Aura — confusion chance ──────────
         modifiers = ctx.get("_shadow_modifiers", {})
         if "maddening_aura" in modifiers:
-            from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "madness_contagion"):
                 targets = get_living_party(pl)
                 if targets and random.random() < 0.50:
@@ -1113,7 +1113,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
 
         # ── Shadow Modifier: Reality Warp — swap positions ──────────────
         if "reality_warp" in modifiers:
-            from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "down_rabbit_hole"):
                 if random.random() < 0.40:
                     c_print('\n  🕳️ "The floor isn\'t where you left it..."')
@@ -1132,7 +1131,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
         # ── Shadow Modifier: Time Lord — extra turn every 3 turns ───────
         extra_action_this_turn = 0
         if "extra_turn" in modifiers:
-            from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "white_rabbit_panic"):
                 actions_count = ctx.get("mary_sue_actions", 0)
                 if actions_count > 0 and actions_count % 3 == 0:
@@ -1143,7 +1141,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
         # ── Shadow Modifier: Smoke Accuracy — party accuracy debuff ─────
         sue_ref = ctx.get("_mary_sue_ref")
         if "smoke_accuracy_debuff" in modifiers and sue_ref and sue_ref.get("_smoke_aura"):
-            from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "caterpillars_smoke"):
                 penalty = sue_ref.get("_smoke_aura_penalty", 0.15)
                 targets = get_living_party(pl)
@@ -1162,7 +1159,6 @@ def combat_mary_sue(player, floor=None, enemies=None):
 
         # ── Shadow Modifier: Damage Reflect — shattered mirror ──────────
         if "damage_reflect" in modifiers and sue_ref and sue_ref.get("_damage_reflect", 0) > 0:
-            from pandemonium.world.wonderland_curses import has_shadow
             if has_shadow(pl, "looking_glass_shatter"):
                 prev_hp = ctx.get("_mary_prev_hp", sue_ref.get("max_hp", sue_ref["hp"]))
                 current_hp = sue_ref["hp"]

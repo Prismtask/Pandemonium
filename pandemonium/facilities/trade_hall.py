@@ -35,6 +35,7 @@ from pandemonium.resources.mounts import (
     downgrade_refund,
 )
 from pandemonium.gui.terminal import term
+from pandemonium.facilities.house import HOUSE_LEVELS
 
 # Cities where property ownership isn't possible / doesn't make sense.
 _DEED_EXCLUDED = {"isle_of_glass", "blackwake", "wonderland"}
@@ -54,9 +55,9 @@ def _sell_house_deed(player):
     house (with all its data: level, storage, monster girls, income timing)
     to the newly chosen city instead of creating a second house.
     """
+    from pandemonium.progression.quests import update_quests
     # Imported once at function level so the name is always bound (it used to
     # be imported inside the first `if existing_house:` block only).
-    from pandemonium.facilities.house import HOUSE_LEVELS
     if player.get("gold", 0) < HOUSE_DEED_COST:
         term.print(f"A House Deed costs {HOUSE_DEED_COST} gold. You don't have enough.")
         term.pause()
@@ -141,7 +142,6 @@ def _sell_house_deed(player):
         term.print(f"\nCongratulations! You now own a Hovel in {chosen_data['name']}.")
 
     # Quest hook: owning a home (Field Study One)
-    from pandemonium.progression.quests import update_quests
     for msg in update_quests(player, "own_house", "any"):
         term.print(msg)
 

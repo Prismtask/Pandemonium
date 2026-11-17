@@ -9,6 +9,10 @@ import tkinter as tk
 from abc import ABC, abstractmethod
 
 from pandemonium.gui.theme import Theme
+from pandemonium.core.events import format_date
+from pandemonium.core.time_blocks import format_block_track
+from pandemonium.resources.cities import CITIES
+import pandemonium.progression.karma as karma
 
 
 def city_header_parts(player, city_id=None):
@@ -28,8 +32,6 @@ def city_header_parts(player, city_id=None):
     if not player:
         return "Pandemonium", ""
 
-    from pandemonium.core.events import format_date
-    from pandemonium.core.time_blocks import format_block_track
 
     if not city_id:
         city_id = player.get("location") or "solmere"
@@ -43,7 +45,6 @@ def city_header_parts(player, city_id=None):
 
     # Secondary tier — context you check between actions.
     secondary = []
-    from pandemonium.resources.cities import CITIES
     city = CITIES.get(city_id) or {}
     if not isinstance(city, dict):
         city = {}
@@ -53,7 +54,6 @@ def city_header_parts(player, city_id=None):
     deepest = int(cf.get("max_floor", start) or start)
     secondary.append(f"Floor {cur}/{deepest}")
 
-    import pandemonium.progression.karma as karma
     if karma.is_enabled(player):
         tier = karma.get_karma_tier(player)
         value = karma.get_karma(player)

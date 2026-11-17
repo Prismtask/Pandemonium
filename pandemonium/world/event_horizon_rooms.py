@@ -60,8 +60,10 @@ def generate_room(player):
     if roll < 0.70:
         pack = 2 + min(3, number // 12)
         count = random.randint(max(2, pack - 1), pack)
-        from pandemonium.world.dungeon import build_enemy_group  # lazy — avoid import cycle
         level, band_lo = eh.enemy_band_for_room(player, number)
+        # Local import: dungeon.py imports combat modules that lead back here.
+        from pandemonium.world.dungeon import build_enemy_group
+
         enemies = build_enemy_group(level, count, region=None,
                                     player=player, band_lo=band_lo)
         return {"type": "combat", "number": number, "enemies": enemies}
@@ -157,15 +159,15 @@ def _catch_breath(player):
 
 
 def _play_combat(player, room, combat_override):
-    import pandemonium.world.event_horizon as eh
 
+    import pandemonium.world.event_horizon as eh
+    from pandemonium.combat.combat_engine import combat as _combat
     state = eh.ensure_eh_state(player)
     level = eh.enemy_level_for_room(player, room["number"])
     if combat_override:
         result = combat_override(player, room["enemies"], floor=level,
                                  room_num=room["number"], total_rooms=None)
     else:
-        from pandemonium.combat.combat_engine import combat as _combat
         result = _combat(player, room["enemies"], floor=level,
                          room_num=room["number"], total_rooms=None)
 
@@ -293,8 +295,8 @@ def offer_flask(player, forced_tier=None, banner=None):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def handle_trial_room(player, room):
-    import pandemonium.world.event_horizon as eh
 
+    import pandemonium.world.event_horizon as eh
     state = eh.ensure_eh_state(player)
     positive = room.get("type") == "trial_pos"
     for_room = int(room.get("for_room", state.get("room", 0)))
@@ -406,8 +408,8 @@ def offer_joker(player):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def handle_eh_shop(player):
-    import pandemonium.world.event_horizon as eh
 
+    import pandemonium.world.event_horizon as eh
     state = eh.ensure_eh_state(player)
     room = int(state.get("room", 0))
 
@@ -501,8 +503,8 @@ def _pick_actor(player, prompt):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def handle_eh_event(player):
-    import pandemonium.world.event_horizon as eh
 
+    import pandemonium.world.event_horizon as eh
     state = eh.ensure_eh_state(player)
     room = int(state.get("room", 0))
     gain = random.randint(3, 8) + room // 10
@@ -533,11 +535,11 @@ def handle_eh_fountain(player):
 
 def grant_trophy(player, item_id):
     """Give a trophy item to the player. Returns True if it entered inventory."""
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     item = build_item(item_id)
     if not item:
         _tprint(f"  [ERROR] Unknown trophy item: {item_id}")
         return False
-    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     if prompt_acquire_item(player, item):
         return True
     _tprint(f"  (Your bag is full — the {item.get('name', item_id)} waits in the distortion.)")

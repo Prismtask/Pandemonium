@@ -10,6 +10,12 @@ Screen Manager Pattern:
 import tkinter as tk
 
 from pandemonium.gui.theme import Theme
+from pandemonium.core.time_blocks import register_time_listener
+from pandemonium.gui.screens.city_screen import CityScreen
+from pandemonium.core.time_blocks import format_block_track
+from pandemonium.core.events import format_date
+from pandemonium.gui.widgets.notification_toast import NotificationToast
+from pandemonium.gui.widgets.log_window import LogWindow
 
 class ScreenManager:
     """Manages the current screen and transitions between game states."""
@@ -28,7 +34,6 @@ class ScreenManager:
         # Block time (docs/time_system_design.md): no wall clock. The top bar
         # refreshes when time is SPENT, and queued Event Notices surface at
         # the next safe moment.
-        from pandemonium.core.time_blocks import register_time_listener
         register_time_listener(self._on_time_advanced)
 
         # ── Main layout frames ───────────────────────────────────────────────
@@ -282,7 +287,6 @@ class ScreenManager:
         if self._overlay_screen is not None or self.player is None:
             return
         screen = self.current_screen
-        from pandemonium.gui.screens.city_screen import CityScreen
         if not isinstance(screen, CityScreen):
             return
         if not self.player.get("event_queue"):
@@ -329,8 +333,6 @@ class ScreenManager:
         if city == "Dungeon":
             city = p.get("origin_city", "solmere").replace("_", " ").title()
 
-        from pandemonium.core.time_blocks import format_block_track
-        from pandemonium.core.events import format_date
         time_str = format_block_track(p, include_day=False)
         date_str = format_date(p)
 
@@ -366,7 +368,6 @@ class ScreenManager:
 
     def show_toast(self, message: str, category: str = "info", duration_ms: int = 3000):
         """Show a slide-in toast notification."""
-        from pandemonium.gui.widgets.notification_toast import NotificationToast
         toast = NotificationToast(self._toast_container, message, category, duration_ms)
         toast.pack(anchor=tk.NE, pady=2)
 
@@ -402,7 +403,6 @@ class ScreenManager:
                 opener()
                 return
 
-        from pandemonium.gui.widgets.log_window import LogWindow
         if self._log_window is not None and self._log_window.winfo_exists():
             self._log_window.lift()
             return

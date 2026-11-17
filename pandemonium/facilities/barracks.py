@@ -8,6 +8,9 @@ from pandemonium.combat.ally_skills import (
     meets_skill_requirements, is_upgrade_skill
 )
 from pandemonium.gui.terminal import term, get_terminal
+from pandemonium.resources.quests import format_resonance_status
+from .house import get_current_house_allies
+from .house import get_house_data, save_house_data
 
 
 TIER_LABELS = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
@@ -18,7 +21,6 @@ def barracks_service(player, city_id):
     """Barracks: train to gain temporary stat buffs, spar with dummy, or teach allies skills."""
     service_dialogue(city_id, "barracks", "enter")
 
-    from pandemonium.resources.quests import format_resonance_status
     tier = (player.get("quests") or {}).get("resonance_tier", 0)
     term.print(format_resonance_status(tier))
     
@@ -56,7 +58,6 @@ def barracks_service(player, city_id):
 
 def teach_skill_menu(player):
     """Menu to select an ally and teach them a skill."""
-    from .house import get_current_house_allies
     
     allies = get_current_house_allies(player)
     if not allies:
@@ -255,7 +256,6 @@ def select_skill_from_category(player, ally_data, category):
             return
     
     # Update the active party ally directly (recruited allies are not in house)
-    from .house import get_house_data, save_house_data
     house_data = get_house_data(player)
     
     # Find and update the active party ally
@@ -465,10 +465,11 @@ def _launch_dummy_combat_from_facility(facility_screen, player):
     issues with the CityScreen having been destroyed during switch_to.
     Runs on the main thread (called from _do_finish via after()).
     """
+    from pandemonium.gui.screens.city_screen import CityScreen
+    from pandemonium.gui.screens.combat_screen import CombatScreen
     config = player.pop("_pending_dummy_combat", None)
     if not config:
         # Fallback: go to city
-        from pandemonium.gui.screens.city_screen import CityScreen
         facility_screen.sm.switch_to(CityScreen, push_history=False)
         return
 
@@ -487,7 +488,6 @@ def _launch_dummy_combat_from_facility(facility_screen, player):
 
         return _run_dummy_combat(p, config, enemies=enemies)
 
-    from pandemonium.gui.screens.combat_screen import CombatScreen
     sm.switch_to(
         CombatScreen,
         enemy_keys=[],
@@ -499,19 +499,19 @@ def _launch_dummy_combat_from_facility(facility_screen, player):
 
 def _after_dummy_combat_from_facility(sm, player, result):
     """Handle return from dummy sparring — go back to city."""
+    from pandemonium.gui.screens.death_screen import DeathScreen
+    from pandemonium.gui.screens.city_screen import CityScreen
     sm.log(f"Sparring ended: {result.upper()}")
     if player and player.get("current_hp", 1) <= 0:
-        from pandemonium.gui.screens.death_screen import DeathScreen
         def _continue():
             from pandemonium.core.utils import apply_death_penalty
-            apply_death_penalty(player)
             from pandemonium.gui.screens.city_screen import CityScreen
+            apply_death_penalty(player)
             sm.switch_to(CityScreen, push_history=False)
         def _quit():
-            sm.player = None
             from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+            sm.player = None
             sm.switch_to(MainMenuScreen)
         sm.switch_to(DeathScreen, on_continue=_continue, on_quit=_quit)
     else:
-        from pandemonium.gui.screens.city_screen import CityScreen
         sm.switch_to(CityScreen, push_history=False)

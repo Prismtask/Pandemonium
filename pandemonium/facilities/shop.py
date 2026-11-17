@@ -18,6 +18,8 @@ from pandemonium.combat.stats import get_effective_attribute
 from pandemonium.world.city_dialogue import service_dialogue   # changed import
 from pandemonium.facilities.travel_events import _item_stat_line
 from pandemonium.gui.terminal import term
+from pandemonium.progression.titles import mod as _title_mod
+from pandemonium.progression.titles import note_deed
 
 def get_effective_charisma(player):
     return get_effective_attribute(player, "Charisma")
@@ -67,7 +69,6 @@ def get_discounted_price(base_price, player, city_id):
     charisma = get_effective_charisma(player)
     discount_percent = min(40, max(0, (charisma - 8) * 0.5))
     # Deed titles: small additive discount (capped at 10% in titles.mod).
-    from pandemonium.progression.titles import mod as _title_mod
     title_bonus = int(round(_title_mod(player, "shop_discount_pct") * 100))
 
     if karma.is_enabled(player):
@@ -195,6 +196,7 @@ def _parse_sell_selection(raw, all_items):
 
 def sell_items(player):
     from pandemonium.inventory.core import remove_item_by_reference
+    from pandemonium.combat.weapon.wedding_specials import is_wedding_item_soulbound
     inv = player.get("inventory", [])
     if not inv:
         term.print("No items to sell.")
@@ -244,7 +246,6 @@ def sell_items(player):
         term.print("No valid items selected.")
         return
 
-    from pandemonium.combat.weapon.wedding_specials import is_wedding_item_soulbound
     # Filter out soulbound wedding items and unique items
     filtered_indices = []
     filtered_names = []
@@ -282,10 +283,10 @@ def _cargo_market(player, city_id):
     """Permit-gated cargo trading: buy local stock, sell held cargo."""
     from pandemonium.inventory.core import remove_item_by_reference, get_cargo_items
     from pandemonium.resources.trade_goods import (
-        TRADE_GOODS, build_cargo, cargo_buy_price, cargo_sell_price,
-        cargo_total_weight, cargo_capacity, cargo_overload_limit,
-        roll_daily_cargo_stock, DAILY_RESTOCK, cargo_demand, THEMES,
-    )
+            TRADE_GOODS, build_cargo, cargo_buy_price, cargo_sell_price,
+            cargo_total_weight, cargo_capacity, cargo_overload_limit,
+            roll_daily_cargo_stock, DAILY_RESTOCK, cargo_demand, THEMES,
+        )
 
     if not player.get("trade_permit"):
         term.print("\nA guarded counter sits behind a velvet rope.")
@@ -356,7 +357,6 @@ def _cargo_market(player, city_id):
             if add_item_to_inventory(player, item):
                 stock[buy_choice][1] -= 1
                 weight += g["weight"]
-                from pandemonium.progression.titles import note_deed
                 note_deed(player, "gold_spent_shops", price)
                 term.print(f"You load {g['name']} ({g['weight']} wt) for {price}g.")
                 advance_time(player, 15)
@@ -414,7 +414,6 @@ def upgrade_backpack(player):
         term.print("Not enough gold.")
         return
     player["gold"] -= cost
-    from pandemonium.progression.titles import note_deed
     note_deed(player, "gold_spent_shops", cost)
     player["inventory_upgrade"] = upgrade + 1
     term.print(f"Backpack upgraded to level {upgrade + 1}!")
@@ -578,7 +577,6 @@ def city_shop(player, city_id="solmere"):
                 player["gold"] -= final_price
                 if add_item_to_inventory(player, item.copy()):
                     del shop_stock[buy_choice]
-                    from pandemonium.progression.titles import note_deed
                     note_deed(player, "gold_spent_shops", final_price)
                     service_dialogue(city_id, "shop", "success")
                     advance_time(player, 15)

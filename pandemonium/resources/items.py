@@ -1,5 +1,12 @@
 # resources/items.py
 import random
+from pandemonium.resources.item_generation import LEGACY_ITEMS
+from pandemonium.resources.item_generation import GRADE_VALUE_PREMIUM
+from pandemonium.resources.item_generation import GRADE_RARITY_CAP
+from pandemonium.resources.item_generation import GRADE_RARITY_PASS
+from pandemonium.resources.item_generation import (
+    UNIQUE_ELEMENT_VALUE, UNIQUE_TRAIT_TIER, unique_primary_element,
+)
 
 ITEM_RARITY = {
     "common":    {"stat_mult": 1.00, "price_mult": 1.0},
@@ -36,7 +43,6 @@ def _lookup_item_def(item_id):
     base = ITEMS.get(item_id)
     if base:
         return base
-    from pandemonium.resources.item_generation import LEGACY_ITEMS
     return LEGACY_ITEMS.get(item_id, {})
 
 
@@ -78,7 +84,6 @@ def intrinsic_value(item_or_def):
     special += 1 if base.get("scaling_mult") else 0
     grade = base.get("grade")
     if grade in (1, 2, 3):
-        from pandemonium.resources.item_generation import GRADE_VALUE_PREMIUM
         special += base.get("grade_premium", GRADE_VALUE_PREMIUM.get(grade, 0))
     if instance is not None:
         trait_tier = instance.get("trait_tier")
@@ -185,7 +190,6 @@ def cap_rarity_for_item(item_or_def, rarity):
     base = _resolve_item_def(item_or_def)
     grade = base.get("grade")
     if grade in (1, 2, 3):
-        from pandemonium.resources.item_generation import GRADE_RARITY_CAP
         return clamp_rarity(rarity, GRADE_RARITY_CAP[grade])
     value = intrinsic_value(base)
     cap = "rare" if value <= 3 else ("epic" if value <= 5 else "legendary")
@@ -203,7 +207,6 @@ def soften_rarity(item_or_def, rarity, rng=random):
     grade = base.get("grade")
     if grade not in (1, 2, 3) or rarity not in RARITY_LADDER:
         return rarity
-    from pandemonium.resources.item_generation import GRADE_RARITY_PASS
     table = GRADE_RARITY_PASS.get(grade, {})
     idx = RARITY_LADDER.index(rarity)
     while idx > 0 and rng.random() >= table.get(RARITY_LADDER[idx], 1.0):
@@ -1464,9 +1467,6 @@ def _build_unique_item(item_id, base, enhance=0):
                 item[key] = base[key]
         # Unique weapons: one primary element at infusion tier II (2026-10-20).
         if base.get("slot") == "weapon" and base.get("elemental_dmg"):
-            from pandemonium.resources.item_generation import (
-                UNIQUE_ELEMENT_VALUE, UNIQUE_TRAIT_TIER, unique_primary_element,
-            )
             primary = unique_primary_element(item_id, base)
             if primary:
                 item["primary_element"] = primary

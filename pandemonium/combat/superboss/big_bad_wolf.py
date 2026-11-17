@@ -404,8 +404,8 @@ def combat_big_bad_wolf(player, floor=None, enemies=None):
 
     def on_kill_hook(target, elist, ctx):
         """Handle Wolf death, Red Hood permanent unlock, and drops."""
+        from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
         if _is_wolf(target) and target.get("hp", 0) <= 0:
-            from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
 
             c_print("\nThe Wolf collapses. Its great body shrinks, the bristling")
             c_print("fur receding until all that remains is a gaunt, grey shape")

@@ -10,6 +10,14 @@ from pandemonium.core.utils import advance_time, display_name
 from pandemonium.gui.terminal import term
 from pandemonium.gui.theme import Theme
 from pandemonium.facilities.shop import get_discounted_price
+from pandemonium.resources.item_generation import refresh_infused_instance
+from pandemonium.resources.item_generation import flower_for_element
+from pandemonium.resources.item_generation import (
+    ACCESSORY_RES_PRIMARY_TIERS, ARMOR_RES_PRIMARY_TIERS,
+)
+from pandemonium.resources.item_generation import WEAPON_FORMS, ARMOR_FORMS, ACCESSORY_FORMS
+from pandemonium.resources.item_generation import FLOWER_ITEMS
+from pandemonium.progression.karma_dialogue import service_line
 
 # Unique gear enhancement price multiplier — premium over legendary (8.0)
 # because uniques bypass the rarity stat_mult system entirely (see
@@ -132,7 +140,6 @@ def enhance_item(player, dialogues, city_id):
     elif base_def and base_def.get("base_mods") and item.get("rarity") in ITEM_RARITY:
         if base_def.get("base_form"):
             # Preserve flower infusions: enhancement is stats-only.
-            from pandemonium.resources.item_generation import refresh_infused_instance
             refresh_infused_instance(item, base_def)
         else:
             item["mods"] = compute_equipment_mods(base_def, item["rarity"], new_enhance)
@@ -252,7 +259,6 @@ def transmute_flower(player, src_element, dst_element, ratio=TRANSMUTE_RATIO):
     Returns True when the exchange happened. Same-element exchanges are
     refused. Element ids come from ``item_generation.FLOWER_ITEMS``.
     """
-    from pandemonium.resources.item_generation import flower_for_element
     from pandemonium.inventory.core import consume_stackable_items
 
     src_id = flower_for_element(src_element)
@@ -308,9 +314,6 @@ def _res_slot_value(infusion, slot):
     rather than a tier number, so each of the three elements reads as its
     own effect — the item name only reflects the first slot.
     """
-    from pandemonium.resources.item_generation import (
-        ACCESSORY_RES_PRIMARY_TIERS, ARMOR_RES_PRIMARY_TIERS,
-    )
     tier = max(0, min(2, int(infusion.get("tier", 0))))
     ladder = (ACCESSORY_RES_PRIMARY_TIERS if slot == "accessory"
               else ARMOR_RES_PRIMARY_TIERS)
@@ -346,6 +349,7 @@ def infuse_item(player, dialogues, city_id):
     """Apply one flower infusion to a chosen piece of equipment."""
     from pandemonium.resources.item_generation import FLOWER_ITEMS, apply_infusion, flower_for_element
     from pandemonium.inventory.core import consume_stackable_items
+    from pandemonium.combat.elemental import compute_ally_elemental, compute_player_elemental
 
     pool = []
     slots = ["weapon", "armor", "accessory1", "accessory2", "accessory3"]
@@ -422,7 +426,6 @@ def infuse_item(player, dialogues, city_id):
     # changes resistance/damage immediately, so rebuild it now instead of
     # waiting for the next equip/load.
     if kind == "equipped":
-        from pandemonium.combat.elemental import compute_ally_elemental, compute_player_elemental
         if owner is player:
             res, dmg = compute_player_elemental(player)
         else:
@@ -450,8 +453,9 @@ def strip_element(player, dialogues, city_id):
     is part of the piece and can never be stripped, but its flower slots can.
     """
     from pandemonium.resources.item_generation import (
-        flower_for_element, infusion_flowers_invested, strip_infusion_slot,
-    )
+            flower_for_element, infusion_flowers_invested, strip_infusion_slot,
+        )
+    from pandemonium.combat.elemental import compute_ally_elemental, compute_player_elemental
 
     pool = _infusable_pool(player, require_infusions=True)
     if not pool:
@@ -524,7 +528,6 @@ def strip_element(player, dialogues, city_id):
         return
 
     if kind == "equipped":
-        from pandemonium.combat.elemental import compute_ally_elemental, compute_player_elemental
         if owner is player:
             res, dmg = compute_player_elemental(player)
         else:
@@ -546,7 +549,6 @@ def strip_element(player, dialogues, city_id):
 
 def _form_labels_by_slot():
     """Map slot -> [(form_key, noun)] from the grid form definitions."""
-    from pandemonium.resources.item_generation import WEAPON_FORMS, ARMOR_FORMS, ACCESSORY_FORMS
     return {
         "weapon": [(f["key"], f["noun"]) for f in WEAPON_FORMS],
         "armor": [(f["key"], f["noun"]) for f in ARMOR_FORMS],
@@ -636,7 +638,6 @@ def commission_item(player, dialogues, city_id):
 
 def transmute_flowers(player, dialogues, city_id):
     """3:1 flower exchange menu (blacksmith)."""
-    from pandemonium.resources.item_generation import FLOWER_ITEMS
 
     term.print("\n--- Transmute Flowers (3:1) ---")
     term.print("The smith grinds three blooms of one element into a single")
@@ -678,7 +679,6 @@ def transmute_flowers(player, dialogues, city_id):
 
 
 def blacksmith_menu(player, city_id="solmere"):
-    from pandemonium.progression.karma_dialogue import service_line
     dialogues = BLACKSMITH_DIALOGUES.get(city_id, BLACKSMITH_DIALOGUES["solmere"])
     while True:
         term.clear()

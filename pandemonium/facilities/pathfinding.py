@@ -12,6 +12,8 @@ Public API:
 from collections import deque
 
 from pandemonium.resources.cities import CITIES
+from pandemonium.resources.ships import get_ship
+from pandemonium.resources.mounts import get_mount
 
 
 def _get_connections(city_id):
@@ -49,6 +51,7 @@ def find_shortest_path(player, origin_id, dest_id):
             "cost"            : gold cost for this segment (sea without ship).
     or None if no path exists.
     """
+    from pandemonium.resources.trade_goods import cargo_travel_penalty, cargo_overloaded_for_travel
     if origin_id not in CITIES or dest_id not in CITIES:
         return None
     if origin_id == dest_id:
@@ -64,13 +67,11 @@ def find_shortest_path(player, origin_id, dest_id):
     ship = None
     ship_id = player.get("ship_id")
     if ship_id:
-        from pandemonium.resources.ships import get_ship
         ship = get_ship(ship_id)
 
     mount = None
     mount_id = player.get("mount_id")
     if mount_id:
-        from pandemonium.resources.mounts import get_mount
         mount = get_mount(mount_id)
 
     mount_reduction = mount.get("time_reduction", 0) if mount else 0.0
@@ -82,7 +83,6 @@ def find_shortest_path(player, origin_id, dest_id):
     # time_blocks.travel_blocks() (single source of truth).
 
     # Cargo load penalty / blocking — per segment, using that segment's vehicle
-    from pandemonium.resources.trade_goods import cargo_travel_penalty, cargo_overloaded_for_travel
 
     # ── BFS ───────────────────────────────────────────────────────────────
     # We store (current_node, path_list, total_time, total_cost, ferry_count,

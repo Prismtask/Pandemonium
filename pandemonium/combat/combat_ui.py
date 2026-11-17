@@ -9,6 +9,9 @@ from pandemonium.combat.ally import format_ally_status_line, _ally_action_menu
 from pandemonium.combat.ally_skills import get_all_ally_skills
 from pandemonium.combat.skills import get_all_unlocked_skills
 from pandemonium.combat.combat_io import c_print
+from pandemonium.combat.party_stress import stress_tag
+from pandemonium.progression.titles import format_name as _format_title_name
+from pandemonium.world.curse_pandemonium import get_curse
 
 
 # ── Deferred dialogue (played by the dungeon screen) ────────────────────────
@@ -120,6 +123,7 @@ def _flag_and_cooldown_tags(entity):
 
 
 def _active_debuff_tags(entity):
+    from pandemonium.combat.status_effects import get_burn_tier_tag
     statuses = []
 
     debuff_map = {
@@ -139,7 +143,6 @@ def _active_debuff_tags(entity):
     for d in entity.get("active_debuffs", []):
         if d["type"] == "burn":
             # Burn uses tier-specific tags
-            from pandemonium.combat.status_effects import get_burn_tier_tag
             tag = get_burn_tier_tag(d.get("tier", 2))
         elif d["type"] == "damage_taken_up":
             tag = f"DT+{int(d.get('value', 0) * 100)}%"
@@ -161,11 +164,11 @@ def _active_debuff_tags(entity):
 
 
 def _gear_and_run_tags(entity):
+    from pandemonium.combat.weapon.tarnished_jade import _actor_has_tarnished_jade
     statuses = []
 
     tj_pins = entity.get("tarnished_jade_pins", 0)
     if tj_pins > 0:
-        from pandemonium.combat.weapon.tarnished_jade import _actor_has_tarnished_jade
         if _actor_has_tarnished_jade(entity):
             statuses.append(f"PIN×{tj_pins}")
     # Wedge Backlash curse — the Jade flag halves ALL stats for the battle.
@@ -182,7 +185,6 @@ def _gear_and_run_tags(entity):
     # Companion stress bands — the ally-side counterpart to the player's
     # fatigue (Weary/Frayed/Burned Out penalties, see combat/party_stress.py).
     if entity.get("is_ally"):
-        from pandemonium.combat.party_stress import stress_tag
         stress_tag_text = stress_tag(entity)
         if stress_tag_text and stress_tag_text not in statuses:
             statuses.append(stress_tag_text)
@@ -370,6 +372,8 @@ def _get_entity_elem_tags(entity, is_enemy=False):
     All three are shown for every entity when applicable.
     Returns a short string like "⚔FIR 🛡DAR↑ 🛡LIG↓" or "" if neutral.
     """
+    from pandemonium.combat.elemental import get_attack_element
+    from pandemonium.combat.weapon.moonlight_greatsword import is_moonlight_active
     parts = []
 
     # Attack: the element the actor's basic attacks actually use.
@@ -378,11 +382,9 @@ def _get_entity_elem_tags(entity, is_enemy=False):
     if not is_enemy:
         weapon = (entity.get("equipped") or {}).get("weapon")
     if weapon:
-        from pandemonium.combat.elemental import get_attack_element
         attack_el = get_attack_element(entity, weapon)
         # Moonlight Greatsword: the damage path uses magical while empowered,
         # so the HUD tag must not keep advertising the physical base element.
-        from pandemonium.combat.weapon.moonlight_greatsword import is_moonlight_active
         if is_moonlight_active(entity):
             attack_el = "magical"
     else:
@@ -482,9 +484,9 @@ def format_combat_hud_data(player, enemies, active_ally=None, header=""):
         active_ally: the ally whose turn it is (or None for player)
     """
     from pandemonium.combat.ally import (get_reserve_allies,
-                             get_all_active_allies_including_defeated,
-                             get_all_reserve_allies_including_defeated,
-                             ensure_party_order, compute_ally_stats)
+                                 get_all_active_allies_including_defeated,
+                                 get_all_reserve_allies_including_defeated,
+                                 ensure_party_order, compute_ally_stats)
     from pandemonium.combat.stats import format_crit_summary
     ensure_party_order(player)
     active_allies = get_all_active_allies_including_defeated(player)
@@ -500,7 +502,6 @@ def format_combat_hud_data(player, enemies, active_ally=None, header=""):
 
     # Player (always front). `name` stays the base name for flash/damage
     # matching; `display_name` carries the compact title honourific.
-    from pandemonium.progression.titles import format_name as _format_title_name
     party_data.append({
         "name": player["name"],
         "display_name": _format_title_name(
@@ -631,9 +632,9 @@ def print_combat_hud(player, enemies, active_ally=None, header=""):
     """Print the main combat HUD with a perfectly aligned party vs enemies layout.
     Shows FRONT (active combat) and BACK (reserve) party members."""
     from pandemonium.combat.ally import (get_active_allies, get_reserve_allies,
-                             get_all_active_allies_including_defeated,
-                             get_all_reserve_allies_including_defeated,
-                             ensure_party_order)
+                                 get_all_active_allies_including_defeated,
+                                 get_all_reserve_allies_including_defeated,
+                                 ensure_party_order)
     ensure_party_order(player)
     active_allies = get_all_active_allies_including_defeated(player)
     reserve_allies = get_all_reserve_allies_including_defeated(player)
@@ -771,7 +772,6 @@ def print_combat_hud(player, enemies, active_ally=None, header=""):
                     c_print(f"|  {cd_msg:<66}|")
 
     # Pandemonium: Display active floor curse (only while a run is active)
-    from pandemonium.world.curse_pandemonium import get_curse
     curse = get_curse(player)
     if curse:
         c_print("|" + " " * 68 + "|")

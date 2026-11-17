@@ -31,6 +31,7 @@ class DeathScreen(BaseScreen):
         super().__init__(parent, screen_manager, **kwargs)
 
     def build_ui(self):
+        from pandemonium.world.map_boss import echo_label
         self.sm.update_top_bar("☠ You Died ☠")
         self.sm.clear_log()
         self.sm.root.configure(bg=Theme.BG_DARK)
@@ -57,7 +58,6 @@ class DeathScreen(BaseScreen):
             detail = (f"You were slain in the Event Horizon — "
                       f"room {self.death_floor or '?'}.")
         elif self.death_type == "map_boss":
-            from pandemonium.world.map_boss import echo_label
             echo_lbl = echo_label(self.death_boss_echo or 0)
             season = self.death_boss_season or ""
             boss = self.death_boss or "the Warden"
@@ -125,19 +125,19 @@ class DeathScreen(BaseScreen):
             pass
 
     def _do_continue(self):
+        from pandemonium.core.utils import apply_death_penalty
+        from pandemonium.gui.screens.city_screen import CityScreen
         if self.on_continue:
             self.on_continue()
         else:
             # Default: apply death penalty and return to city
-            from pandemonium.core.utils import apply_death_penalty
             apply_death_penalty(self.player)
-            from pandemonium.gui.screens.city_screen import CityScreen
             self.sm.switch_to(CityScreen, push_history=False)
 
     def _do_quit(self):
+        from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
         if self.on_quit:
             self.on_quit()
         else:
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)

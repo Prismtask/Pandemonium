@@ -216,7 +216,7 @@ def generate_reward_pool(level, total_floors, biome=None):
     Only item ids + rarities are stored — item stats are rolled at acquisition
     time via build_item(), so the preview shows names but not exact mods.
     """
-    # Lazy import: dungeon.py pulls in combat/curses and would create an
+    # Local import: dungeon.py pulls in combat/curses and would create an
     # import cycle if loaded at module import time.
     from pandemonium.world.dungeon import _roll_equipment_drop, roll_drop
 
@@ -346,8 +346,9 @@ def _build_spawn_event(player, spawned):
         "day": int(player.get("day", 1) or 1),
         "fixed": False,
     }
-    # Lazy import to avoid a module-level cycle with events.py.
+    # Local import: events.py imports this module at module level.
     from pandemonium.core.events import record_event
+
     record_event(player, event)
     return event
 
@@ -377,7 +378,9 @@ def record_completion_event(player, dungeon, gold, exp):
     both appear. The Journal UI renders the date from the entry's ``day``
     field — dungeon name and level sit in the header/description.
     """
+    # Local import: events.py imports this module at module level.
     from pandemonium.core.events import ensure_journal
+
     ensure_journal(player)
     name = dungeon.get("name", "Wild Dungeon")
     level = int(dungeon.get("level", 1) or 1)
@@ -405,7 +408,7 @@ def offroad_segment(player, dungeon, to=None):
     The segment's ``to`` is ``"wild:<id>"``; GUI/terminal travel code
     recognizes this prefix instead of a city key.
     """
-    # Lazy imports — keep this module import-light and cycle-free.
+    # Local imports — keep this module import-light and cycle-free.
     from pandemonium.resources.mounts import get_mount
     from pandemonium.resources.trade_goods import (
         cargo_travel_penalty, cargo_overloaded_for_travel,

@@ -17,6 +17,12 @@ from pandemonium.combat.weapon.wedding_specials import (
     apply_wedding_enemy_attack_pre_damage,
 )
 from pandemonium.combat.helpers import _player_has_tarnished_jade
+from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.combat.weapon.piece_of_relationship import maybe_mark_attacker
+from pandemonium.combat.stat_milestones import get_constitution_bonus
+from pandemonium.combat.form_perks import get_form_damage_reduction
+from pandemonium.world.curse_pandemonium import apply_damage_taken_multiplier
+from pandemonium.core.character import player_max_hp
  
 
 def _get_fear_multiplier(enemy):
@@ -40,7 +46,6 @@ def begin_enemy_turn(enemy, all_enemies=None):
     ``"died"``, ``"asleep"``, ``"paralyzed"``, ``"stunned"``, ``"missed"``,
     ``"confused"``.
     """
-    from pandemonium.combat.helpers import format_damage_msg
 
     # --- Check fear BEFORE ticking (so it applies this full turn) ---
     fear_mult = _get_fear_multiplier(enemy)
@@ -125,8 +130,9 @@ def _try_enemy_attack_dodge(enemy, player, skill_name=None):
     Returns True when the attack is dodged. Extracted so AoE abilities can
     skip the roll without duplicating the wedding / Duskfall Veil logic.
     """
-    from pandemonium.combat.helpers import format_damage_msg
     from pandemonium.combat.stats import get_dodge_chance
+    from pandemonium.combat.ally import get_ally_effective_attribute
+    from pandemonium.combat.stats import get_effective_attribute
 
     dodge_chance = get_dodge_chance(player, enemy)
     # Wedding dodge bonuses + enemy accuracy penalty (player only)
@@ -146,10 +152,8 @@ def _try_enemy_attack_dodge(enemy, player, skill_name=None):
     for buff in player.get("active_buffs", []):
         if buff.get("type") == "dodge_counter" and buff.get("remaining", 0) > 0:
             if player.get("is_ally"):
-                from pandemonium.combat.ally import get_ally_effective_attribute
                 counter_stat = get_ally_effective_attribute(player, "Dexterity")
             else:
-                from pandemonium.combat.stats import get_effective_attribute
                 counter_stat = get_effective_attribute(player, "Dexterity")
             counter_dmg = max(1, int(counter_stat * buff.get("value", 0.5) / 2) + random.randint(1, 3))
             enemy["hp"] -= counter_dmg
@@ -175,11 +179,27 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
     ``skip_turn_start`` — caller already ran :func:`begin_enemy_turn`.
     ``allow_dodge`` — False for AoE skills that should not be evaded.
     """
+    from pandemonium.combat.stats import roll_critical_hit, apply_critical_damage, format_critical_tag
+    from pandemonium.combat.status_effects import get_damage_buff_multiplier
+    from pandemonium.combat.elemental import calculate_elemental_damage, get_damage_element
+    from pandemonium.combat.ally import get_ally_effective_attribute
+    from pandemonium.combat.stats import get_effective_attribute
+    from pandemonium.combat.skills import apply_passive_to_damage_taken
+    from pandemonium.combat.ally_skills import get_race_damage_reduction
+    from pandemonium.combat.weapon.palette_brush import get_brush_damage_reduction
+    from pandemonium.combat.weapon.captain_cutlass import apply_high_tide_vulnerability, apply_rally_damage_reduction
+    from pandemonium.combat.weapon.chronoweave import check_chronoweave_fatal_survival
+    from pandemonium.combat.weapon.tarnished_jade import check_tarnished_jade_trigger
+    from pandemonium.world.wonderland_curses import get_cheshire_dodge_chance
+    from pandemonium.world.wonderland_curses import get_shadow_damage_taken_multiplier
+    from pandemonium.combat.status_effects import absorb_damage
+    from pandemonium.combat.weapon.tarnished_jade import add_tarnished_jade_pin
+    from pandemonium.combat.weapon.captain_cutlass import trigger_captain_riposte
+    from pandemonium.combat.elemental_debuffs import try_apply_elemental_debuff
     # Imported once here so the name is always bound. It used to be imported
     # inside the confusion/friendly-fire branch only, which crashed with
     # UnboundLocalError in the reflection-damage section when that branch
     # hadn't run (e.g. the first attack that triggers reflection damage).
-    from pandemonium.combat.helpers import format_damage_msg
 
     # Reset the per-strike damage marker read by the ability AI. It is set
     # once damage lands so on-hit statuses never proc on a fully blocked hit.
@@ -194,7 +214,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # Event Horizon: Piece of Relationship (+7 tier) — mark attackers that
     # target an ally (regardless of whether the blow lands).
-    from pandemonium.combat.weapon.piece_of_relationship import maybe_mark_attacker
     maybe_mark_attacker(enemy, player, actual_player)
 
     # --- DODGE CHECK ---
@@ -238,7 +257,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
     raw_dmg = random.randint(2, 7) + effective_str + temp_str_bonus
 
     # Critical hit check
-    from pandemonium.combat.stats import roll_critical_hit, apply_critical_damage, format_critical_tag
     is_crit, _, _ = roll_critical_hit(enemy, "enemy")  # enemies: capped, no overflow
     raw_dmg = apply_critical_damage(raw_dmg, is_crit)
     crit_tag = format_critical_tag(is_crit)
@@ -256,7 +274,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # Apply the enemy's own percentage damage buffs (e.g. Big Bad Wolf enrage/
     # howl, Wicked Witch power surges). Sources stack additively.
-    from pandemonium.combat.status_effects import get_damage_buff_multiplier
     _damage_buff_mult = get_damage_buff_multiplier(enemy)
     if _damage_buff_mult != 1.0:
         base_dmg = int(base_dmg * _damage_buff_mult)
@@ -270,7 +287,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
     base_dmg = int(base_dmg * vulnerable_mult)
 
     # Apply elemental damage based on enemy's elemental profile
-    from pandemonium.combat.elemental import calculate_elemental_damage, get_damage_element
     enemy_dmg = base_dmg
     element = None
     if base_dmg > 0:
@@ -301,7 +317,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
         enemy_dmg = int(enemy_dmg * (1 - defense_pct))
 
     # Apply Constitution milestone damage reduction
-    from pandemonium.combat.stat_milestones import get_constitution_bonus
     con_reduction = get_constitution_bonus(player)
     if con_reduction > 0 and enemy_dmg > 0:
         enemy_dmg = max(0, enemy_dmg - con_reduction)
@@ -311,34 +326,28 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
     if equipped_weapon and equipped_weapon.get("con_defense") and enemy_dmg > 0:
         con_val = player.get("attributes", {}).get("Constitution", 0)
         if player.get("is_ally"):
-            from pandemonium.combat.ally import get_ally_effective_attribute
             con_val = get_ally_effective_attribute(player, "Constitution")
         else:
-            from pandemonium.combat.stats import get_effective_attribute
             con_val = get_effective_attribute(player, "Constitution")
         con_def = con_val // 2
         if con_def > 0:
             enemy_dmg = max(0, enemy_dmg - con_def)
 
     # Apply Barbarian passive damage reduction
-    from pandemonium.combat.skills import apply_passive_to_damage_taken
     enemy_dmg = apply_passive_to_damage_taken(player, enemy_dmg)
 
     # Apply ally race passive damage reduction (Abomination, Giant, etc.)
     if player.get("is_ally"):
-        from pandemonium.combat.ally_skills import get_race_damage_reduction
         reduction = get_race_damage_reduction(player)
         if reduction > 0:
             enemy_dmg = int(enemy_dmg * (1 - reduction))
 
     # Form tradition damage reduction (Guarded — every equipped slot)
-    from pandemonium.combat.form_perks import get_form_damage_reduction
     form_dr = get_form_damage_reduction(player)
     if form_dr > 0 and enemy_dmg > 0:
         enemy_dmg = int(enemy_dmg * (1 - form_dr))
 
     # Palette's Brush: Umber aura damage reduction (player or ally wielder)
-    from pandemonium.combat.weapon.palette_brush import get_brush_damage_reduction
     brush_dr = get_brush_damage_reduction(player)
     if brush_dr > 0 and enemy_dmg > 0:
         enemy_dmg = int(enemy_dmg * (1 - brush_dr))
@@ -349,12 +358,10 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # Captain's Cutlass: High Tide vulnerability + Rally damage reduction (player or ally wielder)
     if actual_player:
-        from pandemonium.combat.weapon.captain_cutlass import apply_high_tide_vulnerability, apply_rally_damage_reduction
         enemy_dmg = apply_high_tide_vulnerability(player, enemy_dmg)
         enemy_dmg = apply_rally_damage_reduction(player, enemy_dmg)
 
     # Chronoweave Mantle: once-per-floor fatal survival (player or ally wielder)
-    from pandemonium.combat.weapon.chronoweave import check_chronoweave_fatal_survival
     enemy_dmg, _ = check_chronoweave_fatal_survival(player, enemy_dmg)
 
     # Wedding fatal blow survival (bark_shield)
@@ -362,7 +369,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # --- Tarnished Jade trigger check (before applying damage) ---
     if actual_player and _player_has_tarnished_jade(player) and all_enemies:
-        from pandemonium.combat.weapon.tarnished_jade import check_tarnished_jade_trigger
         should_apply, _ = check_tarnished_jade_trigger(
             player, enemy_dmg, all_enemies, enemy, "enemy_attack",
             is_player=(player is actual_player),
@@ -381,7 +387,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # Wonderland: Cheshire Cat's Favor — enemies may miss entirely
     if actual_player:
-        from pandemonium.world.wonderland_curses import get_cheshire_dodge_chance
         dodge_chance = get_cheshire_dodge_chance(actual_player)
         if dodge_chance > 0 and random.random() < dodge_chance:
             c_print(f"  😸 The Cheshire Cat's grin flickers — the {enemy['name']} swings at empty air!")
@@ -389,12 +394,10 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # Pandemonium: Crystal Fragility curse — player & allies take more damage
     if actual_player and actual_player.get("pandemonium_curse"):
-        from pandemonium.world.curse_pandemonium import apply_damage_taken_multiplier
         enemy_dmg = apply_damage_taken_multiplier(actual_player, enemy_dmg)
 
     # Wonderland Shadow: Off With Their Heads — player takes more damage
     if actual_player:
-        from pandemonium.world.wonderland_curses import get_shadow_damage_taken_multiplier
         shadow_dmg_mult = get_shadow_damage_taken_multiplier(actual_player)
         if shadow_dmg_mult > 0:
             enemy_dmg = int(enemy_dmg * (1.0 + shadow_dmg_mult))
@@ -412,7 +415,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
             if player.get("is_ally"):
                 abs_max_hp = player.get("max_hp", 100)
             else:
-                from pandemonium.core.character import player_max_hp
                 abs_max_hp = player_max_hp(player)
             old_hp = player["current_hp"]
             player["current_hp"] = min(old_hp + absorbed, abs_max_hp)
@@ -420,7 +422,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
             c_print(f"  {player['name']} absorbs {absorbed} damage! (+{healed} HP)")
 
     # --- BARRIER ABSORPTION ---
-    from pandemonium.combat.status_effects import absorb_damage
     enemy_dmg, barrier_absorbed = absorb_damage(player, enemy_dmg)
     if barrier_absorbed > 0:
         c_print(f"  Your barrier absorbs {barrier_absorbed} damage!")
@@ -466,7 +467,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # Tarnished Jade: pin on taking damage (player or ally wielder)
     if _player_has_tarnished_jade(player):
-        from pandemonium.combat.weapon.tarnished_jade import add_tarnished_jade_pin
         add_tarnished_jade_pin(player)
         pins = player.get("tarnished_jade_pins", 0)
         owner = "Your" if (actual_player is None or player is actual_player) else f"{player['name']}'s"
@@ -482,7 +482,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
         # Wedding retribution effects (pharaohs_curse, infernal_crown, keening_wail)
         apply_wedding_on_damage_taken(player, enemy, enemy_dmg, "hit")
         # Captain's Cutlass: Captain's Authority riposte (player or ally)
-        from pandemonium.combat.weapon.captain_cutlass import trigger_captain_riposte
         if actual_player and player is actual_player:
             trigger_captain_riposte(actual_player, enemy)
         elif player is not actual_player and player is not None:
@@ -500,7 +499,6 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
 
     # ── Elemental Profile Debuff (secondary channel) ──
     if enemy_dmg > 0:
-        from pandemonium.combat.elemental_debuffs import try_apply_elemental_debuff
         elem_msg = try_apply_elemental_debuff(enemy, player, enemy_dmg)
         if elem_msg:
             c_print(elem_msg)
@@ -628,8 +626,8 @@ def get_race_extra_logic(enemy):
 
     if race == "Elemental":
         def elemental_blind(e, player, dmg):
+            from pandemonium.combat.status_effects import apply_blind
             if dmg > 0 and random.random() < 0.30:
-                from pandemonium.combat.status_effects import apply_blind
                 result = apply_blind(player, duration=2)
                 if result == "applied":
                     return f"A burst of searing light from the {e['name']} blinds {player['name']}!"
@@ -642,6 +640,7 @@ def get_race_extra_logic(enemy):
     if race == "Storybook":
         def storybook_twist(e, player, dmg):
             """Storybook enemies can rewrite their own narrative."""
+            from pandemonium.combat.status_effects import apply_confusion
             hp_pct = e["hp"] / e["max_hp"]
             roll = random.random()
 
@@ -656,7 +655,6 @@ def get_race_extra_logic(enemy):
             if dmg > 0 and roll < 0.22:
                 twist = random.choice(["confusion", "dread", "silence"])
                 if twist == "confusion":
-                    from pandemonium.combat.status_effects import apply_confusion
                     result = apply_confusion(player, duration=2)
                     if result == "applied":
                         return (f"The {e['name']} warps the narrative — "

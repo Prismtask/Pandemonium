@@ -4,6 +4,12 @@ import pandemonium.progression.karma as karma
 from pandemonium.resources.cities import CITIES
 from pandemonium.core.character import player_max_hp
 from pandemonium.gui.terminal import term
+from pandemonium.world.wild_dungeons import ensure_wild_dungeon_state
+from pandemonium.facilities.travel_events import run_travel_events
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.resources.ships import get_ship
+from pandemonium.progression.dreams import maybe_offer_dream
+from pandemonium.progression.quests import update_quests
 
 
 def _set_wild_entry(player, dungeon):
@@ -12,7 +18,6 @@ def _set_wild_entry(player, dungeon):
     Points origin_city at the ruin's nearest city so every existing exit
     path (flee / death / timeout) routes the player there.
     """
-    from pandemonium.world.wild_dungeons import ensure_wild_dungeon_state
     ensure_wild_dungeon_state(player)
     player["wild_dungeon_id"] = dungeon["id"]
     player["origin_city"] = dungeon.get("nearest_city", "solmere")
@@ -50,7 +55,6 @@ def embark_multi_leg_journey(player, segments, combat_override=None,
     "dead"  – player died during a segment encounter
     None    – player completed the full journey safely
     """
-    from pandemonium.facilities.travel_events import run_travel_events
 
     total_segments = len(segments)
 
@@ -65,14 +69,12 @@ def embark_multi_leg_journey(player, segments, combat_override=None,
                 to_name = seg["to"]
 
         # ── Leg narration (block-priced — §8) ────────────────────────────
-        import pandemonium.core.time_blocks as time_blocks
         seg_blocks = time_blocks.travel_blocks(player, seg["effective_time"])
         blocks_label = f"{seg_blocks} block{'s' if seg_blocks != 1 else ''}"
         if seg["type"] == "sea":
             ship_id = player.get("ship_id")
             ship_name = None
             if ship_id:
-                from pandemonium.resources.ships import get_ship
                 ship = get_ship(ship_id)
                 ship_name = ship["name"] if ship else None
             if ship_name:
@@ -112,7 +114,6 @@ def embark_multi_leg_journey(player, segments, combat_override=None,
                 "Night falls on the road — make camp for the night?"))
         time_blocks.spend_travel_segment(player, seg_blocks, camp=camp)
         if camp:
-            from pandemonium.progression.dreams import maybe_offer_dream
             maybe_offer_dream(player, "camp", term)
 
         # ── Stopover narration ────────────────────────────────────────────
@@ -132,7 +133,6 @@ def embark_multi_leg_journey(player, segments, combat_override=None,
             karma.mark_city_arrival(player)
 
             # Quests: arrival (visit_city objectives)
-            from pandemonium.progression.quests import update_quests
             for msg in update_quests(player, "visit_city", seg["to"]):
                 term.print(msg)
 

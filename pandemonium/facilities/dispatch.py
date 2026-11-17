@@ -18,6 +18,8 @@ from pandemonium.resources.wild_dungeon_themes import get_theme
 from pandemonium.core.utils import display_name
 from pandemonium.progression.family import is_trueborn_minor
 from pandemonium.core.events import format_days_left, format_return_time, format_short_date
+from pandemonium.core.events import ensure_journal
+from pandemonium.resources.items import build_item
 
 REFRESH_DAYS = 3
 REPORT_CAP = 10
@@ -256,10 +258,10 @@ def ensure_girl_combat_fields(girl):
 
 
 def girl_max_hp(girl):
+    from pandemonium.combat.ally import ally_max_hp
     if girl.get("max_hp"):
         return int(girl["max_hp"])
     ensure_girl_combat_fields(girl)
-    from pandemonium.combat.ally import ally_max_hp
     return ally_max_hp(girl)
 
 
@@ -544,7 +546,6 @@ def _now_abs(player):
 
 
 def _journal(player, name, desc):
-    from pandemonium.core.events import ensure_journal
     ensure_journal(player)
     player["journal"]["events"].append({
         "day": player.get("day", 1),
@@ -762,6 +763,8 @@ def _resolve(player, inst):
 def collect_reports(player, home_city, house):
     """Grant all report rewards: gold, items, and per-girl EXP."""
     from pandemonium.gui.terminal import term
+    from pandemonium.inventory.core import add_item_to_inventory
+    from pandemonium.progression.leveling import gain_exp_ally
 
     d = get_dispatch_state(player)
     reports = d.get("reports") or []
@@ -782,13 +785,14 @@ def collect_reports(player, home_city, house):
             term.print(f"  +{gold} gold")
 
         for iid in rep.get("items", []):
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.core import add_item_to_inventory
             item = build_item(iid)
             if add_item_to_inventory(player, item):
                 term.print(f"  + {item['name']}")
             else:
+                # Local import: facilities.house imports this module through
+                # its dispatch board (cycle).
                 from pandemonium.facilities.house import _house_level_data
+
                 storage = house.setdefault("storage", [])
                 cap = _house_level_data(house)["storage_cap"]
                 if len(storage) < cap:
@@ -802,7 +806,6 @@ def collect_reports(player, home_city, house):
             if not girl:
                 continue
             ensure_girl_combat_fields(girl)
-            from pandemonium.progression.leveling import gain_exp_ally
             leveled = gain_exp_ally(girl, entry["amount"])
             suffix = " — level up!" if leveled else ""
             term.print(f"  {display_name(girl)} gains {entry['amount']} EXP{suffix}")

@@ -8,6 +8,8 @@ Full design: docs/cargo_trade_design.md
 """
 
 from pandemonium.inventory.core import get_cargo_items
+from pandemonium.resources.mounts import get_mount
+import random
 
 # ── Themes: what kind of market a good appeals to ──────────────────────────
 THEMES = ("mountain", "sea", "exotic", "luxury", "common")
@@ -101,7 +103,6 @@ def cargo_capacity(player):
     mid = player.get("mount_id")
     if not mid:
         return 0
-    from pandemonium.resources.mounts import get_mount
     mount = get_mount(mid)
     return mount.get("cargo_capacity", 0) if mount else 0
 
@@ -180,7 +181,6 @@ def roll_daily_cargo_stock(city_id, count):
     Pick `count` distinct goods for today's cargo market stock.
     Any good can appear; origin-city goods are ORIGIN_WEIGHT× more likely.
     """
-    import random
     pool = list(TRADE_GOODS)
     weights = [
         ORIGIN_WEIGHT if TRADE_GOODS[gid]["origin"] == city_id else 1
@@ -203,7 +203,6 @@ def roll_cargo_good(city_id=None):
     Pick a single random cargo good. Any good can spawn anywhere; when a
     city is given, its origin goods are ORIGIN_WEIGHT× more likely.
     """
-    import random
     if city_id is None:
         return random.choice(list(TRADE_GOODS))
     return roll_daily_cargo_stock(city_id, 1)[0]
@@ -215,7 +214,6 @@ def cargo_merchant_stock_price(good_id, player):
     the market buy price with a 75–90% road markdown, like normal wares.
     Returns (your_price, road_price).
     """
-    import random
     road_price = cargo_buy_price(good_id, player)
     your_price = max(1, int(road_price * random.uniform(0.75, 0.90)))
     return your_price, road_price

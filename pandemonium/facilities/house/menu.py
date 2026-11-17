@@ -29,6 +29,7 @@ from .lounge import _house_lounge
 from .management import _house_collect_income, _house_upgrade
 from .rest import _house_rest, _house_sleep
 from .storage import _house_storage
+import pandemonium.core.time_blocks as time_blocks
 
 
 def house_menu(player, city_id):
@@ -108,12 +109,10 @@ def house_menu(player, city_id):
         elif action == "sleep":
             _house_sleep(player, city_id, house)
         elif action == "wait1":
-            import pandemonium.core.time_blocks as time_blocks
             time_blocks.wait_blocks(player, 1)
             term.print("Time passes...")
             term.pause()
         elif action == "waitwhile":
-            import pandemonium.core.time_blocks as time_blocks
             result = time_blocks.wait_to_next_phase(player)
             if result is None:
                 term.print("You wait. Wonderland waits with you. Nothing passes.")

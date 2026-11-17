@@ -13,6 +13,7 @@ State keys on the actor dict:
 """
 
 from pandemonium.combat.combat_io import c_print
+from pandemonium.core.character import player_max_hp
 
 MOMENTUM_CAP = 10
 FATAL_SURVIVE_DODGE = 0.50
@@ -33,7 +34,6 @@ def _actor_max_hp(actor):
     """Return max HP for a player or ally actor."""
     if actor.get("race"):  # Allies carry a race key; the player does not
         return actor.get("max_hp", actor.get("current_hp", 1))
-    from pandemonium.core.character import player_max_hp
     return player_max_hp(actor)
 
 
@@ -48,6 +48,7 @@ def _owner_name(actor):
 
 def apply_chronoweave_turn_start(actor):
     """Turn start: if HP < 50%, gain 1 Momentum stack (max 10)."""
+    from pandemonium.combat.status_effects import apply_momentum, get_momentum_stacks
     if not _actor_has_chronoweave(actor):
         return
     cur_hp = actor.get("current_hp", 0)
@@ -57,7 +58,6 @@ def apply_chronoweave_turn_start(actor):
     if max_hp <= 0:
         return
     if cur_hp < int(max_hp * 0.5):
-        from pandemonium.combat.status_effects import apply_momentum, get_momentum_stacks
         result = apply_momentum(actor, 1, cap=MOMENTUM_CAP)
         if result in ("applied", "reinforced"):
             c_print(f"  ⏳ {_owner_name(actor)} Chronoweave Mantle weaves a new thread — Momentum {get_momentum_stacks(actor)}/{MOMENTUM_CAP}!")

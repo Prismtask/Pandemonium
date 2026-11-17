@@ -6,6 +6,8 @@ import pandemonium.progression.karma_dialogue as karma_dialogue
 from pandemonium.resources.cities import CITIES
 from pandemonium.core.character import player_max_hp
 from pandemonium.gui.terminal import term
+from pandemonium.resources.ships import get_ship
+import pandemonium.core.time_blocks as time_blocks
 
 
 def _danger_tag(travel_time):
@@ -40,6 +42,11 @@ def _apply_cargo(player, travel_time, ship_cap):
 
 def port_service(player, city_id):
     """Portmaster — ferry tickets and personal ship sailing, now with sea events."""
+    from pandemonium.resources.trade_goods import (
+            cargo_overloaded_for_travel,
+            cargo_total_weight,
+        )
+    from pandemonium.facilities.travel_events import run_travel_events
     service_dialogue(city_id, "port", "enter")
     port_line = karma_dialogue.service_line(player, "port", city_id)
     if port_line:
@@ -57,14 +64,9 @@ def port_service(player, city_id):
     ship_id = player.get("ship_id")
     ship = None
     if ship_id:
-        from pandemonium.resources.ships import get_ship
         ship = get_ship(ship_id)
     ship_name = ship["name"] if ship else None
 
-    from pandemonium.resources.trade_goods import (
-        cargo_overloaded_for_travel,
-        cargo_total_weight,
-    )
     ship_cap = ship.get("cargo_capacity", 0) if ship else 0
 
     term.print(f"\n--- {city['name']} Docks ---")
@@ -130,14 +132,12 @@ def port_service(player, city_id):
     else:
         term.print(f"\n  You board the passenger ferry bound for {dest_name}...")
 
-    import pandemonium.core.time_blocks as time_blocks
     voyage_blocks = time_blocks.travel_blocks(player, travel_time)
     voyage_label = f"{voyage_blocks} block{'s' if voyage_blocks != 1 else ''}"
     term.print(f"  Estimated voyage: ≈{voyage_label}. Keep your eyes on the horizon.")
     term.pause("  Press Continue to cast off...")
 
     # ── Sea travel events ─────────────────────────────────────────────────────
-    from pandemonium.facilities.travel_events import run_travel_events
     outcome = run_travel_events(player, travel_time, travel_type="sea")
 
     if outcome == "dead":

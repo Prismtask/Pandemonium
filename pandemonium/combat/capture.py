@@ -5,6 +5,8 @@ import random
 import pandemonium.progression.karma as karma
 from pandemonium.combat.stats import get_effective_attribute
 from pandemonium.inventory.core import remove_item_by_reference
+from pandemonium.combat.stat_milestones import get_charisma_bonus
+from pandemonium.progression.titles import mod as _title_mod
 
 def is_monster_girl(enemy):
     """Check the explicit monster_girl flag set in monster_girls.yaml."""
@@ -92,6 +94,7 @@ def get_capture_chance(player, target, net):
     the player sees is exactly the number that gets rolled. Guaranteed nets
     return 100; level-gated nets return 0 for out-of-range targets.
     """
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_capture_bonus
     net = net or {}
     if not net_can_capture(net, target):
         return 0
@@ -107,8 +110,6 @@ def get_capture_chance(player, target, net):
     difficulty = target.get("level", 1) * 1.2 + (1 - hp_percent) * 40
 
     chance = (cha + dex) * 0.8 + rarity_mult_bonus - difficulty
-    from pandemonium.combat.stat_milestones import get_charisma_bonus
-    from pandemonium.combat.weapon.wedding_specials import apply_wedding_capture_bonus
     chance += get_charisma_bonus(player) + apply_wedding_capture_bonus(player)
     chance = max(5, min(95, chance))
 
@@ -117,7 +118,6 @@ def get_capture_chance(player, target, net):
     chance = max(5, min(95, chance))
 
     # Deed titles: small capture-chance bonus (capped in titles.mod).
-    from pandemonium.progression.titles import mod as _title_mod
     chance += _title_mod(player, "capture_pct") * 100
     chance = max(5, min(95, chance))
 
@@ -179,9 +179,9 @@ def net_level_gate_message(net, target):
 
 def _mark_stellar_kit_used(player, net):
     """Mark Voss's loan as spent so the Star Tower can reissue one."""
+    from pandemonium.progression.quests import ensure_quest_state
     if (net or {}).get("id") != "stellar_field_kit":
         return
-    from pandemonium.progression.quests import ensure_quest_state
     flags = ensure_quest_state(player)["flags"]
     flags["stellar_field_kit"] = True
     flags["stellar_field_kit_used"] = int(flags.get("stellar_field_kit_used", 0) or 0) + 1
@@ -198,6 +198,8 @@ def attempt_capture(player, target, net=None):
       house to keep the girl in;
     - guaranteed nets (Stellar Field Kit) always catch inside their cap.
     """
+    from pandemonium.progression.bestiary import record_capture
+    from pandemonium.progression.quests import update_quests
     if not is_capturable(target):
         if target.get("_heroine"):
             c_print("This heroine cannot be captured — she must be recruited through her quest.")
@@ -247,12 +249,10 @@ def attempt_capture(player, target, net=None):
 
         # Bestiary: a successful capture fills the entry even if the house
         # was full / she was released as a duplicate.
-        from pandemonium.progression.bestiary import record_capture
         record_capture(player, target)
 
         # Quest hook: only counts when she actually joined the household
         if stored:
-            from pandemonium.progression.quests import update_quests
             for msg in update_quests(player, "capture_girl", "any"):
                 c_print(msg)
         return True
@@ -265,6 +265,7 @@ from pandemonium.facilities.house import HOUSE_MONSTER_GIRL_LIMITS
 
 def store_captured_girl(player, mg):
     """Store captured monster girl in the player's house."""
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_capture_affection_bonus
     houses = player.get("houses", {})
     if not houses:
         c_print("You need a house to keep her!")
@@ -369,7 +370,6 @@ def store_captured_girl(player, mg):
             c_print(f"  Karma {applied:+d} ({tier['label']} {karma.get_karma(player):+d})")
         return False
 
-    from pandemonium.combat.weapon.wedding_specials import apply_wedding_capture_affection_bonus
     base_affection = 20 + apply_wedding_capture_affection_bonus(player)
 
     captured_level = mg.get("level", 1)

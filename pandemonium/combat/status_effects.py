@@ -5,6 +5,11 @@
 
 import random
 from pandemonium.core.character import player_max_hp
+from pandemonium.combat.weapon.map_boss_uniques import try_sundial_crown_save
+from pandemonium.world.curse_pandemonium import apply_healing_reduction
+from pandemonium.combat.form_perks import get_form_healing_bonus
+from pandemonium.resources.enemies import ENEMIES as _ENEMY_TEMPLATES
+from pandemonium.combat.stat_milestones import get_wisdom_bonus
 
 
 # ===========================================================================
@@ -145,9 +150,9 @@ def apply_poison(target, damage, duration):
     Returns 'applied' or 'refreshed'.
     """
     from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
+    from pandemonium.combat.ally_skills import has_status_immunity
     if try_consume_afterimage(target):
         return None
-    from pandemonium.combat.ally_skills import has_status_immunity
     if has_status_immunity(target, "poison"):
         return "immune"
     if check_status_resisted(target):
@@ -259,6 +264,7 @@ def apply_burn(target, tier=None, duration=3, damage=None):
 
     Returns 'applied', 'upgraded', 'intensified', or 'refreshed'.
     """
+    from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
     # Backward compatibility: old-style damage= keyword auto-converts to tier
     if tier is None:
         if damage is not None:
@@ -266,7 +272,6 @@ def apply_burn(target, tier=None, duration=3, damage=None):
         else:
             tier = 2  # default
 
-    from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
     if try_consume_afterimage(target):
         return None
     if check_status_resisted(target):
@@ -321,6 +326,7 @@ def apply_burn_to_player(player, tier=None, duration=3, damage=None):
     ``apply_burn_to_player(player, damage=3)`` (legacy).
     If both are passed, *tier* takes precedence.
     """
+    from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
     # Backward compatibility: old-style damage= keyword auto-converts to tier
     if tier is None:
         if damage is not None:
@@ -328,7 +334,6 @@ def apply_burn_to_player(player, tier=None, duration=3, damage=None):
         else:
             tier = 1  # default
 
-    from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
     if try_consume_afterimage(player):
         return None
     if check_status_resisted(player):
@@ -454,9 +459,9 @@ def apply_bleed(target, damage, duration=4, *, source=None, uncleansable=False, 
     Returns None if an Afterimage charge absorbed the application.
     """
     from pandemonium.combat.weapon.blank_canvas_shawl import try_consume_afterimage
+    from pandemonium.combat.ally_skills import has_status_immunity
     if try_consume_afterimage(target):
         return None
-    from pandemonium.combat.ally_skills import has_status_immunity
     if has_status_immunity(target, "bleed"):
         return "immune"
     if check_status_resisted(target):
@@ -783,7 +788,6 @@ def try_consume_death_ward(actor):
                 if actor.get("is_ally"):
                     max_hp = actor.get("max_hp", 100)
                 else:
-                    from pandemonium.core.character import player_max_hp
                     max_hp = player_max_hp(actor)
                 actor["current_hp"] = max(1, int(max_hp * hp_pct))
             else:
@@ -797,7 +801,6 @@ def try_consume_death_ward(actor):
     if try_emperor_save(actor):
         return True
     # Seasonal map boss — Sundial Crown: hold at 1 HP once per day.
-    from pandemonium.combat.weapon.map_boss_uniques import try_sundial_crown_save
     return try_sundial_crown_save(actor)
 
 
@@ -971,11 +974,9 @@ def apply_healing(target, amount, source=None):
     # casts pass source=player); ally-cast heals are handled at their call
     # sites in combat/ally_skills.py.
     if isinstance(source, dict):
-        from pandemonium.world.curse_pandemonium import apply_healing_reduction
         amount = apply_healing_reduction(source, amount)
 
     # Form tradition healing (Mending — from the healer, else the recipient)
-    from pandemonium.combat.form_perks import get_form_healing_bonus
     _form_heal = get_form_healing_bonus(source if isinstance(source, dict) else target)
     if _form_heal > 0:
         amount = max(1, int(round(amount * (1 + _form_heal))))
@@ -988,7 +989,6 @@ def apply_healing(target, amount, source=None):
     if max_key in target:
         max_hp = target[max_key]
     elif "attributes" in target:
-        from pandemonium.core.character import player_max_hp
         max_hp = player_max_hp(target)
     else:
         max_hp = target.get(hp_key, 100)
@@ -1031,7 +1031,6 @@ def tick_enemy_debuffs(enemy):
     # omits it), so look it up from the enemy template by key. Regular enemies
     # have no other ticker, so decay theirs here (once per enemy turn). Fresh
     # buffs skip their first tick so a "2 turn" buff covers two full turns.
-    from pandemonium.resources.enemies import ENEMIES as _ENEMY_TEMPLATES
     _template = _ENEMY_TEMPLATES.get(enemy.get("key", ""), {})
     if not _template.get("super_boss"):
         for buff in enemy.get("active_buffs", []):
@@ -1377,6 +1376,8 @@ def tick_player_buffs(player):
     Fixed the double-decrement bug present in the original code.
     Returns a list of message strings.
     """
+    from pandemonium.combat.weapon.blank_canvas_shawl import tick_afterimage
+    from pandemonium.combat.weapon.palette_brush import tick_palette_brush_passives
     messages = []
     if not player.get("active_buffs"):
         return messages
@@ -1394,7 +1395,6 @@ def tick_player_buffs(player):
 
         if btype == "hot":
             old_hp = player["current_hp"]
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = buff["value"] + get_wisdom_bonus(player)
             heal = int(heal * (player.get("_eh_joker_healing_mult") or 1))
             new_hp = min(old_hp + heal, player_max_hp(player))
@@ -1440,7 +1440,6 @@ def tick_player_buffs(player):
 
         elif btype == "regen":
             old_hp = player["current_hp"]
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = buff["value"] + get_wisdom_bonus(player)
             heal = int(heal * (player.get("_eh_joker_healing_mult") or 1))
             new_hp = min(old_hp + heal, player_max_hp(player))
@@ -1481,11 +1480,9 @@ def tick_player_buffs(player):
                     messages.append(f"Your {buff['stat']} buff wears off.")
 
     # Blank Canvas Shawl: Afterimage countdown
-    from pandemonium.combat.weapon.blank_canvas_shawl import tick_afterimage
     messages.extend(tick_afterimage(player))
 
     # Palette's Brush: Palette heroine passives (Azure heal / Alabaster cleanse)
-    from pandemonium.combat.weapon.palette_brush import tick_palette_brush_passives
     messages.extend(tick_palette_brush_passives(player))
 
     return messages

@@ -10,6 +10,20 @@ from pandemonium.resources.quests import get_resonance_grade
 from pandemonium.core.utils import display_name
 from pandemonium.core.events import format_days_left
 from pandemonium.combat.helpers import ACTION_CANCELLED_MSG
+from pandemonium.combat.party_stress import stress_penalty
+from pandemonium.combat.weapon.abyss_fang import is_abyss_fang_available
+from pandemonium.combat.weapon.abyss_fang import _wield_abyss_fang_actor
+from pandemonium.combat.stat_milestones import get_strength_bonus
+from pandemonium.combat.form_perks import get_armor_pen_multiplier
+from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
+from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
+from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
+from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.resources.items import build_item
+from pandemonium.progression.titles import check_unlock
 
 ALLY_STAT_MULTIPLIER = 0.85   # Allies are slightly stronger at base
 ALLY_LEVEL_STAT_BONUS = 1.0 / 6.0  # Capture level scaling matches the manual +1/level total (parity)
@@ -317,10 +331,10 @@ def _fix_level_hp_bonus(girl):
 
 def ally_max_hp(ally):
     """Compute ally max HP based on Constitution and level-up bonuses (same formula as player)."""
+    from pandemonium.progression.family import father_legacy_max_hp_mult
     con = ally["attributes"]["Constitution"]
     bonus = ally.get("level_hp_bonus", 0)
     base = int(15 + con * 3 + bonus)
-    from pandemonium.progression.family import father_legacy_max_hp_mult
     return int(base * father_legacy_max_hp_mult(ally))
 
 
@@ -442,12 +456,14 @@ def create_ally_from_girl(girl):
     girl format from house:
         {"key": "...", "name": "...", "level": N, "affection": N, "captured_on": N}
     """
+    from pandemonium.combat.elemental import neutral_profile
+    from pandemonium.combat.elemental import compute_ally_elemental
+    from pandemonium.combat.ally_skills import initialize_ally_skills
     enemy_key = girl.get("key")
     template = ENEMIES.get(enemy_key)
     if not template:
         # Fallback for missing templates — true-born children use synthetic
         # keys, so use their stored attributes/skills to keep them playable.
-        from pandemonium.combat.elemental import neutral_profile
         level = girl.get("level", 1)
         fallback = {
             "name": girl.get("name", "Companion"),
@@ -602,13 +618,11 @@ def create_ally_from_girl(girl):
         ally["current_hp"] = max(1, min(int(stored_hp), ally["max_hp"]))
 
     # Add elemental stats from race
-    from pandemonium.combat.elemental import compute_ally_elemental
     e_res, e_dmg = compute_ally_elemental(ally)
     ally["elemental_res"] = e_res
     ally["elemental_dmg"] = e_dmg
     
     # Initialize skill system
-    from pandemonium.combat.ally_skills import initialize_ally_skills
     initialize_ally_skills(ally, enemy_key, template.get("race"))
 
     # ── Wonderland heroine identity ──────────────────────────────────
@@ -632,7 +646,6 @@ def create_ally_from_girl(girl):
                 item = stashed.get(slot)
                 if item:
                     ally["equipped"][slot] = item
-            from pandemonium.combat.elemental import compute_ally_elemental
             e_res, e_dmg = compute_ally_elemental(ally)
             ally["elemental_res"] = e_res
             ally["elemental_dmg"] = e_dmg
@@ -642,6 +655,10 @@ def create_ally_from_girl(girl):
 
 def get_ally_effective_attribute(ally, attr_name):
     """Return effective attribute after equipment and buffs."""
+    from pandemonium.combat.status_effects import get_weaken_pct
+    from pandemonium.combat.ally_skills import get_race_passive_effects
+    from pandemonium.combat.weapon.tarnished_jade import get_tarnished_jade_str_bonus, get_tarnished_jade_wis_bonus, is_tarnished_jade_weakened
+    from pandemonium.combat.weapon.authors_pen import get_authors_pen_stat_bonus
     base = ally["attributes"].get(attr_name, 0)
     equip_mods = get_total_equipment_mods(ally)
     total = base + equip_mods.get(attr_name, 0)
@@ -651,7 +668,6 @@ def get_ally_effective_attribute(ally, attr_name):
             total -= debuff.get("penalty", 2)
 
     if attr_name == "Strength":
-        from pandemonium.combat.status_effects import get_weaken_pct
         weaken_pct = get_weaken_pct(ally)
         if weaken_pct > 0:
             total = int(total * (1.0 - weaken_pct))
@@ -663,7 +679,6 @@ def get_ally_effective_attribute(ally, attr_name):
             total += buff.get("value", 0)
 
     # Apply race passive stat bonuses (supports `type: multi` blocks)
-    from pandemonium.combat.ally_skills import get_race_passive_effects
     for effect in get_race_passive_effects(ally.get("race")):
         if effect.get("type"):
             continue  # type-tagged effects are handled outside attribute math
@@ -676,7 +691,6 @@ def get_ally_effective_attribute(ally, attr_name):
             total += effect.get("value", 0)
 
     # Tarnished Jade pin bonuses
-    from pandemonium.combat.weapon.tarnished_jade import get_tarnished_jade_str_bonus, get_tarnished_jade_wis_bonus, is_tarnished_jade_weakened
     if attr_name == "Strength":
         total += get_tarnished_jade_str_bonus(ally)
     elif attr_name == "Wisdom":
@@ -686,7 +700,6 @@ def get_ally_effective_attribute(ally, attr_name):
         total = total // 2
 
     # Author's Pen passive: +4 all stats while in Wonderland
-    from pandemonium.combat.weapon.authors_pen import get_authors_pen_stat_bonus
     total += get_authors_pen_stat_bonus(ally, attr_name)
 
     # Event Horizon: Entropy (−% all attributes, run-scoped)
@@ -697,7 +710,6 @@ def get_ally_effective_attribute(ally, attr_name):
 
     # Companion stress — the ally-side counterpart of the player's fatigue:
     # Weary −1 / Frayed −2 / Burned Out −3 to every attribute.
-    from pandemonium.combat.party_stress import stress_penalty
     total -= stress_penalty(ally)
 
     return total
@@ -756,6 +768,10 @@ def get_living_party(player):
 def equip_ally_item(ally, item, player, target_slot=None):
     """Equip an item on an ally from the player's inventory."""
     from pandemonium.inventory.core import add_item_to_inventory
+    from pandemonium.combat.elemental import compute_ally_elemental
+    from pandemonium.combat.ally_skills import swap_alice_to_vorpal_skills
+    from pandemonium.combat.ally_skills import swap_redhood_to_vorpal_skills
+    from pandemonium.combat.ally_skills import swap_dorothy_to_vorpal_skills
 
     # Block equipping temporary Wonderland heroines
     # EXCEPTION: vorpal_blade_rusted / vorpal_blade on Alice (heroine quest item)
@@ -812,24 +828,20 @@ def equip_ally_item(ally, item, player, target_slot=None):
     if item in player.get("inventory", []):
         player["inventory"].remove(item)
     # Recalculate ally elemental profile
-    from pandemonium.combat.elemental import compute_ally_elemental
     res, dmg = compute_ally_elemental(ally)
     ally["elemental_res"] = res
     ally["elemental_dmg"] = dmg
 
     # Vorpal Blade on Alice: trigger skill swap
     if is_vorpal_on_alice:
-        from pandemonium.combat.ally_skills import swap_alice_to_vorpal_skills
         swap_alice_to_vorpal_skills(ally)
 
     # Grandmother's Axe on Red Hood: trigger skill swap
     if is_axe_on_redhood:
-        from pandemonium.combat.ally_skills import swap_redhood_to_vorpal_skills
         swap_redhood_to_vorpal_skills(ally)
 
     # Silver/Ruby Slippers on Dorothy: trigger skill swap
     if is_slippers_on_dorothy:
-        from pandemonium.combat.ally_skills import swap_dorothy_to_vorpal_skills
         swap_dorothy_to_vorpal_skills(ally)
 
     return f"Equipped {item['name']} on {display_name(ally)}."
@@ -838,6 +850,10 @@ def equip_ally_item(ally, item, player, target_slot=None):
 def unequip_ally_slot(ally, slot, player):
     """Unequip an item from an ally and return to player's inventory."""
     from pandemonium.inventory.core import add_item_to_inventory
+    from pandemonium.combat.elemental import compute_ally_elemental
+    from pandemonium.combat.ally_skills import revert_alice_to_normal_skills
+    from pandemonium.combat.ally_skills import revert_redhood_to_normal_skills
+    from pandemonium.combat.ally_skills import revert_dorothy_to_normal_skills
 
     # Block unequipping temporary Wonderland heroines
     # EXCEPTION: vorpal blade on Alice (heroine quest item)
@@ -864,24 +880,20 @@ def unequip_ally_slot(ally, slot, player):
         if add_item_to_inventory(player, item):
             ally["equipped"][slot] = None
             # Recalculate ally elemental profile
-            from pandemonium.combat.elemental import compute_ally_elemental
             res, dmg = compute_ally_elemental(ally)
             ally["elemental_res"] = res
             ally["elemental_dmg"] = dmg
 
             # Vorpal Blade removed from Alice: revert skills
             if is_vorpal_on_alice:
-                from pandemonium.combat.ally_skills import revert_alice_to_normal_skills
                 revert_alice_to_normal_skills(ally)
 
             # Grandmother's Axe removed from Red Hood: revert skills
             if is_axe_on_redhood:
-                from pandemonium.combat.ally_skills import revert_redhood_to_normal_skills
                 revert_redhood_to_normal_skills(ally)
 
             # Silver/Ruby Slippers removed from Dorothy: revert skills
             if is_slippers_on_dorothy:
-                from pandemonium.combat.ally_skills import revert_dorothy_to_normal_skills
                 revert_dorothy_to_normal_skills(ally)
 
             return f"Unequipped {item['name']} from {display_name(ally)}."
@@ -1031,6 +1043,8 @@ def recruit_ally_from_house(player, girl, house):
     MAX_ALLIES); the player is asked who makes room when it is reached.
     """
     from pandemonium.progression.family import is_trueborn_minor
+    from pandemonium.gui.terminal import term
+    from pandemonium.progression.quests import update_quests
     day = player.get("day", 1)
     if is_trueborn_minor(girl):
         return None, f"{display_name(girl)} is still a child and can't join the party yet."
@@ -1056,7 +1070,6 @@ def recruit_ally_from_house(player, girl, house):
                 status = f"HP {a['current_hp']}/{a['max_hp']}"
             ally_names.append(f"{display_name(a)} — {status}")
         ally_names.append("Cancel")
-        from pandemonium.gui.terminal import term
         choice = term.menu(ally_names, prompt=f"Your party is full ({len(allies)}/{capacity}). Replace which ally?")
         if choice < 0 or choice >= len(allies):
             return None, "Recruitment cancelled."
@@ -1074,7 +1087,6 @@ def recruit_ally_from_house(player, girl, house):
     msg = f"{display_name(ally)} has joined your party!"
 
     # Quest hook: recruitment milestones (Command Resonance backfill)
-    from pandemonium.progression.quests import update_quests
     quest_msgs = update_quests(player, "recruit_ally", "any")
     if quest_msgs:
         msg += "\n" + "\n".join(quest_msgs)
@@ -1088,18 +1100,23 @@ def recruit_ally_from_house(player, girl, house):
 
 def _ally_action_menu(ally, player, enemies):
     """Build action menu for an ally. Returns (menu_str, valid_keys, disabled_keys)."""
+    from pandemonium.combat.weapon.black_silence_gloves import _actor_has_black_silence_gloves
+    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, get_brush_action_menu
+    from pandemonium.combat.weapon.moonlight_greatsword import is_moonlight_available
+    from pandemonium.combat.weapon.captain_cutlass import is_captain_cutlass_available
+    from pandemonium.combat.weapon.authors_pen import is_authors_pen_available
+    from pandemonium.combat.ally_skills import get_usable_skills_in_combat
+    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     actions = []
     disabled_keys = []
 
     # Check if Black Silence Gloves are equipped — replaces entire skill menu
-    from pandemonium.combat.weapon.black_silence_gloves import _actor_has_black_silence_gloves
     has_gloves = _actor_has_black_silence_gloves(ally)
     
     if has_gloves:
         return _ally_gloves_menu(ally, player, enemies)
 
     # Palette's Brush — replaces class skills with the brush kit
-    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, get_brush_action_menu
     if _actor_has_palette_brush(ally):
         return get_brush_action_menu(ally, player, enemies, False)
 
@@ -1107,22 +1124,18 @@ def _ally_action_menu(ally, player, enemies):
     actions.append(('d', 'Defend'))
 
     # Abyss Fang – only if equipped and off cooldown
-    from pandemonium.combat.weapon.abyss_fang import is_abyss_fang_available
     if is_abyss_fang_available(ally):
         actions.append(('w', 'Wield the Abyss'))
 
     # Moonlight Greatsword – weapon skill (magical AoE basics for 3 turns)
-    from pandemonium.combat.weapon.moonlight_greatsword import is_moonlight_available
     if is_moonlight_available(ally):
         actions.append(('m', 'Moonlight'))
 
     # Captain's Cutlass – Crew Rally
-    from pandemonium.combat.weapon.captain_cutlass import is_captain_cutlass_available
     if is_captain_cutlass_available(ally):
         actions.append(('r', 'Crew Rally'))
 
     # Author's Pen – Rewrite
-    from pandemonium.combat.weapon.authors_pen import is_authors_pen_available
     if is_authors_pen_available(ally):
         actions.append(('e', 'Rewrite'))
 
@@ -1131,7 +1144,6 @@ def _ally_action_menu(ally, player, enemies):
         actions.append(('s', 'Switch'))
 
     # Skills – innate + learned, off cooldown
-    from pandemonium.combat.ally_skills import get_usable_skills_in_combat
     usable_skills = get_usable_skills_in_combat(ally)
     for idx, (sid, sdef) in enumerate(usable_skills):
         actions.append((str(idx + 1), sdef['name']))
@@ -1145,7 +1157,6 @@ def _ally_action_menu(ally, player, enemies):
         actions.append(('u', 'Use Item'))
 
     # Blank Canvas Shawl – free action, once per combat
-    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     if _actor_has_blank_canvas_shawl(ally) and not ally.get("blank_canvas_used"):
         actions.append(('b', 'Blank Canvas'))
 
@@ -1156,6 +1167,8 @@ def _ally_action_menu(ally, player, enemies):
 
 def _ally_gloves_menu(ally, player, enemies):
     """Build the action menu when an ally has Black Silence gloves equipped."""
+    from pandemonium.combat.weapon.black_silence_gloves import WORKSHOPS
+    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     actions = []
     disabled_keys = []
 
@@ -1169,7 +1182,6 @@ def _ally_gloves_menu(ally, player, enemies):
     workshop_state = ally.get("gloves_workshop_used", set())
     if not isinstance(workshop_state, (set, list)):
         workshop_state = set()
-    from pandemonium.combat.weapon.black_silence_gloves import WORKSHOPS
     for wid, ws in WORKSHOPS.items():
         key = str(wid)
         label = f'{ws["name"]} [{ws["stat"][:3].upper()}]'
@@ -1192,7 +1204,6 @@ def _ally_gloves_menu(ally, player, enemies):
         actions.append(('u', 'Use Item'))
 
     # Blank Canvas Shawl – free action, once per combat
-    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     if _actor_has_blank_canvas_shawl(ally) and not ally.get("blank_canvas_used"):
         actions.append(('b', 'Blank Canvas'))
 
@@ -1206,8 +1217,63 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
 
     Returns: "continue", "victory", "dead", or "retry"
     """
+    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, COLOR_NAMES as _BRUSH_COLORS
+    from pandemonium.combat.weapon.palette_brush import (
+                _actor_has_palette_brush, execute_impasto_exhibit,
+                execute_chiaroscuro_exhibit, execute_signature_exhibit,
+                get_brush_exhibits,
+            )
+    from pandemonium.combat.weapon.black_silence_gloves import _actor_has_black_silence_gloves, _execute_workshop_actor, _execute_furioso_actor
+    from pandemonium.combat.ally_skills import get_usable_skills_in_combat, execute_ally_skill, format_ally_mastery_label
+    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, on_brush_attack_hit
     from pandemonium.combat.combat_ui import print_combat_hud
     from pandemonium.combat.status_effects import is_silenced, consume_stun
+    from pandemonium.combat.weapon.palette_brush import begin_actor_turn
+    from pandemonium.combat.weapon.prescript_ledger import mark_acted as mark_prescript_acted
+    from pandemonium.combat.palette_ally import (
+            is_palette_ally, has_pending_signature,
+            fire_palette_signature, advance_palette_ally_color,
+        )
+    from pandemonium.combat.weapon.moonlight_greatsword import _use_moonlight_actor
+    from pandemonium.combat.weapon.captain_cutlass import _use_crew_rally_actor
+    from pandemonium.combat.weapon.authors_pen import _use_rewrite_actor
+    from pandemonium.combat.weapon.blank_canvas_shawl import use_blank_canvas
+    from pandemonium.combat.weapon.palette_brush import set_brush_stance
+    from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
+    from pandemonium.combat.weapon.black_silence_gloves import WORKSHOPS
+    from pandemonium.combat.combat_ui import format_skill_elemental_tag
+    from pandemonium.combat.weapon.moonlight_greatsword import (
+                is_moonlight_active, execute_moonlight_aoe_attack,
+            )
+    from pandemonium.combat.stats import roll_dodge
+    from pandemonium.world.wonderland_curses import get_shadow_accuracy_penalty
+    from pandemonium.world.event_horizon import joker_attack_missed
+    from pandemonium.combat.stats import get_effective_attribute
+    from pandemonium.combat.elemental_traits import get_trait_for_weapon, apply_trait_pre_damage
+    from pandemonium.combat.status_effects import get_damage_buff_multiplier
+    from pandemonium.combat.status_effects import get_damage_taken_multiplier
+    from pandemonium.world.event_horizon import joker_damage_multiplier
+    from pandemonium.combat.stats import (roll_critical_hit, apply_critical_damage,
+                                      format_critical_tag, CRIT_MULTIPLIER)
+    from pandemonium.world.event_horizon import joker_crit_modifier
+    from pandemonium.combat.elemental import calculate_elemental_damage
+    from pandemonium.combat.elemental import get_attack_element
+    from pandemonium.combat.weapon.palette_brush import get_brush_damage_mult
+    from pandemonium.combat.weapon.captain_cutlass import get_high_tide_attack_bonus, get_rally_attack_bonus
+    from pandemonium.world.wonderland_curses import get_jabberwock_bane_multiplier
+    from pandemonium.combat.ally_skills import get_race_damage_multiplier
+    from pandemonium.progression.family import father_legacy_damage_mult
+    from pandemonium.combat.status_effects import apply_healing as _eh_apply_heal
+    from pandemonium.combat.weapon.last_oath import try_last_oath_expose
+    from pandemonium.combat.elemental_traits import apply_trait
+    from pandemonium.combat.vileheart_venom import try_vileheart_venom_proc
+    from pandemonium.combat.status_effects import detonate_bleed
+    from pandemonium.combat.elemental_traits import apply_trait_on_kill
+    from pandemonium.combat.ally_skills import get_race_lifesteal, get_race_passive
+    from pandemonium.combat.status_effects import get_bleed_feast_multiplier
+    from pandemonium.combat.weapon.captain_cutlass import check_high_tide_kill
+    from pandemonium.combat.ally_skills import maybe_stun_on_basic
+    from pandemonium.combat.weapon.prescript_ledger import report_defend as report_prescript_defend
 
     # Reset defending flag each turn so it only applies if they choose Defend THIS turn
     ally["defending_this_turn"] = False
@@ -1224,19 +1290,12 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
         _e.pop("_accuracy_penalty_used", None)
 
     # Palette's Brush: reset the once-per-turn stance flag
-    from pandemonium.combat.weapon.palette_brush import begin_actor_turn
     begin_actor_turn(ally)
 
     # Prescript Ledger: the actor got a turn this round (waiver guard)
-    from pandemonium.combat.weapon.prescript_ledger import mark_acted as mark_prescript_acted
     mark_prescript_acted(ally)
 
     # Palette heroine: color cycle each turn + deferred Signature strike
-    from pandemonium.combat.palette_ally import (
-        is_palette_ally, has_pending_signature,
-        fire_palette_signature, advance_palette_ally_color,
-    )
-    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, COLOR_NAMES as _BRUSH_COLORS
     if is_palette_ally(ally) and not _actor_has_palette_brush(ally):
         color = advance_palette_ally_color(ally)
         c_print(f"  🎨 {display_name(ally)}'s brush settles on {_BRUSH_COLORS[color]}.")
@@ -1310,48 +1369,37 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
 
     # ----- WIELD THE ABYSS (Abyss Fang weapon special) -----
     if action == "w":
-        from pandemonium.combat.weapon.abyss_fang import _wield_abyss_fang_actor
         result, _def = _wield_abyss_fang_actor(ally, is_player=False)
         return result
 
     # ----- MOONLIGHT (Moonlight Greatsword weapon special) -----
     if action == "m":
-        from pandemonium.combat.weapon.moonlight_greatsword import _use_moonlight_actor
         result, _def = _use_moonlight_actor(ally, is_player=False)
         return result
 
     # ----- CREW RALLY (Captain's Cutlass weapon special) -----
     if action == "r":
-        from pandemonium.combat.weapon.captain_cutlass import _use_crew_rally_actor
         result, _def = _use_crew_rally_actor(ally, is_player=False, player=player)
         return result
 
     # ----- REWRITE (Author's Pen accessory special) -----
     if action == "e":
-        from pandemonium.combat.weapon.authors_pen import _use_rewrite_actor
         result, _def = _use_rewrite_actor(ally, player=player, is_player=False)
         return result
 
     # ----- BLANK CANVAS (shawl free action, once per combat) -----
     if action == "b":
-        from pandemonium.combat.weapon.blank_canvas_shawl import use_blank_canvas
         for m in use_blank_canvas(ally, False, player):
             c_print(f"  {m}")
         return "retry"
 
     # ----- BRUSH STANCE (free action, once per turn) -----
     if action == "t":
-        from pandemonium.combat.weapon.palette_brush import set_brush_stance
         c_print(set_brush_stance(ally))
         return "retry"
 
     # ----- BRUSH EXHIBITS (i/k/g) -----
     if action in ("i", "k", "g"):
-        from pandemonium.combat.weapon.palette_brush import (
-            _actor_has_palette_brush, execute_impasto_exhibit,
-            execute_chiaroscuro_exhibit, execute_signature_exhibit,
-            get_brush_exhibits,
-        )
         if not _actor_has_palette_brush(ally):
             return "retry"
         key_map = {"i": "impasto", "k": "chiaroscuro", "g": "signature"}
@@ -1376,7 +1424,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
         if on_kill:
             for e in killed:
                 on_kill(e, enemies)
-        from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
         report_prescript_skill(ally)
         if victory:
             return "victory"
@@ -1385,7 +1432,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
     # ----- SKILLS (numbered 1-9) or GLOVES WORKSHOPS -----
     if action.isdigit():
         # Check if Black Silence Gloves are equipped — workshop attacks replace skills
-        from pandemonium.combat.weapon.black_silence_gloves import _actor_has_black_silence_gloves, _execute_workshop_actor, _execute_furioso_actor
         
         if _actor_has_black_silence_gloves(ally):
             if action == '0':
@@ -1401,7 +1447,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                     killed_by_attack = [e for e in enemies_before if e["hp"] <= 0]
                     for e in killed_by_attack:
                         on_kill(e, enemies)
-                from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
                 report_prescript_skill(ally)
                 if victory:
                     return "victory"
@@ -1417,7 +1462,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                 if workshop_id in ws_used:
                     c_print("  That workshop has already been used this cycle!")
                     return "retry"
-                from pandemonium.combat.weapon.black_silence_gloves import WORKSHOPS
                 ws = WORKSHOPS.get(workshop_id, {})
                 ws_name = ws.get("name", f"Workshop {workshop_id}")
                 ws_desc = ws.get("desc", "")
@@ -1438,14 +1482,12 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                     killed_by_attack = [e for e in enemies_before if e["hp"] <= 0]
                     for e in killed_by_attack:
                         on_kill(e, enemies)
-                from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
                 report_prescript_skill(ally)
                 if victory:
                     return "victory"
                 return "continue"
 
         # Normal skills (no gloves)
-        from pandemonium.combat.ally_skills import get_usable_skills_in_combat, execute_ally_skill, format_ally_mastery_label
         if is_silenced(ally):
             c_print(f"  {display_name(ally)} is silenced and cannot use skills!")
             return "retry"
@@ -1457,7 +1499,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
             return "retry"
 
         skill_id, skill_def = usable_skills[skill_idx]
-        from pandemonium.combat.combat_ui import format_skill_elemental_tag
         elem_tag = format_skill_elemental_tag(skill_def)
         c_print(f"\n  >> {skill_def['name']}{elem_tag}: {skill_def['description']}")
         mastery_label = format_ally_mastery_label(skill_id, ally)
@@ -1481,7 +1522,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
         if on_kill:
             for e in killed_by_skill:
                 on_kill(e, enemies)
-        from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
         report_prescript_skill(ally)
         if victory:
             return "victory"
@@ -1491,9 +1531,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
     if action == "a":
         # Moonlight Greatsword: while empowered, basics become a magical wave
         # that strikes every enemy (no target selection).
-        from pandemonium.combat.weapon.moonlight_greatsword import (
-            is_moonlight_active, execute_moonlight_aoe_attack,
-        )
         if is_moonlight_active(ally):
             execute_moonlight_aoe_attack(
                 ally, player, enemies,
@@ -1516,21 +1553,18 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
             target = enemies[0]
 
         # --- ENEMY DODGE CHECK ---
-        from pandemonium.combat.stats import roll_dodge
         is_dodged, dodge_chance = roll_dodge(target, ally, extra_chance=target.get("ally_accuracy_penalty", 0.0))
         if is_dodged:
             c_print(f"  The {target['name']} dodges {display_name(ally)}'s attack!")
             return "continue"
 
         # ── Wonderland Shadow: Caterpillar's Smoke — accuracy penalty ──
-        from pandemonium.world.wonderland_curses import get_shadow_accuracy_penalty
         smoke_penalty = get_shadow_accuracy_penalty(player)
         if smoke_penalty > 0 and random.random() < smoke_penalty:
             c_print(f"  💨 The smoke clouds {display_name(ally)}'s vision — the attack goes wide!")
             return "continue"
 
         # ── Event Horizon: The Fool — a 10% chance the attack simply fails ──
-        from pandemonium.world.event_horizon import joker_attack_missed
         if joker_attack_missed(ally):
             return "continue"
 
@@ -1553,7 +1587,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
             elif stat == "Charisma":
                 scaling_val += a_cha
             else:
-                from pandemonium.combat.stats import get_effective_attribute
                 scaling_val += get_effective_attribute(ally, stat)
 
         # Apply weapon's scaling_mult (e.g. Constitution weapons use 0.5 for half scaling)
@@ -1561,13 +1594,10 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
             scaling_val = int(scaling_val * equipped_weapon["scaling_mult"])
 
         # ── Elemental Trait: pre-damage modifiers (Sunder, Pierce) ──
-        from pandemonium.combat.elemental_traits import get_trait_for_weapon, apply_trait_pre_damage
         trait = get_trait_for_weapon(equipped_weapon, equipped_weapon.get("rarity", "common")) if equipped_weapon else None
         pre_dmg = apply_trait_pre_damage(trait, target) if trait else None
 
-        from pandemonium.combat.stat_milestones import get_strength_bonus
         # ── Armour penetration: Sunder trait + form tradition (Sundering) ──
-        from pandemonium.combat.form_perks import get_armor_pen_multiplier
         pen_mult = get_armor_pen_multiplier(ally, pre_dmg)
         effective_con_mod = target["con_mod"]
         if pen_mult < 1.0:
@@ -1579,7 +1609,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
 
         # Percentage damage buffs (power_buff + damage_boost) stack additively.
         # power_buff is consumed here and empowers this attack.
-        from pandemonium.combat.status_effects import get_damage_buff_multiplier
         _buff_msgs = []
         _damage_buff_mult = get_damage_buff_multiplier(
             ally, consume_power_buff=True, messages=_buff_msgs
@@ -1595,35 +1624,27 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
             dmg = int(dmg * (1 + mark_bonus))
 
         # Damage-taken amplification (e.g. Aura of Despair)
-        from pandemonium.combat.status_effects import get_damage_taken_multiplier
         dt_mult = get_damage_taken_multiplier(target)
         if dt_mult != 1.0:
             dmg = int(dmg * dt_mult)
 
         # Event Horizon: The Hierophant — basic attacks ×0.75
-        from pandemonium.world.event_horizon import joker_damage_multiplier
         dmg = int(dmg * joker_damage_multiplier(ally, "basic"))
 
         # Critical hit check (crit chance over the cap converts to crit damage)
-        from pandemonium.combat.stats import (roll_critical_hit, apply_critical_damage,
-                                  format_critical_tag, CRIT_MULTIPLIER)
         is_crit, _, overflow_crit = roll_critical_hit(ally, "ally", dex=a_dex, lrn=a_ler)
         dmg = apply_critical_damage(dmg, is_crit, multiplier=CRIT_MULTIPLIER + overflow_crit)
 
         # Event Horizon: The Sun — crits +30%, non-crits ×0.85
-        from pandemonium.world.event_horizon import joker_crit_modifier
         dmg = joker_crit_modifier(ally, is_crit, dmg)
 
         # Apply elemental damage
-        from pandemonium.combat.elemental import calculate_elemental_damage
         element = None
         if equipped_weapon and "elemental_dmg" in equipped_weapon:
-            from pandemonium.combat.elemental import get_attack_element
             element = get_attack_element(ally, equipped_weapon)
         final_dmg = calculate_elemental_damage(dmg, ally, target, element)
 
         # Palette's Brush: stance damage multiplier
-        from pandemonium.combat.weapon.palette_brush import get_brush_damage_mult
         final_dmg = int(final_dmg * get_brush_damage_mult(ally))
 
         # ── Pierce (Magical trait): ignore portion of enemy elemental resistance ──
@@ -1637,22 +1658,18 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                 c_print(f"  🔮 Pierce! {target['name']}'s {element} resistance is partially bypassed.")
 
         # Captain's Cutlass: High Tide + Rally attack bonuses
-        from pandemonium.combat.weapon.captain_cutlass import get_high_tide_attack_bonus, get_rally_attack_bonus
         final_dmg += get_high_tide_attack_bonus(ally, final_dmg)
         final_dmg += get_rally_attack_bonus(ally, final_dmg)
 
         # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
-        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
         final_dmg = apply_long_day_damage(ally, final_dmg)
         final_dmg = max(0, final_dmg)
 
         # Pandemonium: Weakened Resolve curse — allies deal less damage too
-        from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
         final_dmg = apply_damage_dealt_multiplier(player, final_dmg)
         
         # Wonderland: Jabberwock's Bane — bonus damage vs boss enemies
         if target.get("boss"):
-            from pandemonium.world.wonderland_curses import get_jabberwock_bane_multiplier
             bane_mult = get_jabberwock_bane_multiplier(player)
             if bane_mult > 0:
                 bonus_dmg = int(final_dmg * bane_mult)
@@ -1661,23 +1678,18 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                     c_print(f"  ⚔️ Vorpal blessing surges! +{bonus_dmg} bonus damage!")
         
         # Race passive damage bonuses (Angel vs Demons, Clockwork vs shocked)
-        from pandemonium.combat.ally_skills import get_race_damage_multiplier
         _race_mult = get_race_damage_multiplier(ally, target)
         if _race_mult != 1.0:
             final_dmg = int(final_dmg * _race_mult)
 
         # Event Horizon trophies: Old Dopo Robe + Chance and Choice (single hit)
-        from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
         final_dmg = int(final_dmg * get_robe_multiplier(ally, player))
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         final_dmg = apply_chance_and_choice(ally, final_dmg)
 
         # Form tradition (Cleaving / Focused)
-        from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
         final_dmg = int(final_dmg * get_outgoing_damage_multiplier(ally))
 
         # Father's Legacy (Orc child): +7.5% damage below 50% HP
-        from pandemonium.progression.family import father_legacy_damage_mult
         final_dmg = int(final_dmg * father_legacy_damage_mult(ally))
 
         target["hp"] -= final_dmg
@@ -1686,30 +1698,24 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
         if _eh_ls > 0 and final_dmg > 0:
             _eh_heal = int(final_dmg * _eh_ls)
             if _eh_heal > 0:
-                from pandemonium.combat.status_effects import apply_healing as _eh_apply_heal
                 _eh_actual = _eh_apply_heal(ally, _eh_heal, source=ally)
                 if _eh_actual > 0:
                     c_print(f"  [Death] {display_name(ally)} drains {_eh_actual} HP.")
         # ── Sky Piercer: execute non-superboss enemies left at/below threshold ──
-        from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
         check_sky_piercer_execute(ally, target, final_dmg)
         # Last Oath (unique rapier): basic attacks apply Expose
-        from pandemonium.combat.weapon.last_oath import try_last_oath_expose
         _lo_msg = try_last_oath_expose(ally, target, is_crit)
         if _lo_msg:
             c_print(_lo_msg)
         # Palette's Brush: strokes, Pigment Explosion, aura procs
-        from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, on_brush_attack_hit
         if _actor_has_palette_brush(ally):
             for m in on_brush_attack_hit(ally, target, final_dmg, enemies):
                 c_print(f"  {m}")
         # ── Elemental Trait: on-hit effects (Ignite, Chain, Leech, Swift, Bulwark) ──
         if trait:
-            from pandemonium.combat.elemental_traits import apply_trait
             apply_trait(trait, ally, target, enemies, final_dmg)
 
         # Vileheart Pendant: chance to poison on physical hit
-        from pandemonium.combat.vileheart_venom import try_vileheart_venom_proc
         if try_vileheart_venom_proc(ally, target):
             c_print(f"  🧪 Vileheart Pendant: {target['name']} is poisoned!")
 
@@ -1726,7 +1732,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                 if bleed_debuff:
                     chance = 0.40 if weapon_special == "grandmothers_axe" else 0.20
                     if random.random() < chance:
-                        from pandemonium.combat.status_effects import detonate_bleed
                         det_dmg, det_msgs = detonate_bleed(target)
                         for det_msg in det_msgs:
                             c_print(f"  {det_msg}")
@@ -1736,13 +1741,10 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                                 on_kill(target, enemies)
                             # ── Elemental Trait: on-kill effects (Douse, Purge) ──
                             if trait:
-                                from pandemonium.combat.elemental_traits import apply_trait_on_kill
                                 apply_trait_on_kill(trait, ally, target, enemies)
                             c_print(f"  {display_name(ally)} defeated {target['name']}!")
 
         # Apply race passive life steal (Vampire; doubled while the target bleeds)
-        from pandemonium.combat.ally_skills import get_race_lifesteal, get_race_passive
-        from pandemonium.combat.status_effects import get_bleed_feast_multiplier
         race_passive = get_race_passive(ally.get("race"))
         rp_ls = get_race_lifesteal(ally)
         if race_passive and rp_ls > 0 and final_dmg > 0:
@@ -1761,23 +1763,19 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
 
         crit_tag = format_critical_tag(is_crit)
         is_crit_bool = bool(crit_tag)
-        from pandemonium.combat.helpers import format_damage_msg
         c_print("  " + format_damage_msg(display_name(ally), target['name'], final_dmg, element=element, crit=is_crit_bool))
         if target["hp"] <= 0:
             if on_kill:
                 on_kill(target, enemies)
             # ── Elemental Trait: on-kill effects (Douse, Purge) ──
             if trait:
-                from pandemonium.combat.elemental_traits import apply_trait_on_kill
                 apply_trait_on_kill(trait, ally, target, enemies)
             c_print(f"  {display_name(ally)} defeated {target['name']}!")
             # Captain's Cutlass: High Tide stack on kill (player and ally wielders)
-            from pandemonium.combat.weapon.captain_cutlass import check_high_tide_kill
             check_high_tide_kill(ally, target)
             check_high_tide_kill(player, target)
         else:
             # Orc race passive: chance to stun on a basic attack
-            from pandemonium.combat.ally_skills import maybe_stun_on_basic
             _stun_msg = maybe_stun_on_basic(ally, target)
             if _stun_msg:
                 c_print(f"  {_stun_msg}")
@@ -1787,7 +1785,6 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
     elif action == "d":
         c_print(f"  {display_name(ally)} braces for impact, raising their guard.")
         ally["defending_this_turn"] = True
-        from pandemonium.combat.weapon.prescript_ledger import report_defend as report_prescript_defend
         report_prescript_defend(ally)
         return "continue"
 
@@ -1976,9 +1973,7 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
                     final_dmg = max(1, dmg - armor)
                     target["hp"] -= final_dmg
                     # ── Sky Piercer: execute non-superboss enemies left at/below threshold ──
-                    from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
                     check_sky_piercer_execute(ally, target, final_dmg)
-                    from pandemonium.combat.helpers import format_damage_msg
                     msg += format_damage_msg(display_name(ally), target['name'], final_dmg, skill_name=item.get('name', 'Item')) + " "
 
             if "poison_damage" in item:
@@ -2116,7 +2111,7 @@ def _auto_equip_heroine(ally, heroine_key, floor):
         heroine_key: "alice", "red_hood", or "dorothy"
         floor: the dungeon floor at which they joined
     """
-    from pandemonium.resources.items import build_item
+    from pandemonium.combat.elemental import compute_ally_elemental
 
     build = _HEROINE_EQUIPMENT_BUILDS.get(heroine_key)
     if not build:
@@ -2134,7 +2129,6 @@ def _auto_equip_heroine(ally, heroine_key, floor):
             pass
 
     # Recalculate elemental profile after equipping
-    from pandemonium.combat.elemental import compute_ally_elemental
     e_res, e_dmg = compute_ally_elemental(ally)
     ally["elemental_res"] = e_res
     ally["elemental_dmg"] = e_dmg
@@ -2148,6 +2142,8 @@ def migrate_heroine_auto_gear(player):
     so quest weapons (Vorpal Blade, Ruby Slippers) and player-issued gear are
     preserved. Runs once per save via ``heroine_gear_tier_version``.
     """
+    from pandemonium.progression.leveling import get_shared_biome_max_floor
+    from pandemonium.combat.elemental import compute_ally_elemental
     try:
         version = int(player.get("heroine_gear_tier_version", 1) or 1)
     except (TypeError, ValueError):
@@ -2155,9 +2151,6 @@ def migrate_heroine_auto_gear(player):
     if version >= 2:
         return
 
-    from pandemonium.progression.leveling import get_shared_biome_max_floor
-    from pandemonium.resources.items import build_item
-    from pandemonium.combat.elemental import compute_ally_elemental
 
     floor = get_shared_biome_max_floor(player, "wonderland")
     rarity, enhance = _get_heroine_floor_rarity(floor)
@@ -2197,7 +2190,6 @@ def compute_heroine_temp_stats(base_mods, player_level):
     Heroines use: stat = max(1, base_mod + (player_level - 1) * 0.22)
     No 0.85 multiplier — heroines are special characters.
     """
-    from pandemonium.resources.races_classes import ATTRIBUTES
     scaled = {}
     for attr in ATTRIBUTES:
         base = base_mods.get(attr, 0)
@@ -2216,8 +2208,9 @@ def create_heroine_ally(player, heroine_key, floor=None):
     Returns:
         ally dict ready for combat, or None if template not found
     """
-    from pandemonium.resources.enemies import ENEMIES
     from pandemonium.combat.elemental import compute_ally_elemental
+    from pandemonium.combat.ally_skills import initialize_ally_skills
+    from pandemonium.progression.leveling import get_shared_biome_max_floor
 
     template_key = _HEROINE_TEMPLATE_KEYS.get(heroine_key)
     if not template_key:
@@ -2295,7 +2288,6 @@ def create_heroine_ally(player, heroine_key, floor=None):
     ally["elemental_dmg"] = e_dmg
 
     # Initialize skill system
-    from pandemonium.combat.ally_skills import initialize_ally_skills
     initialize_ally_skills(ally, template_key, race)
 
     # Auto-equip based on the party's Wonderland progress. `saved_dungeon_floor`
@@ -2303,7 +2295,6 @@ def create_heroine_ally(player, heroine_key, floor=None):
     # to fall back to floor 1 and put every guest on the basic gear tier.
     effective_floor = floor if floor is not None else player.get("saved_dungeon_floor", 1)
     if heroine_key in _HEROINE_EQUIPMENT_BUILDS:
-        from pandemonium.progression.leveling import get_shared_biome_max_floor
         try:
             passed_floor = max(1, int(effective_floor or 1))
         except (TypeError, ValueError):
@@ -2331,6 +2322,7 @@ def promote_heroine_to_permanent(player, ally, join_level=None):
         ally: the heroine ally dict
         join_level: the level at which they joined (frozen level)
     """
+    import pandemonium.world.wonderland_guests as wonderland_guests
     if join_level is None:
         join_level = ally.get("level", 1)
 
@@ -2378,7 +2370,6 @@ def promote_heroine_to_permanent(player, ally, join_level=None):
         ally["_heroine_permanent_passive"] = perm_passive
 
     # Guest pacing: promotion closes her tea-party arc.
-    import pandemonium.world.wonderland_guests as wonderland_guests
     if heroine_key in wonderland_guests.GUEST_NAMES:
         wonderland_guests.set_guest_state(player, heroine_key, "resolved")
 
@@ -2418,7 +2409,6 @@ def set_heroine_state(player, heroine_key, state):
         if perm_key:
             player[perm_key] = True
             # Deed titles: the Wonderland capstone checks these flags.
-            from pandemonium.progression.titles import check_unlock
             check_unlock(player)
 
 

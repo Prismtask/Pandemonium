@@ -15,6 +15,7 @@ from pandemonium.combat.status_effects import (
 from pandemonium.combat.ally import get_active_allies, get_living_party
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.combat.combat_io import c_print, c_input
+from pandemonium.resources.items import build_item
 
 # ═══════════════════════════════════════════════════════════════════
 # PARADOX FRACTURE HP WRAPPER
@@ -1214,6 +1215,7 @@ def combat_entangled_chrysalis(player, floor=None, enemies=None):
     Args:
         enemies: Optional pre-created enemy list for GUI mode state sharing.
     """
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     boss_key = BOSS_KEY
 
     if enemies is None:
@@ -1345,8 +1347,6 @@ def combat_entangled_chrysalis(player, floor=None, enemies=None):
             c_print("a mantle that settles gently across your shoulders.")
 
             # Loot: Chronoweave Mantle (100%) + Fractured Hourglass (100%)
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             mantle = build_item("chronoweave_mantle", "unique")
             # Unique template — rarity comes from the registry, not the roll.
             hourglass = build_item("fractured_hourglass")

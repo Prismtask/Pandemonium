@@ -26,6 +26,7 @@ import random
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg, ACTION_CANCELLED_MSG
 from pandemonium.combat.elemental import calculate_elemental_damage
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
 
 # ═══════════════════════════════════════════════════════════════════
 # CONSTANTS
@@ -251,9 +252,9 @@ def get_brush_exhibits(actor):
 def _masterclass_active(actor):
     """True if the PLAYER wears Palette's Palette (wedding accessory) with
     Palette in the active party — Exhibits unlock early and hit harder."""
+    from pandemonium.combat.weapon.wedding_specials import get_active_wedding_item, is_bonded
     if actor.get("is_ally"):
         return False
-    from pandemonium.combat.weapon.wedding_specials import get_active_wedding_item, is_bonded
     item = get_active_wedding_item(actor)
     if not item or item.get("special") != "palettes_palette":
         return False
@@ -273,6 +274,9 @@ def _exhibit_thresholds(actor):
 def _apply_color_debuff_to_enemy(target, color):
     """Apply the color's matching debuff to an enemy. Returns a message."""
     from pandemonium.combat.status_effects import apply_burn, apply_shock
+    from pandemonium.combat.status_effects import apply_slow_to_enemy
+    from pandemonium.combat.status_effects import check_status_resisted
+    from pandemonium.combat.status_effects import apply_weaken
 
     kind = COLOR_DEBUFF.get(color)
     if kind == "burn":
@@ -281,7 +285,6 @@ def _apply_color_debuff_to_enemy(target, color):
             return f"{target['name']} shrugs it off!"
         return f"{target['name']} ignites! (Burn tier 2, 3 turns)" if result != "refreshed" else f"{target['name']} keeps burning!"
     if kind == "slow":
-        from pandemonium.combat.status_effects import apply_slow_to_enemy
         if apply_slow_to_enemy(target, duration=2) == "resisted":
             return f"{target['name']} shrugs it off!"
         return f"{target['name']} is slowed! (2 turns)"
@@ -290,26 +293,22 @@ def _apply_color_debuff_to_enemy(target, color):
             return f"{target['name']} shrugs it off!"
         return f"{target['name']} is shocked! (3 dmg x 3 turns)"
     if kind == "blind":
-        from pandemonium.combat.status_effects import check_status_resisted
         if check_status_resisted(target):
             return f"{target['name']} shrugs it off!"
         target["blinded"] = True
         target.setdefault("active_debuffs", []).append({"type": "blind", "remaining": 2})
         return f"{target['name']} is blinded! (2 turns)"
     if kind == "weaken":
-        from pandemonium.combat.status_effects import apply_weaken
         if apply_weaken(target, duration=3) == "resisted":
             return f"{target['name']} shrugs it off!"
         return f"{target['name']} is weakened! (-25% STR, 3 turns)"
     if kind == "silence":
-        from pandemonium.combat.status_effects import check_status_resisted
         if check_status_resisted(target):
             return f"{target['name']} shrugs it off!"
         target["silenced"] = True
         target.setdefault("active_debuffs", []).append({"type": "silence", "remaining": 2})
         return f"{target['name']} is silenced! (2 turns)"
     if kind == "dread":
-        from pandemonium.combat.status_effects import check_status_resisted
         if check_status_resisted(target):
             return f"{target['name']} shrugs it off!"
         target["dreaded"] = True
@@ -320,6 +319,10 @@ def _apply_color_debuff_to_enemy(target, color):
 
 def _roll_aura_procs(actor, target):
     """Roll the on-attack aura procs (burn/slow/shock/silence) for a hit."""
+    from pandemonium.combat.status_effects import apply_burn
+    from pandemonium.combat.status_effects import apply_shock
+    from pandemonium.combat.status_effects import apply_slow_to_enemy
+    from pandemonium.combat.status_effects import check_status_resisted
     msgs = []
     for color, chances in AURA_PROC_CHANCES.items():
         rank = get_aura_rank(actor, color)
@@ -329,22 +332,18 @@ def _roll_aura_procs(actor, target):
         if random.random() >= chance:
             continue
         if color == "crimson":
-            from pandemonium.combat.status_effects import apply_burn
             tier = _aura_value(actor, "crimson", "tier", 2)
             if apply_burn(target, tier=tier, duration=3) != "resisted":
                 msgs.append(f"  🔴 Brush aura: {target['name']} ignites! (Burn tier {tier})")
         elif color == "azure":
-            from pandemonium.combat.status_effects import apply_slow_to_enemy
             dur = _aura_value(actor, "azure", "dur", 2)
             if apply_slow_to_enemy(target, duration=dur) != "resisted":
                 msgs.append(f"  🔵 Brush aura: {target['name']} is slowed! ({dur} turns)")
         elif color == "gold":
-            from pandemonium.combat.status_effects import apply_shock
             dmg = _aura_value(actor, "gold", "dmg", 3)
             if apply_shock(target, dmg, 3) != "resisted":
                 msgs.append(f"  🟡 Brush aura: {target['name']} is shocked! ({dmg} dmg x 3)")
         elif color == "alabaster":
-            from pandemonium.combat.status_effects import check_status_resisted
             dur = _aura_value(actor, "alabaster", "dur", 2)
             if not check_status_resisted(target):
                 target["silenced"] = True
@@ -455,6 +454,7 @@ def set_brush_stance(actor):
 
 def _exhibit_roll(actor, target, mult, element, ignore_con, stats):
     """Roll + element-scale an exhibit hit. stats = (str, con, dex, ler, wis, cha)."""
+    from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
     scaling = stats[4] + stats[3] + stats[5]  # Wisdom + Learning + Charisma
     base = random.randint(4, 10) + scaling
     con = 0 if ignore_con else target.get("con_mod", 0)
@@ -464,7 +464,6 @@ def _exhibit_roll(actor, target, mult, element, ignore_con, stats):
     if _masterclass_active(actor):
         dmg = int(dmg * (1 + MASTERCLASS_DMG_BONUS))
     # Prescript Ledger — clash empowerment vs the Prescript's Target
-    from pandemonium.combat.weapon.prescript_ledger import get_clash_bonus as get_prescript_clash_bonus
     prescript_clash = get_prescript_clash_bonus(actor, target)
     if prescript_clash:
         dmg = int(dmg * (1 + prescript_clash))
@@ -482,7 +481,6 @@ def execute_impasto_exhibit(actor, enemies, stats, is_player=True):
     element = stance_el or "magical"
     color = ELEMENT_TO_COLOR.get(stance_el)
     msgs = ["🖌️  EXHIBIT: IMPASTO — the canvas floods in one thick stroke!"]
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     _cac_state = {"rolled": False, "mult": 1.0}   # one flip for the exhibit
     for target in [e for e in enemies if e.get("hp", 0) > 0]:
         dmg = _exhibit_roll(actor, target, 1.0, element, False, stats)
@@ -519,7 +517,6 @@ def execute_chiaroscuro_exhibit(actor, enemies, stats, is_player=True):
 
     msgs = ["🌗  EXHIBIT: CHIAROSCURO — light and shadow strike as one!"]
     total = 0
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     _cac_state = {"rolled": False, "mult": 1.0}   # one flip for both hues
     for element in ("light", "dark"):
         dmg = _exhibit_roll(actor, target, 1.1, element, True, stats)
@@ -561,7 +558,6 @@ def execute_signature_exhibit(actor, enemies, stats, is_player=True):
     msgs.append("🖋️  EXHIBIT: SIGNATURE — your name in seven colors.")
     msgs.append("=" * 50)
 
-    from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
     dmg = _exhibit_roll(actor, target, 3.0, element, False, stats)
     dmg = apply_chance_and_choice(actor, dmg)   # one flip for the exhibit
     if dmg > 0:
@@ -596,6 +592,7 @@ def execute_signature_exhibit(actor, enemies, stats, is_player=True):
 def tick_palette_brush_passives(actor):
     """Tick Palette-the-heroine's brush passives (Azure heal, Alabaster
     self-cleanse) at round end. No-op for non-Palette actors."""
+    from pandemonium.combat.status_effects import is_cleansable
     if not _actor_has_palette_brush(actor) or actor.get("_heroine_key") != "palette":
         return []
 
@@ -615,7 +612,6 @@ def tick_palette_brush_passives(actor):
 
     # Alabaster: clear 1 cleansable self-debuff per turn
     if stance == "light" and actor.get("active_debuffs"):
-        from pandemonium.combat.status_effects import is_cleansable
         idx = next((i for i, d in enumerate(actor["active_debuffs"]) if is_cleansable(d)), None)
         if idx is not None:
             removed = actor["active_debuffs"].pop(idx)
@@ -635,6 +631,8 @@ def get_brush_action_menu(actor, player, enemies, is_player):
     """
     from pandemonium.combat.capture import is_capturable
     from pandemonium.combat.status_effects import is_silenced
+    from pandemonium.combat.ally import can_switch
+    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
 
     actions = []
     disabled_keys = []
@@ -655,7 +653,6 @@ def get_brush_action_menu(actor, player, enemies, is_player):
     if is_player:
         actions.append(('f', 'Flee'))
     else:
-        from pandemonium.combat.ally import can_switch
         if can_switch(player):
             actions.append(('s', 'Switch'))
 
@@ -671,7 +668,6 @@ def get_brush_action_menu(actor, player, enemies, is_player):
             actions.append(('u', 'Use Item'))
 
     # Blank Canvas Shawl (armor special, free action)
-    from pandemonium.combat.weapon.blank_canvas_shawl import _actor_has_blank_canvas_shawl
     if _actor_has_blank_canvas_shawl(actor) and not actor.get("blank_canvas_used"):
         actions.append(('b', 'Blank Canvas'))
 

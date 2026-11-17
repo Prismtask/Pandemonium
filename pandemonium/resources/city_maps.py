@@ -18,6 +18,7 @@ Usage:
 """
 
 from typing import Optional
+from pandemonium.resources.cities import CITIES
 
 
 def get_city_map(city_key: str) -> Optional[str]:
@@ -573,7 +574,6 @@ CITY_MAPS["wonderland"] = r"""
 
 def verify_all_cities_mapped(cities_dict: dict) -> list:
     """Cross-reference with cities.CITIES and return list of missing keys."""
-    from pandemonium.resources.cities import CITIES
     mapped = set(CITY_MAPS.keys())
     defined = set(CITIES.keys())
     missing = defined - mapped

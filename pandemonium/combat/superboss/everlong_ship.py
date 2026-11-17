@@ -25,6 +25,7 @@ from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.ally import get_active_allies
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.resources.items import build_item
 
 
 BOSS_KEY = "captain_everlong_ship"
@@ -88,6 +89,7 @@ def combat_everlong_ship(player, floor=None, enemies=None):
                  CaptainDict and used as the boss. Otherwise a new boss and
                  crew are created.
     """
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     if floor is None:
         loc = player.get("location", "")
         floor = player.get("city_floors", {}).get(loc, {}).get("floor")
@@ -273,8 +275,8 @@ def combat_everlong_ship(player, floor=None, enemies=None):
             extra = None
             if random.random() < 0.35:
                 def captain_curse(e, p, dmg):
+                    from pandemonium.combat.status_effects import apply_curse
                     if dmg > 0:
-                        from pandemonium.combat.status_effects import apply_curse
                         result = apply_curse(p)
                         if result == "applied":
                             return f"⚓ The Captain's curse of the sea settles on {p['name']}! All attributes reduced!"
@@ -388,8 +390,6 @@ def combat_everlong_ship(player, floor=None, enemies=None):
             c_print("now yours to wield.")
 
             # Award Cutlass of the Captain
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             cutlass = build_item("cutlass_of_the_captain", "unique")
             c_print("\n  ⚓ You obtained: CUTLASS OF THE CAPTAIN (Unique) ⚓")
             prompt_acquire_item(player, cutlass)

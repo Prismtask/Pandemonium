@@ -41,6 +41,24 @@ from pandemonium.combat.weapon.wedding_specials import (
 )
 from pandemonium.core.utils import display_name
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
+from pandemonium.combat.stat_milestones import get_wisdom_bonus
+from pandemonium.combat.form_perks import get_form_initiative
+from pandemonium.world.curse_pandemonium import get_enemy_initiative_bonus
+from pandemonium.combat.weapon.map_boss_uniques import tick_long_day
+from pandemonium.combat.weapon.map_boss_uniques import clear_map_boss_unique_state
+from pandemonium.combat.weapon.piece_of_relationship import clear_battle_buffs
+from pandemonium.combat.sylvana_heroine import clear_sylvana_combat_state
+from pandemonium.combat.weapon.decaying_aegis import clear_decaying_aegis_state
+from pandemonium.combat.party_stress import settle_pending_falls
+from pandemonium.core.character import _reconcile_heroine_vorpal_skills
+from pandemonium.combat.party_stress import begin_encounter
+from pandemonium.combat.weapon.decaying_aegis import begin_decaying_aegis_combat
+from pandemonium.combat.weapon.map_boss_uniques import refresh_echo_mantle
+from pandemonium.combat.sylvana_heroine import apply_sylvana_party_grace
+from pandemonium.combat.weapon.decaying_aegis import apply_decaying_aegis_turn_start
+from pandemonium.combat.weapon.piece_of_relationship import apply_battle_start as _por_battle_start
+from pandemonium.world.curse_pandemonium import roll_skip_turn
+from pandemonium.resources.enemies import ENEMIES
 
 
 def prune_dead(enemies, player=None):
@@ -50,8 +68,8 @@ def prune_dead(enemies, player=None):
     every real combat path passes it so kills from DoTs, status ticks and
     weapon effects are logged exactly once per enemy instance.
     """
+    from pandemonium.progression.bestiary import record_defeat
     if player is not None:
-        from pandemonium.progression.bestiary import record_defeat
         for enemy in enemies:
             if (enemy.get("hp", 0) <= 0 and not enemy.get("captured")
                     and not enemy.get("no_bestiary")):
@@ -61,18 +79,17 @@ def prune_dead(enemies, player=None):
 
 def roll_initiative(player, enemies):
     """Return sorted turn order list including player and allies."""
-    combatants = []
-    p_str, p_con, p_dex, p_ler, p_wis, p_cha = compute_player_stats(player)
-
-    # Player
-    from pandemonium.combat.stat_milestones import get_wisdom_bonus
     from pandemonium.combat.weapon.black_silence_gloves import get_gloves_initiative_bonus
     from pandemonium.combat.weapon.palette_brush import get_brush_initiative_bonus
     from pandemonium.combat.weapon.wedding_specials import apply_wedding_initiative_bonus
     from pandemonium.combat.status_effects import get_haste_initiative_bonus, apply_slow_penalty
     from pandemonium.world.event_horizon import joker_initiative_bonus
     from pandemonium.world.wonderland_curses import roll_d20_with_looking_glass
-    from pandemonium.combat.form_perks import get_form_initiative
+    from pandemonium.world.wonderland_curses import get_shadow_initiative_bonus
+    combatants = []
+    p_str, p_con, p_dex, p_ler, p_wis, p_cha = compute_player_stats(player)
+
+    # Player
     d20_roll, _ = roll_d20_with_looking_glass(player, verbose=False)
     p_dex = apply_slow_penalty(player, p_dex)
     player_speed = d20_roll + p_dex + get_wisdom_bonus(player) + get_gloves_initiative_bonus(player) + get_brush_initiative_bonus(player) + get_haste_initiative_bonus(player) + joker_initiative_bonus(player) + apply_wedding_initiative_bonus(player) + get_form_initiative(player)
@@ -105,11 +122,9 @@ def roll_initiative(player, enemies):
     # Enemies
     pandemonium_speed_bonus = 0
     if player.get("pandemonium_curse"):
-        from pandemonium.world.curse_pandemonium import get_enemy_initiative_bonus
         pandemonium_speed_bonus = get_enemy_initiative_bonus(player)
 
     # Wonderland Shadow: Cheshire Cat's Absence — enemy initiative bonus
-    from pandemonium.world.wonderland_curses import get_shadow_initiative_bonus
     shadow_init_bonus = get_shadow_initiative_bonus(player)
 
     for idx, enemy in enumerate(enemies):
@@ -129,16 +144,20 @@ def roll_initiative(player, enemies):
 
 def _tick_all_state(player):
     """Tick all combat state for player and allies. Returns 'dead' if player died from DoT, else None."""
+    from pandemonium.combat.weapon.captain_cutlass import _tick_captain_cutlass_actor
+    from pandemonium.combat.skills import tick_skill_cooldowns
+    from pandemonium.combat.fractured_hourglass import tick_hourglass_cooldown
+    from pandemonium.world.wonderland_curses import get_painting_roses_reduction
+    from pandemonium.world.wonderland_curses import get_shadow_bleed_poison_extension
+    from pandemonium.combat.ally_skills import get_race_passive, get_race_regen
     tick_abyss_fang_cooldown(player)
     tick_abyssal_tempo(player)
     tick_captain_cutlass(player)
     tick_authors_pen_cooldown(player)
     tick_moonlight(player)
-    from pandemonium.combat.weapon.map_boss_uniques import tick_long_day
     tick_long_day(player)
 
     # Tick ally specials
-    from pandemonium.combat.weapon.captain_cutlass import _tick_captain_cutlass_actor
     for ally in player.get("allies", []):
         if ally.get("current_hp", 0) > 0:
             tick_abyss_fang_cooldown(ally)
@@ -148,8 +167,6 @@ def _tick_all_state(player):
             tick_moonlight(ally)
             tick_long_day(ally)
 
-    from pandemonium.combat.skills import tick_skill_cooldowns
-    from pandemonium.combat.fractured_hourglass import tick_hourglass_cooldown
     tick_skill_cooldowns(player)
     tick_hourglass_cooldown(player)
     for ally in player.get("allies", []):
@@ -183,7 +200,6 @@ def _tick_all_state(player):
     player.pop("smoke_bomb_flee", False)
 
     # ── Wonderland: Painting the Roses Red — reduce bleed/poison duration ──
-    from pandemonium.world.wonderland_curses import get_painting_roses_reduction
     rose_reduction = get_painting_roses_reduction(player)
     if rose_reduction > 0:
         for debuff in player.get("active_debuffs", []):
@@ -191,7 +207,6 @@ def _tick_all_state(player):
                 debuff["remaining"] = max(1, debuff.get("remaining", 1) - int(rose_reduction))
 
     # ── Wonderland Shadow: Rose Wilt — extend bleed/poison duration ──
-    from pandemonium.world.wonderland_curses import get_shadow_bleed_poison_extension
     rose_extension = get_shadow_bleed_poison_extension(player)
     if rose_extension > 0:
         for debuff in player.get("active_debuffs", []):
@@ -246,7 +261,6 @@ def _tick_all_state(player):
 
     # Apply race passive regen (Fey 10%, Undead 5%)
     for ally in get_alive_allies(player):
-        from pandemonium.combat.ally_skills import get_race_passive, get_race_regen
         regen_rate = get_race_regen(ally)
         if regen_rate > 0:
             race_passive = get_race_passive(ally.get("race"))
@@ -272,10 +286,14 @@ def clear_battle_scoped_state(player):
     its battle state (Tarnished Jade curse/pins, glove cycle, Crystal
     Atelier dodge, ...) would otherwise leak into the suspended run's save.
     """
+    from pandemonium.combat.weapon.black_silence_gloves import clear_gloves_state
+    from pandemonium.combat.weapon.palette_brush import clear_brush_state
+    from pandemonium.combat.weapon.blank_canvas_shawl import clear_shawl_state
+    from pandemonium.combat.palette_ally import clear_palette_ally_state
+    from pandemonium.combat.weapon.prescript_ledger import reset_all_state as reset_prescript_state
     clear_abyss_fang_state(player)
     clear_authors_pen_state(player)
     clear_moonlight_state(player)
-    from pandemonium.combat.weapon.map_boss_uniques import clear_map_boss_unique_state
     clear_map_boss_unique_state(player)
     # Free-action skill state is battle-scoped (Time Warp).
     player.pop("_skill_free_action", None)
@@ -283,18 +301,12 @@ def clear_battle_scoped_state(player):
     player["tarnished_jade_pins"] = 0
     player["tarnished_jade_weakened"] = False
     # Black Silence Gloves cycle
-    from pandemonium.combat.weapon.black_silence_gloves import clear_gloves_state
     clear_gloves_state(player)
     # Palette's Brush + Blank Canvas Shawl
-    from pandemonium.combat.weapon.palette_brush import clear_brush_state
-    from pandemonium.combat.weapon.blank_canvas_shawl import clear_shawl_state
-    from pandemonium.combat.palette_ally import clear_palette_ally_state
     clear_brush_state(player)
     clear_shawl_state(player)
-    from pandemonium.combat.weapon.prescript_ledger import reset_all_state as reset_prescript_state
     reset_prescript_state(player)
     # Event Horizon trophy: Piece of Relationship battle buffs are battle-scoped
-    from pandemonium.combat.weapon.piece_of_relationship import clear_battle_buffs
     clear_battle_buffs(player)
     # Clear ally specials
     for ally in player.get("allies", []):
@@ -309,8 +321,6 @@ def clear_battle_scoped_state(player):
         ally["tarnished_jade_pins"] = 0
         ally["tarnished_jade_weakened"] = False
     # Sylvana's Queen's Grace + Decaying Aegis are battle-scoped
-    from pandemonium.combat.sylvana_heroine import clear_sylvana_combat_state
-    from pandemonium.combat.weapon.decaying_aegis import clear_decaying_aegis_state
     clear_sylvana_combat_state(player)
     clear_decaying_aegis_state(player)
     for ally in player.get("allies", []):
@@ -332,7 +342,6 @@ def clear_battle_scoped_state(player):
 
 def _end_combat_with_result(player, result):
     """Tick all combat state and return the requested result, unless DoT kills the player."""
-    from pandemonium.combat.party_stress import settle_pending_falls
     for _stress_msg in settle_pending_falls(player):
         c_print(_stress_msg)
     clear_battle_scoped_state(player)
@@ -347,21 +356,19 @@ def combat(player, enemy_keys, floor=None, room_num=None, total_rooms=None, enem
         enemies: Optional pre-created enemy dicts. If provided, combat uses
                  these instances directly instead of creating new ones.
     """
+    from pandemonium.combat.weapon.prescript_ledger import reset_all_state as reset_prescript_state
     # ── Reconcile vorpal skills before combat ────────────────────────────
     # Safety net: ensures all heroines' innate/learned skills match their
     # vorpal flags before combat actions are built.  This catches cases
     # where the load-time reconciliation in ensure_player_fields was missed.
-    from pandemonium.core.character import _reconcile_heroine_vorpal_skills
     for ally in player.get("allies", []):
         _reconcile_heroine_vorpal_skills(ally, player)
 
     # Party stress: settle the previous fight's falls, then let Burned Out
     # companions refuse this one (docs/stress_system_design.md).
-    from pandemonium.combat.party_stress import begin_encounter
     for _stress_msg in begin_encounter(player):
         c_print(_stress_msg)
 
-    from pandemonium.combat.weapon.prescript_ledger import reset_all_state as reset_prescript_state
     reset_prescript_state(player)
 
     begin_wedding_combat(player, floor, room_num)
@@ -389,36 +396,50 @@ def combat(player, enemy_keys, floor=None, room_num=None, total_rooms=None, enem
 
 def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=None, enemies=None):
     """Generic combat loop supporting player + allies vs enemies."""
+    from pandemonium.combat.weapon.map_boss_uniques import (
+            begin_map_boss_uniques, clear_map_boss_unique_state,
+        )
+    from pandemonium.combat.weapon.black_silence_gloves import set_first_strike, _actor_has_black_silence_gloves
+    from pandemonium.world.wonderland_curses import get_shadow_skip_chance
+    from pandemonium.combat.weapon.tarnished_jade import _actor_has_tarnished_jade
+    from pandemonium.combat.weapon.black_silence_gloves import init_gloves_state, _actor_has_black_silence_gloves
+    from pandemonium.combat.weapon.palette_brush import init_brush_state, _actor_has_palette_brush
+    from pandemonium.combat.weapon.captain_cutlass import _clear_captain_cutlass_state_actor
+    from pandemonium.combat.weapon.chronoweave import apply_chronoweave_turn_start
+    from pandemonium.combat.skills import apply_profession_battle_start
+    from pandemonium.world.event_horizon import apply_entropy_battle_start
+    from pandemonium.world.event_horizon import apply_joker_battle_start
+    from pandemonium.world.event_horizon import joker_judgement_pulse
+    from pandemonium.combat.weapon.tarnished_jade import apply_tarnished_jade_turn_start
+    from pandemonium.combat.weapon.prescript_ledger import issue_prescripts
+    from pandemonium.combat.weapon.wedding_specials import (
+                    get_active_wedding_item, is_bonded, wedding_special_blurb,
+                )
+    from pandemonium.world.event_horizon import debuff_signature, joker_mirror_debuffs
+    from pandemonium.combat.weapon.prescript_ledger import report_damage as report_prescript_damage
+    from pandemonium.combat.status_effects import get_aggro_multiplier
+    from pandemonium.combat.weapon.prescript_ledger import evaluate_round
     clear_abyss_fang_state(player)
     clear_captain_cutlass_state(player)
     clear_authors_pen_state(player)
     clear_moonlight_state(player)
-    from pandemonium.combat.weapon.map_boss_uniques import (
-        begin_map_boss_uniques, clear_map_boss_unique_state,
-    )
     clear_map_boss_unique_state(player)
     begin_map_boss_uniques(player)
-    from pandemonium.combat.sylvana_heroine import clear_sylvana_combat_state
-    from pandemonium.combat.weapon.decaying_aegis import begin_decaying_aegis_combat
     clear_sylvana_combat_state(player)
     begin_decaying_aegis_combat(player)
     # Wonderland Shadow: Down the Rabbit Hole — imported at function level so
     # the name is always bound. It used to be imported inside the player's
     # turn branch only, which crashed with UnboundLocalError in the ally
     # branch when an ally acted before the player had taken a turn.
-    from pandemonium.world.wonderland_curses import get_shadow_skip_chance
-    from pandemonium.combat.weapon.tarnished_jade import _actor_has_tarnished_jade
     # Pins only start accumulating if the Jade is actually equipped
     player["tarnished_jade_pins"] = 1 if _actor_has_tarnished_jade(player) else 0
     player["tarnished_jade_weakened"] = False
 
     # Initialize Black Silence Gloves state for player
-    from pandemonium.combat.weapon.black_silence_gloves import init_gloves_state, _actor_has_black_silence_gloves
     if _actor_has_black_silence_gloves(player):
         init_gloves_state(player)
 
     # Initialize Palette's Brush state for player
-    from pandemonium.combat.weapon.palette_brush import init_brush_state, _actor_has_palette_brush
     if _actor_has_palette_brush(player):
         init_brush_state(player)
 
@@ -431,13 +452,11 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
         if ally.get("current_hp", 0) > 0:
             clear_abyss_fang_state(ally)
             # Clear cutlass state on ally (actor version)
-            from pandemonium.combat.weapon.captain_cutlass import _clear_captain_cutlass_state_actor
             _clear_captain_cutlass_state_actor(ally, player_ref=player)
             ally["tarnished_jade_pins"] = 1 if _actor_has_tarnished_jade(ally) else 0
             ally["tarnished_jade_weakened"] = False
             clear_authors_pen_state(ally)
             clear_moonlight_state(ally)
-            from pandemonium.combat.weapon.decaying_aegis import begin_decaying_aegis_combat
             begin_decaying_aegis_combat(ally)
             # Mirror player context onto allies (Wonderland checks, floor-tracking uniques)
             ally["floor"] = player.get("floor")
@@ -454,9 +473,9 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
         pass
 
     def _bestiary_kill(target, _enemies):
+        from pandemonium.progression.bestiary import record_defeat
         if target.get("no_bestiary"):
             return
-        from pandemonium.progression.bestiary import record_defeat
         record_defeat(player, target)
 
 
@@ -503,21 +522,17 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
             apply_moonlight_round_start(ally)
 
         # Chronoweave Mantle: turn-start Momentum gain (player + allies)
-        from pandemonium.combat.weapon.chronoweave import apply_chronoweave_turn_start
         apply_chronoweave_turn_start(player)
         for ally in get_active_allies(player):
             apply_chronoweave_turn_start(ally)
 
         # Warden of the Long Day — Echo Mantle follows the clock each round
-        from pandemonium.combat.weapon.map_boss_uniques import refresh_echo_mantle
         refresh_echo_mantle(player)
         for ally in get_active_allies(player):
             refresh_echo_mantle(ally)
 
         # Sylvana's Queen's Grace + Decaying Aegis upkeep
-        from pandemonium.combat.sylvana_heroine import apply_sylvana_party_grace
         apply_sylvana_party_grace(player)
-        from pandemonium.combat.weapon.decaying_aegis import apply_decaying_aegis_turn_start
         apply_decaying_aegis_turn_start(player)
         for ally in get_active_allies(player):
             apply_decaying_aegis_turn_start(ally)
@@ -554,7 +569,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
 
         # --- Profession passives: battle start (Round 1 only) ---
         if round_num == 1:
-            from pandemonium.combat.skills import apply_profession_battle_start
             apply_profession_battle_start(player)
 
         # --- Wedding Accessory: combat start (Round 1 only) ---
@@ -567,16 +581,12 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
 
         # --- Event Horizon: Entropy battle-start debuffs + POR battle buffs ---
         if round_num == 1:
-            from pandemonium.world.event_horizon import apply_entropy_battle_start
             apply_entropy_battle_start(player)
             # The Moon — each battle start deals 2 buffs & 2 debuffs per actor.
-            from pandemonium.world.event_horizon import apply_joker_battle_start
             apply_joker_battle_start(player)
-            from pandemonium.combat.weapon.piece_of_relationship import apply_battle_start as _por_battle_start
             _por_battle_start(player)
 
         # --- Event Horizon — Judgement: round-start pure pulse ---
-        from pandemonium.world.event_horizon import joker_judgement_pulse
         _jdg_msgs = joker_judgement_pulse(player, enemies, round_num)
         if _jdg_msgs:
             for _m in _jdg_msgs:
@@ -587,7 +597,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                 return _end_combat_with_result(player, "victory")
 
         # --- Tarnished Jade: turn-start pin damage ---
-        from pandemonium.combat.weapon.tarnished_jade import apply_tarnished_jade_turn_start
         tj_triggered = apply_tarnished_jade_turn_start(player, enemies)
         if tj_triggered:
             enemies[:] = prune_dead(enemies, player)
@@ -607,7 +616,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                         return _end_combat_with_result(player, "victory")
 
         # Prescript Ledger — issue this round's Prescripts and mark the Target
-        from pandemonium.combat.weapon.prescript_ledger import issue_prescripts
         issue_prescripts(player, enemies)
 
         # Reinforcement rule (2026-10-12): fallen front allies are replaced
@@ -619,7 +627,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
         turn_order = roll_initiative(player, enemies)
 
         # Black Silence Gloves: First Strike detection
-        from pandemonium.combat.weapon.black_silence_gloves import set_first_strike, _actor_has_black_silence_gloves
         if _actor_has_black_silence_gloves(player):
             # Player acts first only if they are the very first combatant (before allies too)
             player_idx = next((i for i, c in enumerate(turn_order) if c["type"] == "player"), None)
@@ -641,9 +648,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
         # (2026-10-04: replaced a false "you strike first!" line — no such
         # mechanic ever existed; the line now states the special's effect.)
         if round_num == 1:
-            from pandemonium.combat.weapon.wedding_specials import (
-                get_active_wedding_item, is_bonded, wedding_special_blurb,
-            )
             wedding_item = get_active_wedding_item(player)
             if wedding_item:
                 name = wedding_item.get("name", "Wedding Accessory")
@@ -735,7 +739,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
 
                 # Pandemonium: Echoing Madness curse — chance to skip turn
                 if player.get("pandemonium_curse"):
-                    from pandemonium.world.curse_pandemonium import roll_skip_turn
                     if roll_skip_turn(player):
                         c_print("  🌀  Echoing whispers overwhelm you — you lose your turn!")
                         continue
@@ -756,7 +759,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
 
                 while True:
                     hp_before_action = {id(e): e.get("hp", 0) for e in live_enemies}
-                    from pandemonium.world.event_horizon import debuff_signature, joker_mirror_debuffs
                     _eh_debuffs_before = debuff_signature(live_enemies)
                     result, new_def = handle_player_turn(
                         player, live_enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha,
@@ -764,7 +766,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                     )
                     # Prescript Ledger: report enemies damaged by the action (HP-delta)
                     if result != "retry":
-                        from pandemonium.combat.weapon.prescript_ledger import report_damage as report_prescript_damage
                         for e in live_enemies:
                             if hp_before_action.get(id(e), e.get("hp", 0)) > e.get("hp", 0):
                                 report_prescript_damage(player, e)
@@ -811,7 +812,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                 # Player controls ally's action
                 while True:
                     hp_before_action = {id(e): e.get("hp", 0) for e in live_enemies}
-                    from pandemonium.world.event_horizon import debuff_signature, joker_mirror_debuffs
                     _eh_debuffs_before = debuff_signature(live_enemies)
                     result = handle_ally_turn(
                         ally, player, live_enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha,
@@ -819,7 +819,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                     )
                     # Prescript Ledger: report enemies damaged by the action (HP-delta)
                     if result != "retry":
-                        from pandemonium.combat.weapon.prescript_ledger import report_damage as report_prescript_damage
                         for e in live_enemies:
                             if hp_before_action.get(id(e), e.get("hp", 0)) > e.get("hp", 0):
                                 report_prescript_damage(ally, e)
@@ -875,7 +874,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                 if len(alive_party) == 1:
                     target = alive_party[0]
                 else:
-                    from pandemonium.combat.status_effects import get_aggro_multiplier
                     weights = []
                     for member in alive_party:
                         base_w = 2.0 if member is player else 1.0
@@ -895,7 +893,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                     target_con = a_con
 
                 extra = get_race_extra_logic(enemy)
-                from pandemonium.world.event_horizon import debuff_signature, joker_mirror_debuffs
                 _eh_debuffs_before = debuff_signature(alive_party)
                 enemy["_combat_round"] = round_num
                 # Regular enemies choose between basic attacks, skills,
@@ -923,7 +920,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                         death_target["defeated"] = True
                         death_target["current_hp"] = 0
                         # Print is_defeated dialogue if available
-                        from pandemonium.resources.enemies import ENEMIES
                         template = ENEMIES.get(death_target.get("key", ""), {})
                         dialogue = template.get("dialogue", {})
                         defeated_line = dialogue.get("is_defeated", f"{death_target['name']} has fallen!")
@@ -950,7 +946,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
         compute_last_round_damage(player)
 
         # ── Prescript Ledger: round-end resolution (waive / punish / retribution / regen) ──
-        from pandemonium.combat.weapon.prescript_ledger import evaluate_round
         if evaluate_round(player, enemies) == "dead":
             return _end_combat_with_result(player, "dead")
 

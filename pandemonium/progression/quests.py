@@ -21,6 +21,8 @@ from pandemonium.resources.quests import (
     get_orb_state,
     get_resonance_grade,
 )
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.resources.items import build_item
 
 
 # ── State ─────────────────────────────────────────────────────────────────────
@@ -182,7 +184,6 @@ def compute_roster_tier(player):
 
 def _owned_races(owned_keys):
     """Distinct primary races among owned girls (species key -> ENEMIES race)."""
-    from pandemonium.resources.enemies import ENEMIES
     races = set()
     for key in owned_keys:
         entry = ENEMIES.get(key)
@@ -415,10 +416,9 @@ def _refresh_resonance_orb(player):
 
 def grant_resonance_orb(player):
     """Grant Voss's resonance blank (idempotent). Returns display lines."""
+    from pandemonium.inventory.core import add_item_to_inventory
     orb = _find_resonance_orb(player)
     if orb is None:
-        from pandemonium.resources.items import build_item
-        from pandemonium.inventory.core import add_item_to_inventory
         orb = build_item("resonance_orb")
         add_item_to_inventory(player, orb)      # key items bypass bag limits
     orb = _refresh_resonance_orb(player) or orb
@@ -587,12 +587,13 @@ def complete_quest(player, quest_id):
 
 def _grant_rewards(player, quest):
     """Grant a quest's rewards. Returns display messages."""
+    from pandemonium.progression.leveling import gain_exp
+    from pandemonium.inventory.core import add_item_to_inventory
     rewards = quest.get("rewards") or {}
     messages = []
 
     xp = int(rewards.get("xp", 0))
     if xp > 0:
-        from pandemonium.progression.leveling import gain_exp
         gain_exp(player, xp)
         messages.append(f"   +{xp} XP")
 
@@ -602,8 +603,6 @@ def _grant_rewards(player, quest):
         messages.append(f"   +{gold} gold")
 
     for item_spec in rewards.get("items", []):
-        from pandemonium.resources.items import build_item
-        from pandemonium.inventory.core import add_item_to_inventory
         item = build_item(item_spec["id"], rarity=item_spec.get("rarity", "common"))
         if add_item_to_inventory(player, item):
             messages.append(f"   Received: {item['name']}")

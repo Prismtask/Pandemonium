@@ -39,6 +39,21 @@ from .core import (
     _talks_remaining,
 )
 from .rest import _house_sleep
+from pandemonium.progression.family import is_trueborn_minor
+from pandemonium.combat.ally_skills import has_awakening
+from pandemonium.resources.quests import format_resonance_status
+from pandemonium.progression.family import father_legacy_label
+from pandemonium.progression.family import pregnancy_period
+from pandemonium.combat.ally import get_growth_label
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.progression.family import share_night_eligibility
+from pandemonium.resources.items import build_item, ITEMS
+from pandemonium.inventory.core import add_item_to_inventory
+from pandemonium.resources.family_scenes import child_talk_lines
+from pandemonium.resources.family_scenes import child_gift_lines
+from pandemonium.combat.ally_skills import apply_awakening_skills, get_innate_skill_def
+from pandemonium.combat.ally import recruit_ally_from_house
+from pandemonium.combat.ally import _return_ally_to_house
 
 
 def _get_ascension_requirements(current_cap):
@@ -59,7 +74,6 @@ def _get_ascension_requirements(current_cap):
 
 def _can_ascend_ally(player, ally):
     """Check if ally is at their level cap and player has ALL required stones."""
-    from pandemonium.progression.family import is_trueborn_minor
     if ally.get("pregnant") or is_trueborn_minor(ally):
         return False
     if int(ally.get("recovery_until", 0) or 0) > player.get("day", 1):
@@ -87,8 +101,6 @@ def can_awaken_girl(girl, day=None):
     Covers the girl-side gates only (candidate, level, cap, affection, not yet
     awakened); the Sigil cost is checked when the action is taken.
     """
-    from pandemonium.combat.ally_skills import has_awakening
-    from pandemonium.progression.family import is_trueborn_minor
     if girl.get("awakened"):
         return False, "already awakened"
     if girl.get("pregnant"):
@@ -168,7 +180,6 @@ def _house_lounge(player, city_id, house):
         term.print(f"=== {lvl_data['name'].upper()} LOUNGE ===")
         term.print(f"Monster Girls: {total_girls}/{max_girls}")
         if allies:
-            from pandemonium.resources.quests import format_resonance_status
             tier = (player.get("quests") or {}).get("resonance_tier", 0)
             term.print(f"Active Party: {len(allies)} allies")
             term.print(format_resonance_status(tier))
@@ -307,11 +318,9 @@ def _house_lounge(player, city_id, house):
                 status_label = "Married" if married else "Engaged" if engaged else "Active" if where == "active" else "At home"
             term.print(f"  Status: {status_label}")
             if is_child:
-                from pandemonium.progression.family import father_legacy_label
                 legacy_label = father_legacy_label(girl)
                 term.print(f"  Father's Legacy: {legacy_label or '—'}")
             if girl.get("pregnant"):
-                from pandemonium.progression.family import pregnancy_period
                 period = pregnancy_period(girl, player.get("day", 1))
                 due_day = girl.get("due_day")
                 due_text = format_day_delta(due_day, player.get("day", 1)) if due_day else "?"
@@ -327,7 +336,6 @@ def _house_lounge(player, city_id, house):
             if ring_bonus:
                 bonus_lines = [f"{stat} +{val}" for stat, val in ring_bonus.items()]
                 term.print(f"  Ring Blessing: {', '.join(bonus_lines)}")
-            from pandemonium.combat.ally import get_growth_label
             growth_label = get_growth_label(girl)
             if growth_label != "—":
                 term.print(f"  Growth: {growth_label} (late bloomer)")
@@ -377,8 +385,6 @@ def _house_lounge(player, city_id, house):
                 menu_actions.append("propose")
 
             # Shared Night (docs/family_system_design.md §4.3) — Night only.
-            import pandemonium.core.time_blocks as time_blocks
-            from pandemonium.progression.family import share_night_eligibility
             if (time_blocks.get_day_phase(player) == "night"
                     and share_night_eligibility(player, girl, True)[0]):
                 menu_options.append("Share the night")
@@ -453,10 +459,8 @@ def _house_lounge(player, city_id, house):
                     term.print("\n" + (special_line.format(name=disp) if "{name}" in special_line else special_line))
                     # Give wedding accessory
                     wedding_id = f"wedding_{girl_key}"
-                    from pandemonium.resources.items import build_item, ITEMS
                     if wedding_id in ITEMS:
                         wedding_item = build_item(wedding_id, "unique")
-                        from pandemonium.inventory.core import add_item_to_inventory
                         if add_item_to_inventory(player, wedding_item):
                             term.print(f"\n  *** You received: {wedding_item['name']} ***")
                         else:
@@ -487,7 +491,6 @@ def _house_lounge(player, city_id, house):
 
                 if is_child:
                     # Daughter voice — bond only, never the adult romance set.
-                    from pandemonium.resources.family_scenes import child_talk_lines
                     mother_key = girl.get("mother_key") or girl_key
                     mother_template = ENEMIES.get(mother_key, {}) if mother_key else {}
                     child_dialogue = mother_template.get("dialogue", {}) or {}
@@ -558,7 +561,6 @@ def _house_lounge(player, city_id, house):
 
                 # Show love/hate dialogue
                 if is_child:
-                    from pandemonium.resources.family_scenes import child_gift_lines
                     mother_key = girl.get("mother_key") or girl_key
                     mother_template = ENEMIES.get(mother_key, {}) if mother_key else {}
                     child_dialogue = mother_template.get("dialogue", {}) or {}
@@ -683,7 +685,6 @@ def _house_lounge(player, city_id, house):
 
             elif action == "ascend":
                 # ── ASCEND ──
-                from pandemonium.progression.family import is_trueborn_minor
                 if (girl.get("pregnant") or is_trueborn_minor(girl)
                         or int(girl.get("recovery_until", 0) or 0) > player.get("day", 1)):
                     term.print(f"\n{disp} can't ascend right now.")
@@ -743,7 +744,6 @@ def _house_lounge(player, city_id, house):
 
             elif action == "awaken":
                 # ── AWAKEN (docs/awakening_design.md Part C) ──
-                from pandemonium.progression.family import is_trueborn_minor
                 if (girl.get("pregnant") or is_trueborn_minor(girl)
                         or int(girl.get("recovery_until", 0) or 0) > player.get("day", 1)):
                     term.print(f"\n{disp} can't awaken right now.")
@@ -757,7 +757,6 @@ def _house_lounge(player, city_id, house):
                     term.pause()
                     continue
 
-                from pandemonium.combat.ally_skills import apply_awakening_skills, get_innate_skill_def
                 awakening_key = (girl.get("mother_key") if girl.get("is_trueborn")
                                  else girl_key)
                 template = ENEMIES.get(girl_key, {})
@@ -820,7 +819,6 @@ def _house_lounge(player, city_id, house):
                     accepted_msg = dialogue.get("recruit_accepted",
                         f"{disp} smiles warmly. 'I'll fight beside you!'")
                     term.print(accepted_msg.format(name=disp))
-                    from pandemonium.combat.ally import recruit_ally_from_house
                     ally, msg = recruit_ally_from_house(player, girl, house)
                     term.print(msg)
                     if ally:
@@ -835,7 +833,6 @@ def _house_lounge(player, city_id, house):
                 dismiss_msg = dialogue.get("dismiss",
                     f"{disp} nods quietly. 'I'll be here when you need me.'")
                 term.print(dismiss_msg.format(name=disp) if "{name}" in dismiss_msg else dismiss_msg)
-                from pandemonium.combat.ally import _return_ally_to_house
                 _return_ally_to_house(player, girl, house)
                 player["allies"] = [a for a in player.get("allies", []) if not (a.get("key") == girl.get("key") and a.get("name") == girl.get("name"))]
                 term.print(f"{disp} has been returned to the lounge.")

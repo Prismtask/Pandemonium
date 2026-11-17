@@ -9,6 +9,9 @@ import tkinter as tk
 
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
+from pandemonium.gui.screens.city_screen import CityScreen
+from pandemonium.core.save_load import save_game
+from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
 
 
 class PostFloorScreen(BaseScreen):
@@ -112,16 +115,13 @@ class PostFloorScreen(BaseScreen):
         if self.on_return:
             self.on_return()
         else:
-            from pandemonium.gui.screens.city_screen import CityScreen
             self.sm.switch_to(CityScreen)
 
     def _do_save_quit(self):
         if self.on_save_quit:
             self.on_save_quit()
         else:
-            from pandemonium.core.save_load import save_game
             if self.player:
                 save_game(self.player)
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)

@@ -26,6 +26,10 @@ changes to the status-effect tick routines are required.
 import random
 
 from pandemonium.resources.races_classes import ATTRIBUTES
+import importlib
+from pandemonium.combat import status_effects as se
+from pandemonium.combat.combat_io import c_print
+from pandemonium.core.character import player_max_hp
 
 EH_SOURCE = "event_horizon"
 
@@ -519,7 +523,6 @@ def rush_boss_by_id(boss_id):
 
 def rush_boss_combat(boss):
     """Resolve a roster entry's ``combat_*`` callable (lazy — import cycles)."""
-    import importlib
     module = importlib.import_module(boss["module"])
     return getattr(module, boss["func"])
 
@@ -1021,8 +1024,6 @@ def try_emperor_save(actor):
     actor["_eh_emperor_used"] = True
     actor["_eh_emperor_saved"] = True
     actor["current_hp"] = 1
-    from pandemonium.combat import status_effects as se
-    from pandemonium.combat.combat_io import c_print
     se.apply_silence(actor, duration=2)
     name = actor.get("name", "You")
     c_print(f"  ♠ The Emperor commands — {name} holds at 1 HP! "
@@ -1040,7 +1041,6 @@ def joker_attack_missed(attacker):
     pct = attacker.get("_eh_joker_miss", 0) or 0
     if pct <= 0 or random.random() >= pct:
         return False
-    from pandemonium.combat.combat_io import c_print
     c_print(f"  ♠ The Fool's luck turns — {attacker.get('name', 'your')}"
             f"'s attack goes wide!")
     return True
@@ -1074,7 +1074,6 @@ def joker_crit_modifier(attacker, is_crit, dmg):
 def _actor_max_hp(actor):
     if actor.get("is_ally"):
         return int(actor.get("max_hp", 100))
-    from pandemonium.core.character import player_max_hp
     return int(player_max_hp(actor))
 
 
@@ -1142,7 +1141,6 @@ def _mirror_one_debuff(actor, debuff):
     resistance still apply) with a scrubbed entry-copy fallback for exotic
     kinds. Returns False when the infliction was explicitly resisted.
     """
-    from pandemonium.combat import status_effects as se
     kind = debuff.get("type")
     dur = max(1, min(int(debuff.get("remaining", 3) or 3), 99))
     is_party = "current_hp" in actor
@@ -1386,8 +1384,6 @@ def apply_joker_battle_start(player):
         actor.pop("_eh_emperor_used", None)
     if not has_owned_joker(player, "joker_moon"):
         return 0
-    from pandemonium.combat import status_effects as se
-    from pandemonium.combat.combat_io import c_print
     actors = [player] + _alive_active_allies(player)
     applied = 0
     for actor in actors:
@@ -1561,7 +1557,6 @@ def format_flask_summary(records):
     if flat_regen:
         parts.append(f"+{flat_regen:g} HP/round")
     # Stable attribute order for the Might flasks
-    from pandemonium.resources.races_classes import ATTRIBUTES
     for stat in ATTRIBUTES:
         if stats.get(stat):
             parts.append(f"+{stats[stat]:g} {stat}")
@@ -1655,8 +1650,6 @@ def battle_start_tier(player):
 
 def _apply_one_entropy_debuff(actor, debuff_type, tier):
     """Apply one random Entropy debuff via the shared status-effect helpers."""
-    from pandemonium.combat import status_effects as se
-    from pandemonium.combat.combat_io import c_print
 
     duration = _BS_DURATION[tier]
     name = actor.get("name", "You")
@@ -2114,9 +2107,9 @@ def site_unlocked(player):
 
 def event_horizon_site(player):
     """Site info dict for the world map / journeys (None while locked)."""
+    from pandemonium.world.wild_dungeons import find_nearest_city
     if not site_unlocked(player):
         return None
-    from pandemonium.world.wild_dungeons import find_nearest_city
     return {
         "id": "event_horizon",
         "name": EVENT_HORIZON_NAME,
@@ -2129,10 +2122,10 @@ def event_horizon_site(player):
 
 def build_journey_to_site(player):
     """City route + off-road leg to the distortion (mirrors wild journeys)."""
+    from pandemonium.world.wild_dungeons import build_journey_to_dungeon
     site = event_horizon_site(player)
     if site is None:
         return None
-    from pandemonium.world.wild_dungeons import build_journey_to_dungeon
     return build_journey_to_dungeon(player, site, to="horizon")
 
 

@@ -9,6 +9,11 @@ from pandemonium.gui.theme import Theme
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog, ok_dialog
 
 from pandemonium.core.version import VERSION_LABEL
+from pandemonium.gui.screens.settings_screen import SettingsScreen
+from pandemonium.gui.screens.changelog_screen import ChangelogScreen
+from pandemonium.core.save_load import list_save_details, load_game, delete_save
+from pandemonium.core.character import ensure_player_fields
+import pandemonium.progression.karma as karma
 
 
 class MainMenuScreen(BaseScreen):
@@ -107,11 +112,9 @@ class MainMenuScreen(BaseScreen):
         )
 
     def _on_settings(self):
-        from pandemonium.gui.screens.settings_screen import SettingsScreen
         self.sm.switch_to(SettingsScreen, push_history=True)
 
     def _on_changelog(self):
-        from pandemonium.gui.screens.changelog_screen import ChangelogScreen
         self.sm.switch_to(ChangelogScreen, push_history=True)
 
     # ── Save browser (combined Load / Delete) ─────────────────────────────────
@@ -123,8 +126,6 @@ class MainMenuScreen(BaseScreen):
         got squeezed once more than ~4 saves existed.  Every action asks for
         confirmation, and cancelling backs out of the pending action.
         """
-        from pandemonium.core.save_load import list_save_details, load_game, delete_save
-        from pandemonium.core.character import ensure_player_fields
         from pandemonium.gui.screens.city_screen import CityScreen
 
         if not list_save_details():
@@ -240,7 +241,6 @@ class MainMenuScreen(BaseScreen):
                     return
                 _close()
                 ensure_player_fields(player)
-                import pandemonium.progression.karma as karma
                 karma.mark_city_arrival(player)
                 self.sm.player = player
                 self.sm.log(f"Loaded {player['name']} — {player['race']} {player['class']}")

@@ -215,6 +215,7 @@ def _punish(actor):
 
 def _retribution(actor):
     """Debt Collected: consume all Prescript Debt."""
+    from pandemonium.combat.status_effects import try_consume_death_ward
     actor["prescript_karma_stacks"] = 0
     _refresh_karma_debuff(actor)
     dmg = int(_actor_max_hp(actor) * KARMA_BURST_PCT) + KARMA_BURST_FLAT
@@ -226,7 +227,6 @@ def _retribution(actor):
     c_print(f"  📜 DEBT COLLECTED — the ledger collects its due! "
             f"{_label(actor)} takes {dmg} damage{suffix}.")
     if actor.get("current_hp", 0) <= 0:
-        from pandemonium.combat.status_effects import try_consume_death_ward
         if try_consume_death_ward(actor):
             if not actor.pop("_eh_emperor_saved", False):
                 c_print(f"  {_label(actor)}'s Undying Vow flares — survival at 1 HP!")
@@ -304,12 +304,12 @@ def _has_skill_action(actor, is_player):
     """Feasibility gate: does the actor's current kit have a usable skill action?"""
     from pandemonium.combat.weapon.black_silence_gloves import _actor_has_black_silence_gloves
     from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush
+    from pandemonium.combat.skills import get_available_skills
+    from pandemonium.combat.ally_skills import get_usable_skills_in_combat
     if _actor_has_black_silence_gloves(actor) or _actor_has_palette_brush(actor):
         return True
     if is_player:
-        from pandemonium.combat.skills import get_available_skills
         return bool(get_available_skills(actor))
-    from pandemonium.combat.ally_skills import get_usable_skills_in_combat
     return bool(get_usable_skills_in_combat(actor))
 
 

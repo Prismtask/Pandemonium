@@ -15,6 +15,7 @@ from pandemonium.resources.family_scenes import (
     written_action_lines_for, written_ending_lines_for,
 )
 from pandemonium.progression.family import apply_sleep_outcome, get_content_level, get_preferred_tones
+from pandemonium.resources.enemies import ENEMIES
 
 
 def _attunement_bar(value, width=MAX_ATTUNEMENT):
@@ -24,7 +25,6 @@ def _attunement_bar(value, width=MAX_ATTUNEMENT):
 
 def run_sleep_sharing(player, girl, term, rng=None, content_level=None):
     """Play one Shared Night (Attunement) and apply its outcome."""
-    from pandemonium.resources.enemies import ENEMIES
 
     rng = rng or __import__("random")
     template = ENEMIES.get(girl.get("key"), {}) or {}

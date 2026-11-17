@@ -8,6 +8,12 @@ from pandemonium.resources.enemies import ENEMIES, BIOME_RACES
 from pandemonium.world.city_dialogue import service_dialogue
 from pandemonium.core.events import format_day_delta
 from pandemonium.gui.terminal import term
+from pandemonium.progression.titles import check_unlock
+from pandemonium.resources.items import build_item
+from pandemonium.resources.item_generation import pick_equipment_id, player_biome
+from pandemonium.resources.items import is_unique_item
+from pandemonium.resources.skill_loader import PROFESSIONS
+from pandemonium.progression.titles import mod as _title_mod
 
 
 def generate_bounties(player, city_id):
@@ -168,7 +174,6 @@ def _record_bounty_completion(player, bounty):
     counted_high = _bounty_target_level(bounty) >= HIGH_BOUNTY_LEVEL
     if counted_high:
         player["high_bounties_completed"] = player.get("high_bounties_completed", 0) + 1
-    from pandemonium.progression.titles import check_unlock
     check_unlock(player)
     return (player["bounties_completed"],
             player.get("high_bounties_completed", 0),
@@ -262,9 +267,9 @@ def _view_bestiary(player, city_id):
 def _ascend_level_cap(player, city_id):
     """Guild ceremony to increase the player's level cap."""
     from pandemonium.progression.leveling import (
-        can_ascend_level_cap, get_next_level_cap, get_incomplete_biomes,
-        get_biomes_cleared_to_cap, get_required_biomes_for_cap
-    )
+            can_ascend_level_cap, get_next_level_cap, get_incomplete_biomes,
+            get_biomes_cleared_to_cap, get_required_biomes_for_cap
+        )
 
     current_cap = player.get("level_cap", 10)
     next_cap = get_next_level_cap(current_cap)
@@ -318,6 +323,7 @@ def _legendary_rewards(player, city_id):
 
     Three entries, each claimable once, each with its own requirement.
     """
+    from pandemonium.inventory.core import add_item_to_inventory
     term.clear()
     term.print("=== GUILD LEGACY REWARDS ===")
     term.print("The Guild Master unrolls a ledger older than the guild itself.")
@@ -381,8 +387,6 @@ def _legendary_rewards(player, city_id):
         return
     claim = claims[choice]
 
-    from pandemonium.resources.items import build_item
-    from pandemonium.inventory.core import add_item_to_inventory
 
     if claim == "sky":
         if sky_progress < sky_required:
@@ -421,14 +425,13 @@ def _legendary_rewards(player, city_id):
 
 def _legendary_moon_claim(player, moon_required, moon_progress):
     """Claim the Moonlight Greatsword from the Guild's legacy ledger."""
+    from pandemonium.inventory.core import add_item_to_inventory
     if moon_progress < moon_required:
         term.print("")
         term.print("*** CLAIM REJECTED ***")
         term.print(f"The ledger is incomplete. Defeat {moon_required - moon_progress} more different Super Bosses.")
         term.pause()
         return
-    from pandemonium.resources.items import build_item
-    from pandemonium.inventory.core import add_item_to_inventory
     item = build_item("moonlight_greatsword", "unique")
     add_item_to_inventory(player, item)
     player["moonlight_greatsword_claimed"] = True
@@ -441,15 +444,14 @@ def _legendary_moon_claim(player, moon_required, moon_progress):
 
 def _traveling_merchant(player, city_id):
     """Market Day event: a traveling merchant sells wares inside the guild hall."""
-    from pandemonium.facilities.travel_events import (
-        _merchant_stock_rarity, _merchant_price,
-        _charisma_discount, _item_stat_line,
-    )
     from pandemonium.resources.items import build_item, soften_rarity
-    from pandemonium.resources.item_generation import pick_equipment_id, player_biome
+    from pandemonium.facilities.travel_events import (
+            _merchant_stock_rarity, _merchant_price,
+            _charisma_discount, _item_stat_line,
+        )
     from pandemonium.resources.trade_goods import (
-        roll_cargo_good, build_cargo, cargo_merchant_stock_price,
-    )
+            roll_cargo_good, build_cargo, cargo_merchant_stock_price,
+        )
     from pandemonium.inventory.core import add_item_to_inventory
 
     term.clear()
@@ -534,7 +536,6 @@ def _merchant_sell(player, city_id=None):
     from pandemonium.resources.trade_goods import cargo_merchant_sell_price
     from pandemonium.inventory.core import remove_item_by_reference, is_sellable_item
     from pandemonium.combat.weapon.wedding_specials import is_wedding_item_soulbound
-    from pandemonium.resources.items import is_unique_item
 
     inv = player.get("inventory", [])
     if not inv:
@@ -594,6 +595,8 @@ def _merchant_sell(player, city_id=None):
 
 
 def guild_service(player, city_id="solmere"):
+    from pandemonium.progression.leveling import can_ascend_level_cap
+    from pandemonium.combat.skills import can_choose_profession
     term.clear()
     
     if "active_bounties" not in player:
@@ -622,7 +625,6 @@ def guild_service(player, city_id="solmere"):
         else:
             term.print(f"Gold: {player.get('gold', 0)}")
         
-        from pandemonium.progression.leveling import can_ascend_level_cap
         can_ascend = can_ascend_level_cap(player)
         if can_ascend:
             term.print("\n  🌟 ASCENSION READY! Your power yearns to break through!")
@@ -639,7 +641,6 @@ def guild_service(player, city_id="solmere"):
             "Legendary Rewards",
         ]
         action_keys = ["bounty", "manage", "bestiary", "ascend", "legendary"]
-        from pandemonium.combat.skills import can_choose_profession
         if can_choose_profession(player):
             options.append("Choose Profession (permanent)")
             action_keys.append("profession")
@@ -674,7 +675,6 @@ def guild_service(player, city_id="solmere"):
 
 def _choose_profession(player, city_id):
     """One-time, permanent profession ceremony (capstone required)."""
-    from pandemonium.resources.skill_loader import PROFESSIONS
     from pandemonium.combat.skills import unlock_skills_for_level
     cls = player.get("class")
     branches = PROFESSIONS.get(cls, {})
@@ -818,7 +818,6 @@ def _manage_bounties(player, city_id):
             else:
                 gold_reward = int(b.get("reward_gold", 0) or 0)
                 # Deed titles: Contracted improves all bounty payouts.
-                from pandemonium.progression.titles import mod as _title_mod
                 _bounty_bonus = _title_mod(player, "bounty_gold_pct")
                 if _bounty_bonus:
                     gold_reward = int(round(gold_reward * (1.0 + _bounty_bonus)))

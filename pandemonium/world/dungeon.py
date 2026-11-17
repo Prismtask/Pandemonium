@@ -77,6 +77,15 @@ from pandemonium.world.wonderland_curses import (
     get_shadow_healing_reduction,
     get_shadow_gold_reduction,
 )
+from pandemonium.resources.item_generation import pick_flower_id
+from pandemonium.core.events import get_daily_bonus_multiplier
+from pandemonium.progression.titles import apply_gold_find
+from pandemonium.progression.titles import check_unlock
+from pandemonium.combat import hallucination as _hallucination
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.core.time_blocks import get_day_phase
+from pandemonium.resources.races_classes import ATTRIBUTES
+import random as _random
 
 def get_random_enemy_key(floor, boss=False, region=None, player=None,
                          band_lo=None, role=None):
@@ -304,6 +313,7 @@ def generate_floor(floor, region=None, player=None):
     
     If player is provided, bounty-target enemies receive extra spawn weight.
     """
+    from pandemonium.combat.ally import get_active_limit
     rooms = []
     max_enemies = min(5, floor)
 
@@ -311,7 +321,6 @@ def generate_floor(floor, region=None, player=None):
     # player could previously field do encounters scale down to match —
     # a reduced company shouldn't face the same crowds as a full one.
     if player is not None:
-        from pandemonium.combat.ally import get_active_limit
         owned = len(player.get("allies", []))
         fieldable_now = 1 + min(get_active_limit(player), owned)
         fieldable_old = 1 + min(3, owned)          # historical fixed caps
@@ -419,9 +428,9 @@ _CONSUMABLE_TIERS = {
 
 def _enemy_attack_element(enemy_key):
     """The single element an enemy attacks with (None when neutral)."""
+    from pandemonium.combat.elemental import compute_enemy_elemental, get_damage_element
     if not enemy_key:
         return None
-    from pandemonium.combat.elemental import compute_enemy_elemental, get_damage_element
     _res, dmg = compute_enemy_elemental({"key": enemy_key})
     return get_damage_element(dmg)
 
@@ -442,7 +451,6 @@ def roll_drop(enemy_level, pandemonium=False, biome=None, enemy_element=None):
 
     # Tempering flower (farming route for flower infusions)
     if random.random() < 0.12:
-        from pandemonium.resources.item_generation import pick_flower_id
         return (pick_flower_id(biome, enemy_element=enemy_element), "common")
 
     # 60% equipment, 40% consumable
@@ -542,13 +550,13 @@ def roll_gold_drop(enemy_key, is_boss=False, pandemonium=False, player=None):
 
 
 def add_drop_to_inventory(player, enemy_level, pandemonium=False, enemy_element=None):
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     drop = roll_drop(enemy_level, pandemonium=pandemonium,
                      biome=dungeon_biome(player), enemy_element=enemy_element)
     if drop:
         item_id, rarity = drop
         item = build_item(item_id, rarity)
         _tprint(f"An enemy drops: {item['name']} [{rarity}]!")
-        from pandemonium.inventory.legacy_ui import prompt_acquire_item
         if prompt_acquire_item(player, item):
             _tprint(f"You acquired the {item['name']}!")
         return True
@@ -570,11 +578,9 @@ def add_gold_drop(player, enemy_key, pandemonium=False):
         gold = max(1, int(gold * (1.0 - shadow_gold_reduce)))
     
     # Daily events: Lucky Day / Full Moon gold bonus
-    from pandemonium.core.events import get_daily_bonus_multiplier
     gold = int(gold * get_daily_bonus_multiplier(player, "gold_bonus"))
 
     # Deed titles: Pathfinder/Delver boost dungeon gold.
-    from pandemonium.progression.titles import apply_gold_find
     gold = apply_gold_find(player, gold)
 
     player["gold"] = player.get("gold", 0) + gold
@@ -594,14 +600,13 @@ _WL_SUPERBOSS_MAP = {
 
 def _record_superboss_defeat(player, boss_id):
     """Track distinct superboss kills (used by guild legacy rewards + bestiary)."""
+    from pandemonium.progression.bestiary import record_defeat
     kills = player.setdefault("defeated_superbosses", [])
     if boss_id not in kills:
         kills.append(boss_id)
     # The combat loop normally logs the boss on death; this covers paths where
     # the kill happened outside the standard pruning points (and old saves).
-    from pandemonium.progression.bestiary import record_defeat
     record_defeat(player, boss_id, once=True)
-    from pandemonium.progression.titles import check_unlock
     check_unlock(player)
 
 
@@ -690,6 +695,8 @@ def _wonderland_superboss_dispatch(player, floor, superboss_override):
     Returns:
         "victory" | "dead" | "fled" (fled restarts the fight)
     """
+    import pandemonium.world.wonderland_guests as wonderland_guests
+    from pandemonium.inventory.core import add_item_to_inventory
     entry = _WL_SUPERBOSS_MAP.get(floor)
     if entry is None:
         _tprint(f"\n  ERROR: No Wonderland superboss defined for floor {floor}.")
@@ -732,7 +739,6 @@ def _wonderland_superboss_dispatch(player, floor, superboss_override):
                 player[flag] = True
 
             # Guest pacing: close the heroine chapter (or mark it late).
-            import pandemonium.world.wonderland_guests as wonderland_guests
             wonderland_guests.on_boss_defeated(player, {
                 10: "queen_of_hearts",
                 20: "big_bad_wolf",
@@ -764,7 +770,6 @@ def _wonderland_superboss_dispatch(player, floor, superboss_override):
                 super_boss_exp = int(super_boss_exp * 1.5)
                 _tprint("\n  Pandemonium surges — the reward is amplified!")
             # Daily events: Lucky Day / Full Moon gold bonus
-            from pandemonium.core.events import get_daily_bonus_multiplier
             super_boss_gold = int(super_boss_gold * get_daily_bonus_multiplier(player, "gold_bonus"))
             player["gold"] = player.get("gold", 0) + super_boss_gold
             _tprint(f"\n  {boss_name} defeated! Bonus: +{super_boss_gold} gold, +{super_boss_exp} XP!")
@@ -777,7 +782,6 @@ def _wonderland_superboss_dispatch(player, floor, superboss_override):
             # Guard: only award loot once per save per floor
             loot_flag = f"wl_floor_looted_{floor}"
             if not player.get(loot_flag):
-                from pandemonium.inventory.core import add_item_to_inventory
                 wl_drop_map = {
                     10: "rose_tinted_crown",
                     20: "crimson_hood_scrap",
@@ -942,13 +946,13 @@ def _advance_city_floor(player, city_id, city_prog, next_floor):
 
 def _grant_glass_anchor(player):
     """Grant the Glass Anchor key item if the player doesn't already have it."""
+    from pandemonium.inventory.core import add_item_to_inventory
     inv = player.get("inventory", [])
     already_has = any(item.get("id") == "glass_anchor" for item in inv)
     if already_has:
         return
 
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.core import add_item_to_inventory
 
     anchor = build_item("glass_anchor", rarity="legendary")
     added = add_item_to_inventory(player, anchor)
@@ -967,12 +971,12 @@ def _grant_glass_anchor(player):
 
 def _grant_celestial_sigil(player, announce=True):
     """Grant the Celestial Sigil once the player has reached Floor 30."""
+    from pandemonium.inventory.core import add_item_to_inventory
     if any(item.get("id") == "celestial_sigil"
            for item in player.get("inventory", [])):
         return False
 
     from pandemonium.resources.items import build_item
-    from pandemonium.inventory.core import add_item_to_inventory
 
     sigil = build_item("celestial_sigil", rarity="epic")
     if not add_item_to_inventory(player, sigil):
@@ -1007,6 +1011,7 @@ def _explore_wild_dungeon(player, combat_override=None, superboss_override=None,
                       a display summary for the completion dialog
     "save_exit" / "timeout" – interrupted runs
     """
+    from pandemonium.facilities.arcane_tower import consume_arcane_blessing_room
     dungeon_id = player.get("wild_dungeon_id")
     dungeon = get_wild_dungeon(player, dungeon_id)
     if dungeon is None:
@@ -1106,12 +1111,10 @@ def _explore_wild_dungeon(player, combat_override=None, superboss_override=None,
 
             # Arcane blessing room consumption + 1 hour per room (mirrors
             # the city-floor loop)
-            from pandemonium.facilities.arcane_tower import consume_arcane_blessing_room
             consume_arcane_blessing_room(player)
             advance_time(player, 60)
 
             # ── Fatigue hallucination (§5): a solo illusion may interrupt ──
-            from pandemonium.combat import hallucination as _hallucination
             if _hallucination.should_trigger(player, room):
                 _hall_result = _hallucination.run_encounter(
                     player, floor=level, room_num=i + 1,
@@ -1341,6 +1344,7 @@ def _wild_mark_attempted(player, dungeon_id):
 
 def _wild_room_victory_rewards(player, room):
     """Post-combat rewards for one wild room (mirrors the city room loop)."""
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
     _tprint("\n--- Room Victory Rewards ---")
     for enemy_key in room["enemies"]:
         enemy_level = ENEMIES[enemy_key]["level"]
@@ -1372,7 +1376,6 @@ def _wild_room_victory_rewards(player, room):
             _tprint(f"  {display_name(ally)} recovers {ally_heal} HP.")
 
     # Wedding end-of-combat rewards
-    from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
     apply_wedding_combat_end(player, victory=True)
 
 
@@ -1429,6 +1432,7 @@ def _wild_crumble_exit(player):
 
 def _wild_victory(player, dungeon_id, dungeon):
     """Grant gold/XP + the previewed reward pool; mark the ruin conquered."""
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     name = dungeon.get("name", "Wild Dungeon")
     level = max(1, int(dungeon.get("level", 1) or 1))
     total_floors = max(1, int(dungeon.get("total_floors", 1) or 1))
@@ -1438,10 +1442,8 @@ def _wild_victory(player, dungeon_id, dungeon):
     _tprint("=" * 50)
 
     # ── Gold + XP (scaled to level × floors; daily gold bonus applies) ──
-    from pandemonium.core.events import get_daily_bonus_multiplier
     gold = int(level * total_floors * 25
                * get_daily_bonus_multiplier(player, "gold_bonus"))
-    from pandemonium.progression.titles import apply_gold_find
     gold = apply_gold_find(player, gold)
     exp = level * total_floors * 40
     player["gold"] = player.get("gold", 0) + gold
@@ -1452,7 +1454,6 @@ def _wild_victory(player, dungeon_id, dungeon):
     _tprint(f"\n  +{gold} gold  |  +{exp} XP to you and your allies")
 
     # ── Claim the previewed reward pool ─────────────────────────────────
-    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     obtained = []
     for entry in dungeon.get("reward_pool", []):
         item_id = entry.get("item_id")
@@ -1512,10 +1513,10 @@ def _eh_reset_combat_state(player):
     Tarnished Jade curse/pins, glove cycle, Crystal Atelier dodge — into the
     suspended run's save (found in the 2026-10-07 playtest save).
     """
+    from pandemonium.combat.combat_engine import clear_battle_scoped_state
     end_pandemonium_run(player)
     player["cutlass_high_tide_stacks"] = 0
     player.pop("cutlass_high_tide_floor", None)
-    from pandemonium.combat.combat_engine import clear_battle_scoped_state
     clear_battle_scoped_state(player)
 
 
@@ -1623,7 +1624,6 @@ def _eh_refresh_hud(player):
     widgets (returning "" — nothing is written to the log); without a GUI
     the text is printed like a map/party render would be.
     """
-    import pandemonium.world.dungeon_rooms as dungeon_rooms
     party_str = dungeon_rooms.render_party_status(player)
     if party_str:
         _tprint(party_str)
@@ -1641,6 +1641,7 @@ def _explore_event_horizon(player, combat_override=None, superboss_override=None
     """
     import pandemonium.world.event_horizon as eh
     import pandemonium.world.event_horizon_rooms as ehr
+    from pandemonium.facilities.arcane_tower import consume_arcane_blessing_room
 
     state = eh.ensure_eh_state(player)
     if not state.get("run_active"):
@@ -1682,7 +1683,6 @@ def _explore_event_horizon(player, combat_override=None, superboss_override=None
         _tpause("Press Enter to enter the room...")
 
         # Arcane blessing room consumption + 1 hour per room (city-loop parity)
-        from pandemonium.facilities.arcane_tower import consume_arcane_blessing_room
         consume_arcane_blessing_room(player)
         advance_time(player, 60)
 
@@ -1791,7 +1791,6 @@ def _map_boss_arena_exit(player, result, site, snapshot):
     before the time commit, the commit may roll the season, and only then is
     the next Echo created (never two Wardens for one boundary).
     """
-    import pandemonium.core.time_blocks as time_blocks
     import pandemonium.world.map_boss as map_boss
 
     rounds = max(0, int(player.pop("_map_boss_rounds", 0) or 0))
@@ -1800,7 +1799,6 @@ def _map_boss_arena_exit(player, result, site, snapshot):
     kill_blocks = player.get("_map_boss_clock_blocks")
     night_kill = False
     if kill_blocks is not None:
-        from pandemonium.core.time_blocks import get_day_phase
         night_kill = get_day_phase(int(kill_blocks)) == "night"
 
     # ── 1–3: resolve the fight before any time passes ──────────────────
@@ -1837,7 +1835,6 @@ def _map_boss_arena_exit(player, result, site, snapshot):
     # ── 7: save + scrub ────────────────────────────────────────────────
     _map_boss_scrub(player)
     try:
-        from pandemonium.core.save_load import save_game
         save_game(player)
     except Exception:
         pass
@@ -1854,6 +1851,7 @@ def _explore_map_boss_arena(player, combat_override=None, superboss_override=Non
     redirected console I/O used by the dungeon thread.
     """
     import pandemonium.world.map_boss as map_boss
+    from pandemonium.combat.map_boss import build_encounter, combat_map_boss
 
     site = map_boss.get_active_boss(player)
     if not site:
@@ -1862,7 +1860,6 @@ def _explore_map_boss_arena(player, combat_override=None, superboss_override=Non
             player["location"] = player.get("origin_city", "solmere")
         return MAP_BOSS_ARENA_SEALED
 
-    from pandemonium.combat.map_boss import build_encounter, combat_map_boss
 
     enemies = build_encounter(site)
     player["_map_boss_in_fight"] = True
@@ -1906,6 +1903,10 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
             CombatScreen); without it the fight runs on redirected console
             I/O inside the dungeon thread.
     """
+    from pandemonium.progression.leveling import check_level_cap_milestone
+    from pandemonium.combat.superboss.white_knight import combat_white_knight
+    from pandemonium.facilities.arcane_tower import consume_arcane_blessing_room
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
     # ── Wild dungeons: dedicated loop (docs/wild_dungeon_design.md §4) ────
     if player.get("wild_dungeon_id"):
         return _explore_wild_dungeon(player, combat_override, superboss_override,
@@ -1958,7 +1959,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
             next_floor = floor + 1
             old_max = _advance_city_floor(player, origin_city, city_prog, next_floor)
             if city_prog["max_floor"] > old_max:
-                from pandemonium.progression.leveling import check_level_cap_milestone
                 check_level_cap_milestone(player, origin_city)
             player["current_hp"] = player_max_hp(player)
             save_game(player)
@@ -1993,7 +1993,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                         super_boss_gold = int(super_boss_gold * 2.5)
                         super_boss_exp = int(super_boss_exp * 1.5)
                     # Daily events: Lucky Day / Full Moon gold bonus
-                    from pandemonium.core.events import get_daily_bonus_multiplier
                     super_boss_gold = int(super_boss_gold * get_daily_bonus_multiplier(player, "gold_bonus"))
                     player["gold"] = player.get("gold", 0) + super_boss_gold
                     _tprint(f"\n Chrysalis defeated! Bonus: +{super_boss_gold} gold, +{super_boss_exp} XP!")
@@ -2007,7 +2006,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                         player, origin_city, city_prog, next_floor)
 
                     if city_prog["max_floor"] > old_max:
-                        from pandemonium.progression.leveling import check_level_cap_milestone
                         check_level_cap_milestone(player, origin_city)
 
                     player["current_hp"] = player_max_hp(player)
@@ -2041,7 +2039,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                 if superboss_override:
                     result = superboss_override("white_knight", floor)
                 else:
-                    from pandemonium.combat.superboss.white_knight import combat_white_knight
                     result = combat_white_knight(player, floor)
 
                 if result == "victory":
@@ -2053,7 +2050,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                         super_boss_gold = int(super_boss_gold * 2.5)
                         super_boss_exp = int(super_boss_exp * 1.5)
                     # Daily events: Lucky Day / Full Moon gold bonus
-                    from pandemonium.core.events import get_daily_bonus_multiplier
                     super_boss_gold = int(super_boss_gold * get_daily_bonus_multiplier(player, "gold_bonus"))
                     player["gold"] = player.get("gold", 0) + super_boss_gold
                     _tprint(f"\n The White Knight is laid to rest! Bonus: +{super_boss_gold} gold, +{super_boss_exp} XP!")
@@ -2067,7 +2063,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                         player, origin_city, city_prog, next_floor)
 
                     if city_prog["max_floor"] > old_max:
-                        from pandemonium.progression.leveling import check_level_cap_milestone
                         check_level_cap_milestone(player, origin_city)
 
                     player["current_hp"] = player_max_hp(player)
@@ -2187,7 +2182,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                     super_boss_exp = int(super_boss_exp * 1.5)
                     _tprint("\n  Pandemonium surges — the reward is amplified!")
                 # Daily events: Lucky Day / Full Moon gold bonus
-                from pandemonium.core.events import get_daily_bonus_multiplier
                 super_boss_gold = int(super_boss_gold * get_daily_bonus_multiplier(player, "gold_bonus"))
                 player["gold"] = player.get("gold", 0) + super_boss_gold
                 _tprint(f"\n Super Boss Defeated! Bonus: +{super_boss_gold} gold, +{super_boss_exp} XP!")
@@ -2202,7 +2196,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                     player, origin_city, city_prog, next_floor)
 
                 if city_prog["max_floor"] > old_max:
-                    from pandemonium.progression.leveling import check_level_cap_milestone
                     check_level_cap_milestone(player, origin_city)
 
                 # Full heal and save
@@ -2393,8 +2386,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
         if region == "wonderland":
             boost_val = get_curiosity_boost_value(player)
             if boost_val > 0:
-                from pandemonium.resources.races_classes import ATTRIBUTES
-                import random as _random
                 pool = [player] + [a for a in player.get("allies", []) if a.get("current_hp", 0) > 0]
                 if pool:
                     target = _random.choice(pool)
@@ -2424,7 +2415,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
         if region == "wonderland":
             madness_penalty = get_shadow_stat_penalty(player)
             if madness_penalty > 0:
-                from pandemonium.resources.races_classes import ATTRIBUTES
                 pool = [player] + [a for a in player.get("allies", []) if a.get("current_hp", 0) > 0]
                 if pool:
                     target = random.choice(pool)
@@ -2438,14 +2428,12 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                     _tprint(f"\n  🎭 Madness clouds {target['name']}'s mind — -{int(madness_penalty)} {stat} for this room!")
 
         # ── Arcane Blessing room consumption ─────────────────────────────
-        from pandemonium.facilities.arcane_tower import consume_arcane_blessing_room
         consume_arcane_blessing_room(player)
 
         # Advance time by 1 hour per room
         advance_time(player, 60)
 
         # ── Fatigue hallucination (§5): a solo illusion may interrupt the room
-        from pandemonium.combat import hallucination as _hallucination
         if _hallucination.should_trigger(player, room):
             _hall_result = _hallucination.run_encounter(
                 player, floor=floor, room_num=i + 1,
@@ -2542,7 +2530,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                             _tprint(f"  {display_name(ally)} recovers {ally_heal} HP.")
 
                     # Wedding end-of-combat rewards
-                    from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
                     apply_wedding_combat_end(player, victory=True)
 
                     break
@@ -2750,7 +2737,6 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
     old_max = _advance_city_floor(player, origin_city, city_prog, next_floor)
 
     if city_prog["max_floor"] > old_max:
-        from pandemonium.progression.leveling import check_level_cap_milestone
         check_level_cap_milestone(player, origin_city)
 
     # ── Isle of Glass Floor 10: guaranteed Glass Anchor key item ─────────

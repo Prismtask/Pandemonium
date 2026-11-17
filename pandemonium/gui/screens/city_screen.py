@@ -22,6 +22,24 @@ from pandemonium.core.save_load import save_game
 from pandemonium.core.utils import display_name
 from pandemonium.core.events import format_date, get_event_queue_events
 from pandemonium.combat.combat_ui import _get_entity_buff_tags
+import random as _random
+from pandemonium.resources.city_maps import CITY_SERVICE_POSITIONS
+from pandemonium.gui.widgets.city_map import CityMapWidget
+from pandemonium.core.time_blocks import is_service_open
+from pandemonium.facilities.house import HOUSE_LEVELS, _pending_income
+from pandemonium.core.events import format_event_alert
+from pandemonium.gui.widgets.event_dialog import show_event_notice
+import random
+from pandemonium.combat import city_guards
+from pandemonium.progression.titles import format_name as _format_title_name
+from pandemonium.gui.screens.base_screen import city_header_parts
+from pandemonium.progression.karma_dialogue import title_line
+import pandemonium.core.time_blocks as time_blocks
+from pandemonium.facilities.house import house_menu
+from pandemonium.resources.house_stories import get_part
+from pandemonium.world.curse_pandemonium import end_pandemonium_run
+from pandemonium.core.time_blocks import format_block_track
+from pandemonium.gui.screens.settings_screen import SettingsScreen
 
 
 # The hero card is laid out for a full 8-actor party. Each member box uses
@@ -68,6 +86,7 @@ class CityScreen(BaseScreen):
     """The city hub — main navigation screen between dungeon runs."""
 
     def build_ui(self):
+        from pandemonium.world.city_dialogue import get_city_dialogues
         self._refresh_city_id()
         self.sm.clear_history()
         self._update_top_bar()
@@ -104,10 +123,8 @@ class CityScreen(BaseScreen):
             ).pack(pady=(0, 6))
 
         # ── Receptionist dialogue ─────────────────────────────────────────
-        from pandemonium.world.city_dialogue import get_city_dialogues
         receptionist_lines = get_city_dialogues(self.city_id, "receptionist").get("enter", [])
         if receptionist_lines:
-            import random as _random
             dialogue = service_line(self.player, "receptionist", self.city_id)
             if not dialogue:
                 dialogue = _random.choice(receptionist_lines)
@@ -128,11 +145,8 @@ class CityScreen(BaseScreen):
             self._build_hero_card()
 
         # ── City Map (clickable ASCII art) ─────────────────────────────────────
-        from pandemonium.resources.city_maps import CITY_SERVICE_POSITIONS
-        from pandemonium.gui.widgets.city_map import CityMapWidget
 
         positions = CITY_SERVICE_POSITIONS.get(self.city_id, {})
-        from pandemonium.core.time_blocks import is_service_open
         closed_services = [
             svc for svc in positions
             if svc != "dungeon"
@@ -158,7 +172,6 @@ class CityScreen(BaseScreen):
         has_house = self.city_id in self.player.get("houses", {})
         if has_house:
             house_data = self.player["houses"][self.city_id]
-            from pandemonium.facilities.house import HOUSE_LEVELS, _pending_income
             lvl_name = HOUSE_LEVELS[house_data["level"]]["name"]
             pending = _pending_income(self.player, self.city_id, house_data)
             house_text = f"🏠 Your House ({lvl_name})"
@@ -210,7 +223,6 @@ class CityScreen(BaseScreen):
         key = event.char
         # Number keys 1-9 → services (cycle through position keys)
         if key and key in "123456789":
-            from pandemonium.resources.city_maps import CITY_SERVICE_POSITIONS
             positions = CITY_SERVICE_POSITIONS.get(self.city_id, {})
             svc_keys = [k for k in positions.keys() if k != "dungeon"]
             idx = int(key) - 1
@@ -244,7 +256,6 @@ class CityScreen(BaseScreen):
 
         # Refresh the map widget if it exists
         if hasattr(self, 'city_map') and self.city_map.winfo_exists():
-            from pandemonium.resources.city_maps import CITY_SERVICE_POSITIONS
             positions = CITY_SERVICE_POSITIONS.get(self.city_id, {})
             self.city_map.refresh(self.city_id, self.city, positions)
 
@@ -274,10 +285,8 @@ class CityScreen(BaseScreen):
         events = get_event_queue_events(self.player)
         if not events:
             return
-        from pandemonium.core.events import format_event_alert
         for evt in events:
             self.sm.log(format_event_alert(evt), category="event")
-        from pandemonium.gui.widgets.event_dialog import show_event_notice
         show_event_notice(
             events,
             day_text=format_date(self.player),
@@ -376,6 +385,7 @@ class CityScreen(BaseScreen):
             self._refresh_hero_card()
 
     def _gate_pay(self, response):
+        from pandemonium.combat.city_guards import resolve_gate
         fee = int(response["fee"])
         p = self.player
         if int(p.get("gold", 0) or 0) < fee:
@@ -384,7 +394,6 @@ class CityScreen(BaseScreen):
             return
 
         p["gold"] = int(p.get("gold", 0) or 0) - fee
-        from pandemonium.combat.city_guards import resolve_gate
         warning = response["tier"] == "warning"
         resolve_gate(p, self.city_id, days=1 if warning else 3, warning=warning)
         self.sm.log(
@@ -396,9 +405,9 @@ class CityScreen(BaseScreen):
         self._resume_arrival()
 
     def _gate_talk(self, response):
-        import random
-        from pandemonium.combat.stats import compute_player_stats
 
+        from pandemonium.combat.stats import compute_player_stats
+        from pandemonium.combat.city_guards import resolve_gate
         p = self.player
         cha = compute_player_stats(p)[5]
         dc = karma.get_gate_talkdown_dc(p)
@@ -417,7 +426,6 @@ class CityScreen(BaseScreen):
                 )
                 return
             p["gold"] = int(p.get("gold", 0) or 0) - fee
-            from pandemonium.combat.city_guards import resolve_gate
             resolve_gate(p, self.city_id, days=3)
             self.sm.log(
                 f"Talk-down: {roll} + {cha} = {total} vs DC {dc} — success. "
@@ -446,9 +454,9 @@ class CityScreen(BaseScreen):
         self.sm.log(msg)
 
     def _gate_fight(self, response):
+
         from pandemonium.combat.city_guards import spawn_city_guards
         from pandemonium.gui.screens.combat_screen import CombatScreen
-
         enemies = spawn_city_guards(self.player, response["tier"])
         self.sm.log("The guards draw steel.")
         self.sm.switch_to(
@@ -460,14 +468,14 @@ class CityScreen(BaseScreen):
         )
 
     def _gate_turn_away(self):
-        from pandemonium.gui.screens.world_map_screen import WorldMapScreen
 
+        from pandemonium.gui.screens.world_map_screen import WorldMapScreen
         self.sm.switch_to(WorldMapScreen, travel_mode=True)
         self.sm.log("You turn away from the gate. The road is still open.")
 
     def _after_city_guard_combat(self, result):
         """Resolve a non-lethal gate fight without ever showing DeathScreen."""
-        from pandemonium.combat import city_guards
+        from pandemonium.gui.screens.world_map_screen import WorldMapScreen
         from pandemonium.gui.screens.city_screen import CityScreen
 
         if result == "victory":
@@ -485,7 +493,6 @@ class CityScreen(BaseScreen):
             return
         if result == "fled":
             city_guards.city_guard_flee(self.player, self.city_id)
-            from pandemonium.gui.screens.world_map_screen import WorldMapScreen
             self.sm.switch_to(WorldMapScreen, travel_mode=True)
             self.sm.log("You slip away from the gate. The watch will remember.")
             return
@@ -502,7 +509,7 @@ class CityScreen(BaseScreen):
         player['party_order'] (front row ↔ bench). The player card is fixed.
         """
         from pandemonium.combat.ally import (ensure_party_order, get_all_active_allies_including_defeated,
-                                 get_all_reserve_allies_including_defeated)
+                                         get_all_reserve_allies_including_defeated)
         p = self.player
         ensure_party_order(p)
         front_allies = get_all_active_allies_including_defeated(p)
@@ -536,7 +543,6 @@ class CityScreen(BaseScreen):
         card = self._hero_card  # alias for local use below
 
         # ── Collect all party members in order ─────────────────────────────
-        from pandemonium.progression.titles import format_name as _format_title_name
         members = []
         # Player (always first, FRONT)
         members.append({
@@ -867,7 +873,6 @@ class CityScreen(BaseScreen):
     def _update_top_bar(self):
         # Priority-driven header (see base_screen.city_header_parts): the clock
         # stays bright; floor, karma and the watched marker sit in the dim tier.
-        from pandemonium.gui.screens.base_screen import city_header_parts
         primary, secondary = city_header_parts(self.player, self.city_id)
         self.sm.update_top_bar_parts(primary, secondary)
 
@@ -876,6 +881,8 @@ class CityScreen(BaseScreen):
     def _open_service(self, service):
         """Open a facility in the GUI FacilityScreen wrapper."""
         from pandemonium.core.time_blocks import is_service_open, service_closed_message
+        from pandemonium.world.city import SERVICE_HANDLERS
+        from pandemonium.gui.screens.facility_screen import FacilityScreen
         if not is_service_open(self.player, service, self.city_id):
             msg = (service_closed_message(self.player, service, self.city_id)
                    or "Closed right now.")
@@ -885,15 +892,12 @@ class CityScreen(BaseScreen):
         if service == "port":
             self._open_world_map()
             return
-        from pandemonium.world.city import SERVICE_HANDLERS
         handler = SERVICE_HANDLERS.get(service)
         if handler:
-            from pandemonium.progression.karma_dialogue import title_line
             _title_greeting = title_line(self.player, service, self.city_id)
             if _title_greeting:
                 self.sm.log(_title_greeting)
             self.sm.log(f"Entering {service.replace('_', ' ').title()}...")
-            from pandemonium.gui.screens.facility_screen import FacilityScreen
             self.sm.switch_to(
                 FacilityScreen,
                 title=service.replace("_", " ").title(),
@@ -918,14 +922,12 @@ class CityScreen(BaseScreen):
 
     def _wait_brief(self):
         """Pass one block; day rollover handles fatigue normally."""
-        import pandemonium.core.time_blocks as time_blocks
         time_blocks.wait_blocks(self.player, 1)
         self.sm.log("You wait a brief moment.")
         self.sm.switch_to(CityScreen, push_history=False)
 
     def _wait_a_while(self):
         """Pass to the next phase (from Night: greet the morning, +1 fatigue)."""
-        import pandemonium.core.time_blocks as time_blocks
         result = time_blocks.wait_to_next_phase(self.player)
         if result is None:
             # Wonderland time pocket — nothing passes here
@@ -938,12 +940,14 @@ class CityScreen(BaseScreen):
 
     def _maybe_event_horizon_intro(self):
         """Play Vesper's first-contact scene once the EH gate is met."""
+        from pandemonium.world.event_horizon import site_unlocked
+        from pandemonium.gui.screens.facility_screen import FacilityScreen
+        from pandemonium.facilities.event_horizon_intro import event_horizon_intro_service
         if getattr(self, "_eh_intro_launched", False):
             return
         p = self.player
         if not p or p.get("eh_intro_seen"):
             return
-        from pandemonium.world.event_horizon import site_unlocked
         if not site_unlocked(p):
             return
         if p.get("location") == "dungeon":
@@ -954,8 +958,6 @@ class CityScreen(BaseScreen):
         except Exception:
             return
         self._eh_intro_launched = True
-        from pandemonium.gui.screens.facility_screen import FacilityScreen
-        from pandemonium.facilities.event_horizon_intro import event_horizon_intro_service
         self.sm.switch_to(
             FacilityScreen,
             title="A Tear in the Sky",
@@ -966,9 +968,8 @@ class CityScreen(BaseScreen):
 
     def _open_house(self):
         """Open the player's house in this city."""
-        self.sm.log("Entering Your House...")
-        from pandemonium.facilities.house import house_menu
         from pandemonium.gui.screens.facility_screen import FacilityScreen
+        self.sm.log("Entering Your House...")
         self.sm.switch_to(
             FacilityScreen,
             title="Your House",
@@ -996,10 +997,12 @@ class CityScreen(BaseScreen):
         exits, post-floor returns and menu loads, because every path funnels
         back through CityScreen. Story never interrupts combat or dungeons.
         """
+        import pandemonium.progression.quests as quests
+        from pandemonium.facilities.story_beats import ensure_city_story_triggers
+        from pandemonium.facilities.house_stories import claim_city_trigger
         if not self.winfo_exists() or not self.player:
             return
 
-        import pandemonium.progression.quests as quests
 
         # Resolve any state-based objectives (own a house, capture a girl...).
         # Results are recorded in the session log + Journal — no popups.
@@ -1012,7 +1015,6 @@ class CityScreen(BaseScreen):
         if not flags.get("intro_seen"):
             self._open_story_beat("archivist_intro")
             return
-        from pandemonium.facilities.story_beats import ensure_city_story_triggers
         ensure_city_story_triggers(self.player, self.city_id)
         if quests.has_pending_story(self.player):
             beat_id = quests.pop_pending_story(self.player)
@@ -1022,7 +1024,6 @@ class CityScreen(BaseScreen):
 
         # Fireside Tales can also find the player while travelling (city or
         # phase triggers), instead of waiting at home.
-        from pandemonium.facilities.house_stories import claim_city_trigger
         part = claim_city_trigger(self.player, self.city_id)
         if part:
             self._open_house_story(part)
@@ -1030,7 +1031,6 @@ class CityScreen(BaseScreen):
     def _open_house_story(self, part):
         """Open a city-triggered house story as an overlay."""
         from pandemonium.facilities.house_stories import play_part
-        from pandemonium.resources.house_stories import get_part
         from pandemonium.gui.screens.story_screen import StoryScreen
 
         _, story, _, _ = get_part(part["id"])
@@ -1066,6 +1066,7 @@ class CityScreen(BaseScreen):
 
     def _launch_dummy_combat(self):
         """Launch a sparring match against the training dummy in CombatScreen."""
+        from pandemonium.gui.screens.combat_screen import CombatScreen
         config = self.player.pop("_pending_dummy_combat", None)
         if not config:
             self.sm.switch_to(CityScreen, push_history=False)
@@ -1088,7 +1089,6 @@ class CityScreen(BaseScreen):
             # Pass enemies (shared list) so the HUD reflects live combat state.
             return _run_dummy_combat(player, config, enemies=enemies)
 
-        from pandemonium.gui.screens.combat_screen import CombatScreen
         self.sm.switch_to(
             CombatScreen,
             enemy_keys=[],
@@ -1107,14 +1107,14 @@ class CityScreen(BaseScreen):
             self.sm.switch_to(CityScreen, push_history=False)
 
     def _open_inventory(self):
-        self.sm.log("Opening Inventory...")
         from pandemonium.gui.screens.inventory_screen import InventoryScreen
+        self.sm.log("Opening Inventory...")
         self.sm.switch_to(InventoryScreen)
 
     def _open_world_map(self):
         """Open the unified world map — travel mode with pathfinding + Travel Here."""
-        self.sm.log("Opening World Map...")
         from pandemonium.gui.screens.world_map_screen import WorldMapScreen
+        self.sm.log("Opening World Map...")
         self.sm.switch_to(WorldMapScreen, travel_mode=True)
 
     def _enter_dungeon(self):
@@ -1131,6 +1131,7 @@ class CityScreen(BaseScreen):
     def _do_enter_dungeon(self):
         # Ensure per-city progress exists
         from pandemonium.world.dungeon import _ensure_city_floors
+        from pandemonium.progression.leveling import is_pandemonium_unlocked
         _ensure_city_floors(self.player, self.city_id)
         city_prog = self.player["city_floors"][self.city_id]
         max_unlocked = city_prog["max_floor"]
@@ -1138,7 +1139,6 @@ class CityScreen(BaseScreen):
 
         # ── Pandemonium lock check ───────────────────────────────────────
         if self.city_id == "isle_of_glass":
-            from pandemonium.progression.leveling import is_pandemonium_unlocked
             if not is_pandemonium_unlocked(self.player):
                 ok_dialog(
                     parent=(self.sm.root if self.sm else self),
@@ -1158,6 +1158,8 @@ class CityScreen(BaseScreen):
 
     def _launch_dungeon(self, floor):
         """Set the chosen floor and launch the DungeonScreen."""
+        from pandemonium.world.city_dialogue import get_city_dialogues
+        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
         city_prog = self.player["city_floors"][self.city_id]
         city_prog["floor"] = floor
         self.player["dungeon_region"] = self.city.get("biome", "temperate")
@@ -1193,14 +1195,11 @@ class CityScreen(BaseScreen):
         self.player.pop("_combat_time_label", None)
 
         # ── Receptionist "leave" dialogue ─────────────────────────────────
-        from pandemonium.world.city_dialogue import get_city_dialogues
         leave_lines = get_city_dialogues(self.city_id, "receptionist").get("leave", [])
         if leave_lines:
-            import random as _random
             self.sm.log(_random.choice(leave_lines), category="dialogue")
 
         self.sm.log(f"Entering dungeon — Floor {floor}...")
-        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
         self.sm.switch_to(
             DungeonScreen,
             on_result=self._return_from_dungeon,
@@ -1214,7 +1213,6 @@ class CityScreen(BaseScreen):
         in a multi-column grid.  The current floor is highlighted.
         Pressing Escape or clicking Cancel restores the original layout.
         """
-        import tkinter as tk
 
         # ── Hide city UI elements to free up space ────────────────────────
         self._map_frame.pack_forget()
@@ -1386,20 +1384,20 @@ class CityScreen(BaseScreen):
         re-enter the dungeon.  Shadows are only cleared on death/flee
         (handled in dungeon.py) or on floors 46/50 (by design).
         """
+        from pandemonium.world.wonderland_curses import clear_wonderland_quirk
         p = self.player
-        from pandemonium.world.curse_pandemonium import end_pandemonium_run
         end_pandemonium_run(p)
         # Reset High Tide stacks
         p["cutlass_high_tide_stacks"] = 0
         p.pop("cutlass_high_tide_floor", None)
         # Clear Wonderland floor quirk (but NOT persistent Shadows)
-        from pandemonium.world.wonderland_curses import clear_wonderland_quirk
         clear_wonderland_quirk(p)
         # Reset location to origin city
         p["location"] = p.get("origin_city", "solmere")
 
     def _return_from_dungeon(self, result):
         """Called when dungeon run ends."""
+        from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
         if result == "dead":
             self._handle_death()
         elif result == "fled":
@@ -1409,7 +1407,6 @@ class CityScreen(BaseScreen):
         elif result == "save_exit":
             self.sm.log("Game saved. Exiting to menu.")
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)
         elif result is True:
             # explore_dungeon() returns True when a floor was actually cleared.
@@ -1425,9 +1422,8 @@ class CityScreen(BaseScreen):
 
     def _show_post_floor_menu(self):
         """Show the 3-option menu after clearing a floor."""
-        import tkinter as tk
-        from pandemonium.core.time_blocks import format_block_track
-        from pandemonium.core.character import player_max_hp
+        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
+        from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
 
         p = self.player
         city_prog = p["city_floors"].get(self.city_id, {"floor": 1})
@@ -1524,19 +1520,16 @@ class CityScreen(BaseScreen):
         opt = choice[0]
         if opt == "continue":
             self.player["location"] = "dungeon"
-            from pandemonium.gui.screens.dungeon_screen import DungeonScreen
             self.sm.switch_to(
                 DungeonScreen,
                 on_result=self._return_from_dungeon,
             )
         elif opt == "save_exit":
             self._cleanup_dungeon_exit()
-            from pandemonium.core.save_load import save_game
             self.player["location"] = self.city_id
             save_game(self.player)
             self.sm.log("Game saved. Returning to main menu.")
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)
         else:
             # Default: return to city
@@ -1545,11 +1538,11 @@ class CityScreen(BaseScreen):
 
     def _save_and_quit(self):
         def _do_save():
+            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.player["location"] = self.city_id
             save_game(self.player)
             self.sm.log("Game saved. Returning to main menu.")
             self.sm.player = None
-            from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
             self.sm.switch_to(MainMenuScreen)
 
         confirm_dialog(
@@ -1560,11 +1553,10 @@ class CityScreen(BaseScreen):
         )
 
     def _handle_death(self):
-        from pandemonium.gui.screens.death_screen import DeathScreen
 
         # Safety net: death always ends the run — scrub Pandemonium run state
         # so no stale curse can survive into other dungeons or the next save.
-        from pandemonium.world.curse_pandemonium import end_pandemonium_run
+        from pandemonium.gui.screens.death_screen import DeathScreen
         end_pandemonium_run(self.player)
 
         def _continue_game():
@@ -1573,8 +1565,8 @@ class CityScreen(BaseScreen):
             self.sm.switch_to(CityScreen, push_history=False)
 
         def _quit_to_menu():
-            self.sm.player = None
             from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+            self.sm.player = None
             self.sm.switch_to(MainMenuScreen)
 
         self.sm.switch_to(
@@ -1612,7 +1604,6 @@ class CityScreen(BaseScreen):
         ok_dialog(self, "Help — Keyboard Shortcuts", help_text)
 
     def _open_settings(self):
-        from pandemonium.gui.screens.settings_screen import SettingsScreen
         self.sm.switch_to(SettingsScreen, push_history=True)
 
     # ── Keyboard shortcut support ────────────────────────────────────────────

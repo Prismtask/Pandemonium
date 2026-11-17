@@ -15,6 +15,7 @@ Ledger shape stored on the player::
 """
 
 from pandemonium.resources.enemies import ENEMIES, BIOME_RACES
+from pandemonium.progression.titles import check_unlock
 
 # Sort order for the bestiary pages (matches the type labels shown to players).
 TYPE_ORDER = {
@@ -163,7 +164,6 @@ def record_defeat(player, enemy, *, once=False, region=_UNSET):
     _remember_region(entry, region)
     if isinstance(enemy, dict):
         enemy["_bestiary_defeat_logged"] = True
-    from pandemonium.progression.titles import check_unlock
     check_unlock(player)
     return True
 
@@ -185,7 +185,6 @@ def record_capture(player, enemy, *, once=False, region=_UNSET):
     _remember_region(entry, region)
     if isinstance(enemy, dict):
         enemy["_bestiary_capture_logged"] = True
-    from pandemonium.progression.titles import check_unlock
     check_unlock(player)
     return True
 

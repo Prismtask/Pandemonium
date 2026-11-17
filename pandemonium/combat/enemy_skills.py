@@ -28,6 +28,8 @@ import random
 from pandemonium.combat.combat_io import c_print
 from pandemonium.combat.enemy_ai import begin_enemy_turn, enemy_attack
 from pandemonium.resources.enemies import ENEMIES
+from pandemonium.core.character import player_max_hp
+from pandemonium.combat import status_effects as se
 
 
 # ── Tunables ────────────────────────────────────────────────────────────────
@@ -535,7 +537,6 @@ def _target_max_hp(target):
     if "max_hp" in target:
         return max(1, target["max_hp"])
     if "attributes" in target:
-        from pandemonium.core.character import player_max_hp
         return max(1, player_max_hp(target))
     return max(1, target.get("current_hp", 100))
 
@@ -660,20 +661,20 @@ def _announce(enemy, action):
 
 
 def _resolve_element(enemy, action):
+    from pandemonium.combat.elemental import get_damage_element
     element = action.get("element")
     if element == "auto":
-        from pandemonium.combat.elemental import get_damage_element
         return get_damage_element(enemy.get("elemental_dmg", {}))
     return element
 
 
 def _target_con(target, fallback):
     """Constitution used for armor when an AoE hits a non-primary target."""
+    from pandemonium.combat.ally import compute_ally_stats
+    from pandemonium.combat.stats import compute_player_stats
     if target.get("is_ally"):
-        from pandemonium.combat.ally import compute_ally_stats
         return compute_ally_stats(target)[1]
     if "attributes" in target:
-        from pandemonium.combat.stats import compute_player_stats
         return compute_player_stats(target)[1]
     return fallback
 
@@ -696,7 +697,6 @@ def _apply_skill_status(enemy, target, action):
     if random.random() >= float(status.get("chance", 0.35)):
         return False
 
-    from pandemonium.combat import status_effects as se
 
     kind = str(status.get("type", "")).lower()
     duration = int(status.get("duration", 2))
@@ -749,20 +749,20 @@ def _apply_skill_status(enemy, target, action):
 
 def _apply_drain(enemy, action):
     """Vampire-style self-heal after a damaging skill connects."""
+    from pandemonium.combat.status_effects import apply_healing
     drain_pct = float(action.get("drain_pct", 0.0))
     dealt = enemy.get("_last_attack_damage", 0)
     if drain_pct <= 0 or dealt <= 0 or enemy.get("hp", 0) <= 0:
         return
-    from pandemonium.combat.status_effects import apply_healing
     healed = apply_healing(enemy, max(1, int(dealt * drain_pct)), source=enemy)
     if healed > 0:
         c_print(f"  {_subject(enemy)} drains {healed} HP!")
 
 
 def _run_heal(enemy, action, target):
+    from pandemonium.combat.status_effects import apply_healing
     _announce(enemy, action)
     _start_cooldown(enemy, action)
-    from pandemonium.combat.status_effects import apply_healing
     amount = max(1, int(_target_max_hp(target) * float(action.get("heal_pct", 0.18))))
     healed = apply_healing(target, amount, source=enemy)
     if healed > 0:
@@ -775,9 +775,9 @@ def _run_heal(enemy, action, target):
 
 
 def _run_aoe_heal(enemy, action, all_enemies):
+    from pandemonium.combat.status_effects import apply_healing
     _announce(enemy, action)
     _start_cooldown(enemy, action)
-    from pandemonium.combat.status_effects import apply_healing
     targets = [e for e in (all_enemies or [enemy]) if _enemy_alive(e)]
     for target in targets:
         amount = max(1, int(_target_max_hp(target) * float(action.get("heal_pct", 0.12))))

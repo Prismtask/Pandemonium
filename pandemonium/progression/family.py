@@ -11,6 +11,10 @@ Implements docs/family_system_design.md Phases 1–4:
 
 No scenes or UI live here; the house/sleep-sharing modules render them.
 """
+import random as _random
+from pandemonium.core.events import format_short_date
+from pandemonium.resources.enemies import ENEMIES
+from pandemonium.progression.titles import check_unlock as _check_title_unlock
 
 # ── Constants (single tuning block) ────────────────────────────────────────
 # Affection ladder v2 (§4.8)
@@ -469,7 +473,6 @@ def primary_attribute(girl):
     if attrs:
         return max(ATTRIBUTES, key=lambda a: (attrs.get(a, 0), -ATTRIBUTES.index(a)))
     try:
-        from pandemonium.resources.enemies import ENEMIES
         template = ENEMIES.get(girl.get("key"), {}) or {}
     except Exception:
         template = {}
@@ -614,7 +617,6 @@ SLEEP_ENDINGS = {
 
 def apply_sleep_outcome(player, girl, ending, rng=None):
     """Apply a Shared Night ending: affection, stress, buffs, conception."""
-    import random as _random
     rng = rng or _random
     day = _int(player.get("day", 1), 1)
     reward = SLEEP_ENDINGS.get(ending, SLEEP_ENDINGS["rest"])
@@ -643,7 +645,6 @@ def apply_sleep_outcome(player, girl, ending, rng=None):
                 start_pregnancy(girl, day)
                 # Story-dream trigger (§2.4): an expectant-household dream.
                 player["family_expecting"] = True
-                from pandemonium.core.events import format_short_date
                 journal_event(
                     player, "A new life",
                     f"{girl.get('name', 'Your companion')} is expecting "
@@ -673,7 +674,6 @@ def sleep_night_candidates(player, house):
 
 def roll_sleep_initiation(player, house, rng=None):
     """Pick at most one ally-initiated partner for tonight (or None)."""
-    import random as _random
     if not intimacy_enabled():
         return None
     rng = rng or _random
@@ -703,7 +703,6 @@ def _find_house_city(player, girl):
 
 def build_child_record(player, girl, day):
     """Create the true-born child record (birth is state-only; naming is UI)."""
-    from pandemonium.resources.enemies import ENEMIES
     from pandemonium.combat.ally_skills import initialize_ally_skills
 
     mother_key = girl.get("key")
@@ -763,7 +762,6 @@ def birth_child(player, girl, day):
     """Create the child, finish the pregnancy, and queue the birth scene."""
     child = build_child_record(player, girl, day)
     player.setdefault("children", []).append(child)
-    from pandemonium.progression.titles import check_unlock as _check_title_unlock
     _check_title_unlock(player)
     finish_pregnancy(girl, day)
     journal_event(
@@ -862,6 +860,7 @@ def convert_child_to_house(player, child, day):
 
 def family_tick(player, old_day=None):
     """Daily family state: pregnancy periods, births, and child growth."""
+    from pandemonium.combat.ally import _return_ally_to_house
     # Event Horizon is a time pocket — family time does not advance there.
     try:
         from pandemonium.world.event_horizon import in_run
@@ -881,7 +880,6 @@ def family_tick(player, old_day=None):
         house = _first_house(player)
         if house is None:
             continue
-        from pandemonium.combat.ally import _return_ally_to_house
         _return_ally_to_house(player, ally, house)
         try:
             player["allies"].remove(ally)

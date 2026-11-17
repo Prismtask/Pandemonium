@@ -24,6 +24,7 @@ from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
 from pandemonium.combat.ally import get_active_allies
 from pandemonium.combat.status_effects import absorb_damage
+from pandemonium.resources.items import build_item
 
 BOSS_KEY = "white_knight"
 BOSS_NAME = "White Knight of the Fallen Empire"
@@ -134,11 +135,12 @@ def combat_white_knight(player, floor=None, enemies=None):
     list for live HUD rendering — wrapping the boss and HP changes must land
     on that same list).
     """
+    from pandemonium.combat.stats import enemy_stats
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     if enemies is None:
         enemies = []
     boss = get_boss(enemies, BOSS_KEY)
     if boss is None:
-        from pandemonium.combat.stats import enemy_stats
         boss = enemy_stats(BOSS_KEY, player)
         boss["max_hp"] = boss["hp"]
         boss = _PhaseLockedKnight(boss)
@@ -325,6 +327,7 @@ def combat_white_knight(player, floor=None, enemies=None):
                 c_print(f"  {who} has fallen.")
 
     def _execute_flurry(b, pl):
+        from pandemonium.combat.elemental import resistance_multiplier
         living = [m for m in _party(pl) if m.get("current_hp", 0) > 0]
         if not living:
             return
@@ -334,7 +337,6 @@ def combat_white_knight(player, floor=None, enemies=None):
                 break
             t = random.choice(living)
             dmg = random.randint(10, 16) + max(0, b.get("str_mod", 0) // 2)
-            from pandemonium.combat.elemental import resistance_multiplier
             res = t.get("elemental_res", {}).get("light", 1.0)
             dmg = max(1, int(dmg * resistance_multiplier(res)))
             t["current_hp"] = max(0, t.get("current_hp", 0) - dmg)
@@ -401,8 +403,6 @@ def combat_white_knight(player, floor=None, enemies=None):
         if not player.get("boss_defeated_white_knight"):
             c_print("\nThe porcelain falls away. The oath is kept at last —")
             c_print("what remains is a blade that never misses its promise.")
-            from pandemonium.resources.items import build_item
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             rapier = build_item("last_oath", "unique")
             c_print("\n  ⚜ You obtained: LAST OATH (Unique) ⚜")
             prompt_acquire_item(player, rapier)

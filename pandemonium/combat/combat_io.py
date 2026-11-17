@@ -79,7 +79,10 @@ class TerminalIO(BaseCombatIO):
         return builtins.input(prompt)
 
     def clear(self):
+        # Local import: core.utils pulls in time_blocks/events, which import
+        # combat modules — a top-level import would close an import cycle.
         from pandemonium.core.utils import clear_screen
+
         clear_screen()
 
 

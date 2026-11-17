@@ -30,6 +30,12 @@ from pandemonium.resources.trade_goods import (
     roll_cargo_good, build_cargo,
     cargo_merchant_stock_price, cargo_merchant_sell_price,
 )
+from pandemonium.combat.stat_milestones import get_wisdom_bonus
+from pandemonium.resources.item_generation import pick_flower_id
+from pandemonium.resources.items import build_item as _build_item
+from pandemonium.progression.titles import apply_gold_find
+from pandemonium.world.curse_pandemonium import get_stat_check_dc_modifier
+from pandemonium.resources.enemies import ENEMIES
 
 # ── Room type weights ─────────────────────────────────────────────
 ROOM_TYPE_WEIGHTS = {
@@ -277,6 +283,7 @@ def _get_member_stat(member, stat_name, player):
     Special composite stats:
       "Agility" → (DEX + WIS) // 2 (used by trap rooms)
     """
+    from pandemonium.combat.ally import compute_ally_stats
     # Composite stats
     if stat_name == "Agility":
         if member is player:
@@ -298,7 +305,6 @@ def _get_member_stat(member, stat_name, player):
         }.get(stat_name, 0)
     else:
         # Use compute_ally_stats so equipment, buffs, and passives are counted
-        from pandemonium.combat.ally import compute_ally_stats
         a_str, a_con, a_dex, a_ler, a_wis, a_cha = compute_ally_stats(member)
         return {
             "Strength": a_str,
@@ -316,9 +322,9 @@ def _roll_stat_check(member, stat_name, dc, player):
     Natural 20 always succeeds and natural 1 always fails, matching the
     probabilities shown by ``_calc_pass_probability``.
     """
+    from pandemonium.world.wonderland_curses import roll_d20_with_looking_glass
     stat = _get_member_stat(member, stat_name, player)
     # Wonderland: Through the Looking Glass — reroll low d20 rolls
-    from pandemonium.world.wonderland_curses import roll_d20_with_looking_glass
     roll, _ = roll_d20_with_looking_glass(player, verbose=True)
     total = roll + stat
     if roll == 20:
@@ -462,10 +468,9 @@ def render_party_status(player):
     BACK (reserve) rows. Designed for display in a separate frame from the map.
     """
     from pandemonium.combat.ally import (ensure_party_order,
-                             get_all_active_allies_including_defeated,
-                             get_all_reserve_allies_including_defeated)
+                                 get_all_active_allies_including_defeated,
+                                 get_all_reserve_allies_including_defeated)
     from pandemonium.combat.combat_ui import _get_entity_buff_tags, _hp_bar
-    from pandemonium.core.character import player_max_hp
 
     ensure_party_order(player)
     front_allies = get_all_active_allies_including_defeated(player)
@@ -537,7 +542,6 @@ def handle_fountain_room(player, floor):
 
         if choice_idx == 0:
             old_hp = player["current_hp"]
-            from pandemonium.combat.stat_milestones import get_wisdom_bonus
             heal = int(max_hp * 0.30) + get_wisdom_bonus(player)
             player["current_hp"] = min(old_hp + heal, max_hp)
             actual = player["current_hp"] - old_hp
@@ -687,6 +691,7 @@ def handle_merchant_room(player, floor):
 
 def handle_treasure_room(player, floor):
     """Treasure room with guaranteed rare+ item."""
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     _tprint("\n" + "=" * 50)
     _tprint("💎  A forgotten hoard gleams in the torchlight!")
     _tprint("Someone — or something — left these treasures here long ago.")
@@ -707,19 +712,15 @@ def handle_treasure_room(player, floor):
     item = build_item(item_id, rarity)
 
     _tprint(f"\nYou found: {item['name']}  {_item_stat_line(item)}")
-    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     prompt_acquire_item(player, item.copy())
 
     # Tempering flowers — treasure rooms are the reliable farming spot
-    from pandemonium.resources.item_generation import pick_flower_id
-    from pandemonium.resources.items import build_item as _build_item
     flower = _build_item(pick_flower_id(dungeon_biome(player)), "common")
     _tprint(f"Tucked among the coins: {flower['name']} (tempering flower).")
     prompt_acquire_item(player, flower.copy())
 
     # Bonus gold (deed titles can improve dungeon gold finds)
     gold = 20 + floor * 5 + random.randint(5, 15)
-    from pandemonium.progression.titles import apply_gold_find
     gold = apply_gold_find(player, gold)
     player["gold"] = player.get("gold", 0) + gold
     _tprint(f"You also found {gold} gold in a small chest!")
@@ -775,7 +776,6 @@ def handle_trap_room(player, floor):
         _tprint(f"\n✅  Success! The trap is carefully disarmed.")
         # Hidden loot (deed titles can improve dungeon gold finds)
         gold = 15 + floor * 4 + random.randint(3, 10)
-        from pandemonium.progression.titles import apply_gold_find
         gold = apply_gold_find(player, gold)
         player["gold"] = player.get("gold", 0) + gold
         _tprint(f"You find {gold} gold hidden in the trap mechanism!")
@@ -811,6 +811,10 @@ def handle_trap_room(player, floor):
 
 def handle_stat_check_room(player, floor, event_key, combat_override=None):
     """Stat check room with narrative choice and dice roll."""
+    from pandemonium.world.wonderland_curses import get_caterpillars_insight_reduction
+    from pandemonium.world.wonderland_curses import get_shadow_stat_check_dc_increase
+    from pandemonium.world.dungeon import get_random_enemy_key
+    from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
     # Look up event in both standard and Wonderland event pools
     event = STAT_CHECK_EVENTS.get(event_key) or WL_STAT_CHECK_EVENTS.get(event_key)
     if event is None:
@@ -872,21 +876,18 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
 
     if requires_check:
         # Pandemonium: Mirrored Mind / Unstable Ground curses increase DC
-        from pandemonium.world.curse_pandemonium import get_stat_check_dc_modifier
         dc_mod = get_stat_check_dc_modifier(player, stat_name)
         if dc_mod > 0:
             dc += dc_mod
             _tprint(f"  ⚠️  Pandemonium's curse twists reality... DC increased by {dc_mod}!")
 
         # Wonderland: Caterpillar's Insight reduces DC
-        from pandemonium.world.wonderland_curses import get_caterpillars_insight_reduction
         wl_reduction = get_caterpillars_insight_reduction(player)
         if wl_reduction > 0:
             dc = max(1, dc - int(wl_reduction))
             _tprint(f"  🐛 The Caterpillar's wisdom guides you... DC reduced by {int(wl_reduction)}!")
 
         # Wonderland Shadow: Author's Will increases DC
-        from pandemonium.world.wonderland_curses import get_shadow_stat_check_dc_increase
         wl_shadow_dc = get_shadow_stat_check_dc_increase(player)
         if wl_shadow_dc > 0:
             dc += int(wl_shadow_dc)
@@ -1016,8 +1017,6 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
                 _tprint(f"\n❌  Failure! The creature snarls and attacks!")
             # Spawn a single enemy of the floor's level
             # Local import to avoid circular dependency at module load
-            from pandemonium.resources.enemies import ENEMIES
-            from pandemonium.world.dungeon import get_random_enemy_key
 
             region = player.get("dungeon_region", "temperate")
             enemy_key = get_random_enemy_key(floor, boss=False, region=region, player=player)
@@ -1055,7 +1054,6 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
                 _tprint(f"Found {gold} gold.")
 
                 # Wedding end-of-combat rewards
-                from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
                 apply_wedding_combat_end(player, victory=True)
 
                 _tpause()
@@ -1171,8 +1169,6 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
             _tprint("'I suppose I'll have to play with you after all.' He fades, but not before "
                      "unleashing something from the shadows.")
             # Spawn a Wonderland enemy
-            from pandemonium.resources.enemies import ENEMIES
-            from pandemonium.world.dungeon import get_random_enemy_key
 
             region = "wonderland"
             enemy_key = get_random_enemy_key(floor, boss=False, region=region, player=player)
@@ -1206,7 +1202,6 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
                 player["gold"] = player.get("gold", 0) + gold
                 _tprint(f"Found {gold} gold.")
 
-                from pandemonium.combat.weapon.wedding_specials import apply_wedding_combat_end
                 apply_wedding_combat_end(player, victory=True)
 
                 _tpause()

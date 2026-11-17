@@ -272,6 +272,7 @@ def _jabberwock_vorpal_beam_windup(jabber, ctx):
 
 def _jabberwock_vorpal_beam_fire(jabber, player, ctx):
     """Fire Vorpal Beam or report interruption."""
+    from pandemonium.combat.elemental import resistance_multiplier
     if ctx.get("_vorpal_beam_damage_taken", 0) >= 40:
         # Interrupted!
         c_print('\n  "The vorpal light SPUTTERS! The Jabberwock shrieks in frustration!"')
@@ -283,7 +284,6 @@ def _jabberwock_vorpal_beam_fire(jabber, player, ctx):
     else:
         # Beam fires!
         c_print('\n  💀 "VORPAL BEAM!" — A line of blinding light tears through the party!')
-        from pandemonium.combat.elemental import resistance_multiplier
         for target in get_living_party(player):
             dmg = random.randint(60, 90)
             res = target.get("elemental_res", {}).get("thunder", 1.0)
@@ -315,6 +315,7 @@ def _jabberwock_narrative_rewrite(player):
 
 def _jabberwock_page_storm(player):
     """Increase a random skill cooldown by 1 on a random party member."""
+    from pandemonium.combat.skills import get_class_skill_map
     # Collect all entities with cooldowns
     entities = []
     if player.get("skill_cooldowns"):
@@ -336,7 +337,6 @@ def _jabberwock_page_storm(player):
 
     # Try to get skill name for nicer display
     skill_name = skill_id
-    from pandemonium.combat.skills import get_class_skill_map
     skill_map = get_class_skill_map(entity) if entity is not player else {}
     if not skill_map:
         # Allies use their own skill system
@@ -728,6 +728,7 @@ def combat_jabberwock(player, floor=None, enemies=None):
 
     def on_kill_hook(target, elist, ctx):
         """Handle Jabberwock death, Alice permanent unlock, and drops."""
+        from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
         if _is_jabberwock(target) and target.get("hp", 0) <= 0:
             c_print("\nThe Jabberwock's body dissolves into ink. The vortex")
             c_print("calms.")
@@ -748,7 +749,6 @@ def combat_jabberwock(player, floor=None, enemies=None):
 
             # ── Alice permanent unlock ──────────────────────────────────
             if alice:
-                from pandemonium.combat.ally import promote_heroine_to_permanent, set_heroine_state
                 join_level = alice.get("level", player.get("level", 1))
                 promote_heroine_to_permanent(player, alice, join_level)
                 set_heroine_state(player, "alice", "permanent")

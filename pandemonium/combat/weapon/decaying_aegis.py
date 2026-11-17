@@ -15,6 +15,7 @@ State keys on the actor dict:
 """
 
 from pandemonium.combat.combat_io import c_print
+from pandemonium.core.character import player_max_hp
 
 SHIELD_PCT = 0.15
 DECAY_PCT = 0.04
@@ -33,7 +34,6 @@ def _actor_has_decaying_aegis(actor):
 def _actor_max_hp(actor):
     if actor.get("is_ally"):
         return max(1, int(actor.get("max_hp", actor.get("current_hp", 1)) or 1))
-    from pandemonium.core.character import player_max_hp
     return max(1, int(player_max_hp(actor)))
 
 

@@ -17,6 +17,8 @@ rather than a raw text entry.
 
 import threading
 from typing import List
+import time
+import queue as _queue
 
 
 # ── Thread-local terminal reference ────────────────────────────────────────
@@ -80,7 +82,6 @@ class Terminal:
             if flush:
                 # Give the main thread a moment to process the pending output
                 # before the facility thread continues (e.g., into combat).
-                import time
                 time.sleep(0.15)
 
     def clear(self):
@@ -94,15 +95,14 @@ class Terminal:
         Use before screen transitions (leave dialogue, combat overlay, etc.)
         so the player can read the last message before the screen changes.
         """
-        import time
         time.sleep(seconds)
 
     # ── Input ───────────────────────────────────────────────────────────
 
     def pause(self, prompt="Press Continue..."):
         """Show a Continue button and wait for the user to click it."""
+        from pandemonium.gui.screens.facility_screen import _FacilityStopped
         if self._stopped:
-            from pandemonium.gui.screens.facility_screen import _FacilityStopped
             raise _FacilityStopped()
         if self._screen:
             self._screen._show_buttons([prompt], allow_cancel=False)
@@ -129,8 +129,8 @@ class Terminal:
         Returns:
             int: 0-based index of the chosen option, or -1 if cancelled.
         """
+        from pandemonium.gui.screens.facility_screen import _FacilityStopped
         if self._stopped:
-            from pandemonium.gui.screens.facility_screen import _FacilityStopped
             raise _FacilityStopped()
         if self._screen:
             self._screen._show_buttons(
@@ -157,8 +157,8 @@ class Terminal:
         Free-text input. Falls back to text entry for complex cases
         (e.g., entering numbers, names, etc.).
         """
+        from pandemonium.gui.screens.facility_screen import _FacilityStopped
         if self._stopped:
-            from pandemonium.gui.screens.facility_screen import _FacilityStopped
             raise _FacilityStopped()
         if self._screen:
             self._screen._show_input_prompt(prompt)
@@ -172,11 +172,10 @@ class Terminal:
         This allows dungeon post-room menus to show a proper GUI inventory
         instead of running the terminal-based inventory in the dungeon log.
         """
+        from pandemonium.gui.screens.facility_screen import _FacilityStopped
         if self._stopped:
-            from pandemonium.gui.screens.facility_screen import _FacilityStopped
             raise _FacilityStopped()
         if self._screen:
-            import queue as _queue
             result_queue = _queue.Queue()
 
             def _open_overlay():

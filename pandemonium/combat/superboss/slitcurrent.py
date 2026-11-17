@@ -5,6 +5,7 @@ from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.status_effects import apply_poison, apply_curse
 from pandemonium.resources.items import build_item
 from pandemonium.combat.combat_io import c_print, c_input
+from pandemonium.combat.helpers import format_damage_msg
 
 
 class _SlitcurrentBossDict(dict):
@@ -31,6 +32,7 @@ def combat_slitcurrent(player, floor=None, enemies=None):
                  If provided, the first entry matching 'dream_devouring_slitcurrent'
                  is used as the boss. Otherwise a new boss is created.
     """
+    from pandemonium.inventory.legacy_ui import prompt_acquire_item
     boss_key = "dream_devouring_slitcurrent"
 
     if enemies is None:
@@ -111,7 +113,6 @@ def combat_slitcurrent(player, floor=None, enemies=None):
                 c_print("\n⚙ [GIMMICK] The Floatsam fester too long! Slitcurrent explodes in rage!")
                 massive_dmg = max(5, random.randint(15, 25) + b["str_mod"] - player.get("attributes", {}).get("Constitution", 0))
                 player["current_hp"] -= massive_dmg
-                from pandemonium.combat.helpers import format_damage_msg
                 c_print(format_damage_msg("Slitcurrent", player['name'], massive_dmg, skill_name="Dream Surge"))
                 if player["current_hp"] <= 0: return "dead"
                 
@@ -174,7 +175,6 @@ def combat_slitcurrent(player, floor=None, enemies=None):
             c_print("\n🌊 The abyss churns – NIGHTMARISH TIDE!")
             tide_dmg = max(5, random.randint(12, 20) + enemy["str_mod"] + temp_str - p_con)
             pl["current_hp"] -= tide_dmg
-            from pandemonium.combat.helpers import format_damage_msg
             c_print(format_damage_msg("Slitcurrent", pl['name'], tide_dmg, element="water", skill_name="Nightmarish Tide"))
             pl["stunned"] = True
             c_print("You are STUNNED and will lose your next turn!")
@@ -220,7 +220,6 @@ def combat_slitcurrent(player, floor=None, enemies=None):
             c_print("has been shaped into an edge.")
             c_print("\n  ✦ You obtained: ABYSS FANG (Unique) ✦")
             abyss_fang = build_item("abyss_fang", "unique")
-            from pandemonium.inventory.legacy_ui import prompt_acquire_item
             prompt_acquire_item(player, abyss_fang)
             # Set defeated flag AFTER awarding loot
             player["boss_defeated_slitcurrent"] = True

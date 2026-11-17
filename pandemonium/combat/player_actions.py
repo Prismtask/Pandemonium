@@ -18,10 +18,67 @@ from pandemonium.combat.capture import (
 from pandemonium.combat.stat_milestones import get_strength_bonus, get_wisdom_bonus, get_dexterity_damage_bonus
 from pandemonium.combat.skills import get_available_skills, execute_skill, set_skill_cooldown, format_mastery_label, get_passive_life_steal
 from pandemonium.inventory.core import remove_item_by_reference
+from pandemonium.combat.stats import get_effective_attribute
+from pandemonium.combat.form_perks import get_armor_pen_multiplier
+from pandemonium.progression.titles import mod as _title_mod
+from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
+from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
+from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
+from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
+from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
+from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
+from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.world.curse_pandemonium import is_flee_blocked
 
 
 def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, on_kill=None, on_hit=None, _action_override=None):
     # Free-action skills (Time Warp) must never leak past their own action.
+    from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, on_brush_attack_hit
+    from pandemonium.combat.weapon.palette_brush import begin_actor_turn
+    from pandemonium.combat.weapon.prescript_ledger import mark_acted as mark_prescript_acted
+    from pandemonium.combat.weapon.blank_canvas_shawl import use_blank_canvas
+    from pandemonium.combat.weapon.palette_brush import set_brush_stance
+    from pandemonium.combat.weapon.palette_brush import (
+                _actor_has_palette_brush, execute_impasto_exhibit,
+                execute_chiaroscuro_exhibit, execute_signature_exhibit,
+                get_brush_exhibits,
+            )
+    from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
+    from pandemonium.combat.weapon.black_silence_gloves import _player_has_black_silence_gloves, execute_workshop, execute_furioso
+    from pandemonium.combat.weapon.black_silence_gloves import WORKSHOPS
+    from pandemonium.combat.combat_ui import format_skill_elemental_tag
+    from pandemonium.combat.ally import get_alive_allies
+    from pandemonium.combat.weapon.moonlight_greatsword import (
+                is_moonlight_active, execute_moonlight_aoe_attack,
+            )
+    from pandemonium.combat.stats import roll_dodge
+    from pandemonium.world.wonderland_curses import get_shadow_accuracy_penalty
+    from pandemonium.world.event_horizon import joker_attack_missed
+    from pandemonium.combat.elemental_traits import (
+                get_trait_for_weapon, apply_trait_pre_damage,
+                apply_trait, apply_trait_on_kill,
+            )
+    from pandemonium.combat.status_effects import get_damage_buff_multiplier
+    from pandemonium.combat.skills import get_player_passive_effects
+    from pandemonium.combat.skills import get_player_passive_low_hp_mult
+    from pandemonium.world.event_horizon import joker_damage_multiplier
+    from pandemonium.combat.stats import (roll_critical_hit, apply_critical_damage,
+                                      format_critical_tag, CRIT_MULTIPLIER)
+    from pandemonium.world.event_horizon import joker_crit_modifier
+    from pandemonium.combat.elemental import calculate_elemental_damage, get_attack_element
+    from pandemonium.combat.weapon.palette_brush import get_brush_damage_mult
+    from pandemonium.combat.status_effects import get_damage_taken_multiplier
+    from pandemonium.combat.weapon.captain_cutlass import get_high_tide_attack_bonus, get_rally_attack_bonus
+    from pandemonium.world.wonderland_curses import get_jabberwock_bane_multiplier
+    from pandemonium.combat.status_effects import wake_on_damage
+    from pandemonium.combat.weapon.last_oath import try_last_oath_expose
+    from pandemonium.combat.vileheart_venom import try_vileheart_venom_proc
+    from pandemonium.combat.status_effects import detonate_bleed
+    from pandemonium.combat.weapon.captain_cutlass import check_high_tide_kill
+    from pandemonium.combat.weapon.prescript_ledger import report_defend as report_prescript_defend
+    from pandemonium.combat.weapon.moonlight_greatsword import use_moonlight
+    from pandemonium.combat.weapon.captain_cutlass import use_crew_rally
+    from pandemonium.combat.weapon.authors_pen import use_rewrite
     player.pop("_skill_free_action", None)
 
     # ── Stun: lose this action (parity with enemy_ai) ──
@@ -33,11 +90,9 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
         return "continue", False
 
     # Palette's Brush: reset the once-per-turn stance flag
-    from pandemonium.combat.weapon.palette_brush import begin_actor_turn
     begin_actor_turn(player)
 
     # Prescript Ledger: the actor got a turn this round (waiver guard)
-    from pandemonium.combat.weapon.prescript_ledger import mark_acted as mark_prescript_acted
     mark_prescript_acted(player)
 
     # Per-action status markers (White Knight skill dodge / accuracy penalty)
@@ -72,24 +127,17 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
 
     # ----- BLANK CANVAS (shawl free action, once per combat) -----
     if action == 'b':
-        from pandemonium.combat.weapon.blank_canvas_shawl import use_blank_canvas
         for m in use_blank_canvas(player, True, player):
             c_print(m)
         return "retry", False
 
     # ----- BRUSH STANCE (free action, once per turn) -----
     if action == 't':
-        from pandemonium.combat.weapon.palette_brush import set_brush_stance
         c_print(set_brush_stance(player))
         return "retry", False
 
     # ----- BRUSH EXHIBITS (i/k/g) -----
     if action in ('i', 'k', 'g'):
-        from pandemonium.combat.weapon.palette_brush import (
-            _actor_has_palette_brush, execute_impasto_exhibit,
-            execute_chiaroscuro_exhibit, execute_signature_exhibit,
-            get_brush_exhibits,
-        )
         if not _actor_has_palette_brush(player):
             return "retry", False
         key_map = {'i': 'impasto', 'k': 'chiaroscuro', 'g': 'signature'}
@@ -114,7 +162,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             for e in enemies_before:
                 if e["hp"] <= 0:
                     on_kill(e, enemies)
-        from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
         report_prescript_skill(player)
         if victory:
             return "victory", False
@@ -123,7 +170,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
     # ----- SKILLS (numbered 1-9) or GLOVES WORKSHOPS -----
     if action.isdigit():
         # Check if Black Silence Gloves are equipped — workshop attacks replace skills
-        from pandemonium.combat.weapon.black_silence_gloves import _player_has_black_silence_gloves, execute_workshop, execute_furioso
 
         if _player_has_black_silence_gloves(player):
             if action == '0':
@@ -139,7 +185,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     killed_by_attack = [e for e in enemies_before if e["hp"] <= 0]
                     for e in killed_by_attack:
                         on_kill(e, enemies)
-                from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
                 report_prescript_skill(player)
                 if victory:
                     return "victory", False
@@ -156,7 +201,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                 if workshop_id in ws_used:
                     c_print("That workshop has already been used this cycle!")
                     return "retry", False
-                from pandemonium.combat.weapon.black_silence_gloves import WORKSHOPS
                 ws = WORKSHOPS.get(workshop_id, {})
                 ws_name = ws.get("name", f"Workshop {workshop_id}")
                 ws_desc = ws.get("desc", "")
@@ -177,7 +221,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     killed_by_attack = [e for e in enemies_before if e["hp"] <= 0]
                     for e in killed_by_attack:
                         on_kill(e, enemies)
-                from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
                 report_prescript_skill(player)
                 if victory:
                     return "victory", False
@@ -190,7 +233,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             c_print("Invalid skill choice.")
             return "retry", False
         skill_id, skill_def = available_skills[skill_idx]
-        from pandemonium.combat.combat_ui import format_skill_elemental_tag
         elem_tag = format_skill_elemental_tag(skill_def)
         c_print(f"\n>>> {skill_def['name']}{elem_tag}: {skill_def['description']}")
         mastery_label = format_mastery_label(skill_id, player)
@@ -198,7 +240,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             c_print(f"    Mastery: {mastery_label}")
         c_input("Press Enter to use it...")
 
-        from pandemonium.combat.ally import get_alive_allies
         allies = get_alive_allies(player)
         # Track enemies alive before skill so on_kill can fire for newly-dead ones
         enemies_before = [e for e in enemies if e["hp"] > 0]
@@ -231,7 +272,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
         if skill_def.get("free_action"):
             cooldowns = player.setdefault("skill_cooldowns", {})
             cooldowns[skill_id] = max(1, cooldowns.get(skill_id, 0))
-        from pandemonium.combat.weapon.prescript_ledger import report_skill as report_prescript_skill
         report_prescript_skill(player)
         free_action = player.pop("_skill_free_action", False)
         if victory:
@@ -245,9 +285,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
     if action == "a":
         # Moonlight Greatsword: while empowered, basics become a magical wave
         # that strikes every enemy (no target selection).
-        from pandemonium.combat.weapon.moonlight_greatsword import (
-            is_moonlight_active, execute_moonlight_aoe_attack,
-        )
         if is_moonlight_active(player):
             execute_moonlight_aoe_attack(
                 player, player, enemies,
@@ -270,31 +307,24 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             target = enemies[0]
 
         # --- ENEMY DODGE CHECK ---
-        from pandemonium.combat.stats import roll_dodge
         is_dodged, dodge_chance = roll_dodge(target, player)
         if is_dodged:
             c_print(f"The {target['name']} dodges your attack!")
             return "continue", False
 
         # ── Wonderland Shadow: Caterpillar's Smoke — accuracy penalty ──
-        from pandemonium.world.wonderland_curses import get_shadow_accuracy_penalty
         smoke_penalty = get_shadow_accuracy_penalty(player)
         if smoke_penalty > 0 and random.random() < smoke_penalty:
             c_print(f"  💨 The Caterpillar's smoke clouds your vision — your attack goes wide!")
             return "continue", False
 
         # ── Event Horizon: The Fool — a 10% chance the attack simply fails ──
-        from pandemonium.world.event_horizon import joker_attack_missed
         if joker_attack_missed(player):
             return "continue", False
 
         equipped_weapon = player.get("equipped", {}).get("weapon")
 
         # ── Elemental Trait System (Phase 4) ──
-        from pandemonium.combat.elemental_traits import (
-            get_trait_for_weapon, apply_trait_pre_damage,
-            apply_trait, apply_trait_on_kill,
-        )
         trait = get_trait_for_weapon(equipped_weapon, equipped_weapon.get("rarity", "common")) if equipped_weapon else None
         pre_dmg = apply_trait_pre_damage(trait, target) if trait else None
 
@@ -316,7 +346,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             elif stat == "Charisma":
                 scaling_val += p_cha
             else:
-                from stats import get_effective_attribute
                 scaling_val += get_effective_attribute(player, stat)
 
         # Apply weapon's scaling_mult (e.g. Constitution weapons use 0.5 for half scaling)
@@ -324,7 +353,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             scaling_val = int(scaling_val * equipped_weapon["scaling_mult"])
 
         # ── Armour penetration: Sunder trait + form tradition (Sundering) ──
-        from pandemonium.combat.form_perks import get_armor_pen_multiplier
         pen_mult = get_armor_pen_multiplier(player, pre_dmg)
         effective_con_mod = target["con_mod"]
         if pen_mult < 1.0:
@@ -339,7 +367,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
 
         # Percentage damage buffs (power_buff + damage_boost) stack additively.
         # power_buff is consumed here and empowers this attack.
-        from pandemonium.combat.status_effects import get_damage_buff_multiplier
         _buff_msgs = []
         _damage_buff_mult = get_damage_buff_multiplier(
             player, consume_power_buff=True, messages=_buff_msgs
@@ -351,7 +378,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
 
         # Sneak attack bonus vs slowed/stunned enemies (class or profession passive)
         if target.get("slowed") or target.get("stunned"):
-            from pandemonium.combat.skills import get_player_passive_effects
             bonus = sum(e.get("value", 0) for e in get_player_passive_effects(player)
                         if e.get("type") == "vulnerable_bonus")
             if bonus:
@@ -359,27 +385,21 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                 c_print(f"Sneak Attack! +{int(bonus*100)}% damage to the vulnerable target!")
 
         # Profession passive: bonus damage below a HP threshold (Berserker)
-        from pandemonium.combat.skills import get_player_passive_low_hp_mult
         lp_mult = get_player_passive_low_hp_mult(player)
         if lp_mult != 1.0:
             dmg = int(dmg * lp_mult)
 
         # Event Horizon: The Hierophant — basic attacks ×0.75
-        from pandemonium.world.event_horizon import joker_damage_multiplier
         dmg = int(dmg * joker_damage_multiplier(player, "basic"))
 
         # Critical hit check (crit chance over the cap converts to crit damage)
-        from pandemonium.combat.stats import (roll_critical_hit, apply_critical_damage,
-                                  format_critical_tag, CRIT_MULTIPLIER)
         is_crit, _, overflow_crit = roll_critical_hit(player, "player")
         dmg = apply_critical_damage(dmg, is_crit, multiplier=CRIT_MULTIPLIER + overflow_crit)
 
         # Event Horizon: The Sun — crits +30%, non-crits ×0.85
-        from pandemonium.world.event_horizon import joker_crit_modifier
         dmg = joker_crit_modifier(player, is_crit, dmg)
 
         # Deed titles: small player-only outgoing-damage bonus.
-        from pandemonium.progression.titles import mod as _title_mod
         _title_dmg = _title_mod(player, "damage_pct")
         if _title_dmg:
             dmg = int(dmg * (1.0 + _title_dmg))
@@ -392,12 +412,10 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             dmg = max(0, dmg)
 
         # Apply elemental damage
-        from pandemonium.combat.elemental import calculate_elemental_damage, get_attack_element
         element = get_attack_element(player, equipped_weapon)
         final_dmg = calculate_elemental_damage(dmg, player, target, element)
 
         # Palette's Brush: stance damage multiplier
-        from pandemonium.combat.weapon.palette_brush import get_brush_damage_mult
         final_dmg = int(final_dmg * get_brush_damage_mult(player))
 
         # ── Pierce (Magical trait): ignore portion of enemy elemental resistance ──
@@ -422,29 +440,24 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             final_dmg = int(final_dmg * (1 + bonus))
 
         # Damage-taken amplification (e.g. Aura of Despair)
-        from pandemonium.combat.status_effects import get_damage_taken_multiplier
         dt_mult = get_damage_taken_multiplier(target)
         if dt_mult != 1.0:
             final_dmg = int(final_dmg * dt_mult)
 
         # Captain's Cutlass: High Tide + Rally attack bonuses
-        from pandemonium.combat.weapon.captain_cutlass import get_high_tide_attack_bonus, get_rally_attack_bonus
         final_dmg += get_high_tide_attack_bonus(player, final_dmg)
         final_dmg += get_rally_attack_bonus(player, final_dmg)
         final_dmg = max(0, final_dmg)
 
         # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
-        from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
         final_dmg = apply_long_day_damage(player, final_dmg)
 
         # Pandemonium: Weakened Resolve curse — player deals less damage
         if player.get("pandemonium_curse"):
-            from pandemonium.world.curse_pandemonium import apply_damage_dealt_multiplier
             final_dmg = apply_damage_dealt_multiplier(player, final_dmg)
 
         # Wonderland: Jabberwock's Bane — bonus damage vs boss enemies
         if target.get("boss"):
-            from pandemonium.world.wonderland_curses import get_jabberwock_bane_multiplier
             bane_mult = get_jabberwock_bane_multiplier(player)
             if bane_mult > 0:
                 bonus_dmg = int(final_dmg * bane_mult)
@@ -453,20 +466,16 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     c_print(f"  ⚔️ Vorpal blessing surges! +{bonus_dmg} bonus damage!")
 
         # Event Horizon trophies: Old Dopo Robe + Chance and Choice (single hit)
-        from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
         final_dmg = int(final_dmg * get_robe_multiplier(player, player))
-        from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
         final_dmg = apply_chance_and_choice(player, final_dmg)
 
         # Form tradition (Cleaving / Focused)
-        from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
         final_dmg = int(final_dmg * get_outgoing_damage_multiplier(player))
 
         if on_hit:
             on_hit(target, enemies)
         target["hp"] -= final_dmg
         # ── Sky Piercer: execute non-superboss enemies left at/below threshold ──
-        from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
         check_sky_piercer_execute(player, target, final_dmg)
         # ── Life steal (Warlock Soul Siphon passive / Barbarian Bloodlust) ──
         ls = get_passive_life_steal(player)
@@ -489,12 +498,10 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                 elif _eh_actual > 0:
                     c_print(f"  [Death] You drain {_eh_actual} HP from the wound.")
         # Palette's Brush: strokes, Pigment Explosion, aura procs
-        from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, on_brush_attack_hit
         if _actor_has_palette_brush(player):
             for m in on_brush_attack_hit(player, target, final_dmg, enemies):
                 c_print(m)
         # Wake sleeping enemy on damage
-        from pandemonium.combat.status_effects import wake_on_damage
         wake_msg = wake_on_damage(target)
         if wake_msg:
             c_print(f"  {wake_msg}")
@@ -506,13 +513,11 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
         apply_wedding_on_hit(player, target, enemies, final_dmg)
 
         # Last Oath (unique rapier): basic attacks apply Expose
-        from pandemonium.combat.weapon.last_oath import try_last_oath_expose
         lo_msg = try_last_oath_expose(player, target, is_crit)
         if lo_msg:
             c_print(lo_msg)
 
         # Vileheart Pendant: chance to poison on physical hit
-        from pandemonium.combat.vileheart_venom import try_vileheart_venom_proc
         if try_vileheart_venom_proc(player, target):
             c_print(f"  🧪 Vileheart Pendant: {target['name']} is poisoned!")
 
@@ -526,7 +531,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
 
         crit_tag = format_critical_tag(is_crit)
         is_crit_bool = bool(crit_tag)
-        from pandemonium.combat.helpers import format_damage_msg
         c_print(format_damage_msg(player['name'], target['name'], final_dmg, element=element, crit=is_crit_bool))
         # ── Grandmother's Axe / Woodcutter's Broken Axe: bleed-pop passive ──
         # Same consumption as Chrysalis: detonate the strongest bleed for 3x.
@@ -536,7 +540,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                 if any(d.get("type") == "bleed" for d in target.get("active_debuffs", [])):
                     chance = 0.40 if weapon_special == "grandmothers_axe" else 0.20
                     if random.random() < chance:
-                        from pandemonium.combat.status_effects import detonate_bleed
                         det_dmg, det_msgs = detonate_bleed(target)
                         for det_msg in det_msgs:
                             c_print(f"  {det_msg}")
@@ -551,14 +554,12 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                 apply_trait_on_kill(trait, player, target, enemies)
 
             # Captain's Cutlass: High Tide stack on kill
-            from pandemonium.combat.weapon.captain_cutlass import check_high_tide_kill
             check_high_tide_kill(player, target)
         return "continue", False
 
     # ----- DEFEND -----
     elif action == "d":
         c_print(f"{player['name']} braces for impact, raising {player['name']} guard.")
-        from pandemonium.combat.weapon.prescript_ledger import report_defend as report_prescript_defend
         report_prescript_defend(player)
         return "continue", True
 
@@ -826,14 +827,12 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     final_dmg = max(1, dmg - armor)
                     target["hp"] -= final_dmg
                     # ── Sky Piercer: execute non-superboss enemies left at/below threshold ──
-                    from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
                     check_sky_piercer_execute(player, target, final_dmg)
                     # Wake sleeping enemy on damage
                     from pandemonium.combat.status_effects import wake_on_damage
                     wake_msg = wake_on_damage(target)
                     if wake_msg:
                         msg += f"  {wake_msg} "
-                    from pandemonium.combat.helpers import format_damage_msg
                     msg += format_damage_msg(player['name'], target['name'], final_dmg, skill_name=item.get('name', 'Item')) + " "
             if "poison_damage" in item:
                 if apply_poison(target, item["poison_damage"], item.get("poison_duration", 3)) != "resisted":
@@ -864,7 +863,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     })
                     msg += f"The {target['name']} is blinded (reduced dexterity). "
             if "escape_bonus" in item:
-                from pandemonium.world.curse_pandemonium import is_flee_blocked
                 if is_flee_blocked(player):
                     c_print("The crystalline walls seal shut — there is NO escape from this floor!")
                     return "continue", False
@@ -873,7 +871,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                 return "fled", False
 
             if item.get("fixed_flee"):
-                from pandemonium.world.curse_pandemonium import is_flee_blocked
                 if is_flee_blocked(player):
                     c_print("The crystalline walls seal shut — there is NO escape from this floor!")
                     return "continue", False
@@ -920,17 +917,14 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
 
     # ----- MOONLIGHT (Moonlight Greatsword weapon special) -----
     elif action == "m":
-        from pandemonium.combat.weapon.moonlight_greatsword import use_moonlight
         return use_moonlight(player)
 
     # ----- CREW RALLY -----
     elif action == "r":
-        from pandemonium.combat.weapon.captain_cutlass import use_crew_rally
         return use_crew_rally(player)
 
     # ----- REWRITE (Author's Pen) -----
     elif action == "e":
-        from pandemonium.combat.weapon.authors_pen import use_rewrite
         return use_rewrite(player)
 
     # ----- FLEE -----
@@ -941,7 +935,6 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             return "continue", False
 
         # Pandemonium: Crystalline Prison curse blocks all fleeing
-        from pandemonium.world.curse_pandemonium import is_flee_blocked
         if is_flee_blocked(player):
             c_print("The crystalline walls seal shut — there is NO escape from this floor!")
             return "continue", False
