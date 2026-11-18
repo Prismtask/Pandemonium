@@ -116,8 +116,11 @@ class CombatRenderer(tk.Frame):
         """Redraw the entire HUD from current game state."""
         data = format_combat_hud_data(player, enemies, active_ally=active_ally, header=header)
 
-        # Header
-        self.header_label.config(text=data["header"] or "")
+        # Header (only touch the label when the text changed)
+        header_text = data["header"] or ""
+        if getattr(self, "_header_text", None) != header_text:
+            self._header_text = header_text
+            self.header_label.config(text=header_text)
 
         # Party
         self._refresh_column(self.party_col, data["party"], self._party_frames, side="right")
@@ -160,6 +163,7 @@ class CombatRenderer(tk.Frame):
                         fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL,
                     )
                     token.pack(side=tk.LEFT, padx=2)
+                    token._last_fg = Theme.TEXT_DIM
                     self._turn_order_tokens.append((_norm_turn_label(label), token))
 
         key = _norm_turn_label(active_label)
@@ -184,10 +188,12 @@ class CombatRenderer(tk.Frame):
                 matches = named
         matched = {id(t) for t in matches}
         for norm, token in self._turn_order_tokens:
+            fg = Theme.ACCENT if id(token) in matched else Theme.TEXT_DIM
+            if getattr(token, "_last_fg", None) == fg:
+                continue  # Colour already correct — skip the Tcl round-trip.
+            token._last_fg = fg
             try:
-                token.config(
-                    fg=Theme.ACCENT if id(token) in matched else Theme.TEXT_DIM
-                )
+                token.config(fg=fg)
             except tk.TclError:
                 pass
 
@@ -220,7 +226,10 @@ class CombatRenderer(tk.Frame):
         for i in range(total):
             entity = entities[i] if i < len(entities) else _EMPTY_SLOT
             self._update_entity_frame(frame_cache[i], entity)
-            frame_cache[i].pack(fill=tk.X, padx=6, pady=4)
+            # pack() is a geometry-manager round-trip; only call it when the
+            # frame is actually hidden (previously ran for every card at 5 Hz).
+            if not frame_cache[i].winfo_manager():
+                frame_cache[i].pack(fill=tk.X, padx=6, pady=4)
 
     def _create_entity_frame(self, parent):
         """Create a reusable frame for one entity."""
@@ -317,6 +326,38 @@ class CombatRenderer(tk.Frame):
     def _update_entity_frame(self, frame, entity):
         w = frame.widgets
 
+        # Skip the whole card when nothing it displays changed. Every
+        # .config() is a Tcl round-trip and the HUD refreshes up to 5x/s for
+        # ~9 cards; on a down-clocked laptop that Tcl traffic (plus the GIL
+        # time it costs the combat thread) is what makes the UI stutter
+        # (2026-11-17 perf pass).
+        if entity.get("_empty_slot"):
+            render_key = ("empty",)
+        else:
+            hp = entity.get("hp", 0)
+            max_hp = entity.get("max_hp", 1)
+            ratio = hp / max(1, max_hp)
+            if ratio > 0.5:
+                bar_color = Theme.HP_BAR_FILL
+            elif ratio > 0.25:
+                bar_color = "#f39c12"
+            else:
+                bar_color = Theme.ACCENT
+            render_key = (
+                "entity",
+                entity.get("display_name") or entity.get("name", ""),
+                bool(entity.get("is_active")),
+                bool(entity.get("is_back") and not entity.get("is_player")),
+                bool(entity.get("monster_girl")),
+                hp, max_hp, bar_color,
+                entity.get("elem_tags") or "",
+                entity.get("buff_tags") or "",
+                entity.get("crit_text") or "",
+            )
+        if getattr(frame, "_render_key", None) == render_key:
+            return
+        frame._render_key = render_key
+
         # Reserved empty slot (enemy column pre-sized for a 5-entity wave):
         # render the card blank but keep its full height. The resting
         # highlight is restored so an earlier target-selection outline on
@@ -335,7 +376,7 @@ class CombatRenderer(tk.Frame):
             if w["crit"].winfo_manager():
                 w["crit"].pack_forget()
             w["hp_bar"].config(bg=Theme.BG_DARK, highlightbackground=Theme.BG_DARK)
-            w["hp_bar"].delete("all")
+            w["hp_bar"].clear()
             return
 
         # Remember the raw name so flash_entity() can find this card

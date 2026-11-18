@@ -7,6 +7,7 @@ and settings persistence.
 """
 
 import tkinter as tk
+import threading
 from tkinter import font as tkfont
 
 from pandemonium.gui.theme import (
@@ -20,10 +21,9 @@ from pandemonium.gui.theme import (
 from pandemonium.gui.screen_manager import ScreenManager
 from pandemonium.gui.settings import load_settings, save_settings
 import traceback
-from pandemonium.gui.screens.dungeon_screen import DungeonScreen
-from pandemonium.gui.screens.inventory_screen import InventoryScreen
 from pandemonium.gui.screens.splash_screen import SplashScreen
 from pandemonium.gui.screens.main_menu_screen import MainMenuScreen
+from pandemonium.gui import perf
 
 
 class PandemoniumApp:
@@ -131,6 +131,11 @@ class PandemoniumApp:
         so we skip CityScreen here to avoid double-dispatch.
         """
 
+        # Local import: heavy screens load on demand (and are pre-warmed on a
+        # worker thread) so the main menu does not pay their import cost.
+        from pandemonium.gui.screens.dungeon_screen import DungeonScreen
+        from pandemonium.gui.screens.inventory_screen import InventoryScreen
+
         screen = self.screen_manager.get_top_screen()
         if isinstance(screen, DungeonScreen):
             self.screen_manager.push_overlay(
@@ -151,6 +156,7 @@ class PandemoniumApp:
             save_settings(self.settings)
         except Exception:
             pass
+        perf.restore()
         self.root.destroy()
 
     def run(self):
@@ -167,11 +173,44 @@ class PandemoniumApp:
             )
         else:
             self.screen_manager.switch_to(MainMenuScreen, push_history=False)
+
+        # Import the game screens in the background while the player reads the
+        # splash/menu. Without this, the first Load/New Game click pays the
+        # multi-second import chain (city + dungeon + combat + facility data).
+        self.root.after(300, self._start_screen_warmup)
         self.root.mainloop()
+
+    def _start_screen_warmup(self):
+        """Kick the screen import warm-up off the UI thread."""
+        threading.Thread(
+            target=self._warm_up_screen_imports,
+            name="screen-warmup",
+            daemon=True,
+        ).start()
+
+    @staticmethod
+    def _warm_up_screen_imports():
+        """Import the heavy GUI screens ahead of first use.
+
+        Runs on a daemon thread and never creates widgets. Python's import
+        lock makes the later on-demand import a cheap no-op; a failure here is
+        harmless because the real import retries on demand.
+        """
+        try:
+            import pandemonium.gui.screens.city_screen  # noqa: F401
+            import pandemonium.gui.screens.dungeon_screen  # noqa: F401
+            import pandemonium.gui.screens.inventory_screen  # noqa: F401
+            import pandemonium.gui.screens.world_map_screen  # noqa: F401
+            import pandemonium.gui.screens.combat_screen  # noqa: F401
+        except Exception:
+            pass
 
 
 def run_gui(player: dict = None):
     """Convenience entry point: create app and run it."""
+    # Windows: opt out of EcoQoS throttling, raise priority slightly and use
+    # 1 ms timers (keeps combat pacing stable on battery).
+    perf.apply()
     app = PandemoniumApp(player=player)
     try:
         app.run()

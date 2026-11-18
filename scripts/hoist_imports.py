@@ -13,6 +13,8 @@ Safety rules (imports are NOT hoisted when):
 - inside an ``if TYPE_CHECKING`` block
 - the import is the only statement in its block (removal would empty it)
 - hoisting would shadow or clash with an existing module-level binding
+- marked with a ``# Local import:`` comment (cycle breakers and the GUI
+  startup fast path keep heavy screens off the main-menu import chain)
 """
 from __future__ import annotations
 
@@ -123,6 +125,27 @@ def collect_module_imports(tree: ast.Module) -> list[ast.stmt]:
     return out
 
 
+def marked_local_import(node: ast.stmt, lines: list[str]) -> bool:
+    """True when the import sits under a ``# Local import:`` comment.
+
+    Comments may span several lines, and imports that immediately follow a
+    marked import belong to the same deliberately-local group.
+    """
+    idx = node.lineno - 2  # 0-based index of the line directly above
+    while idx >= 0:
+        text = lines[idx].strip()
+        if text.startswith("#"):
+            if text.startswith("# Local import:"):
+                return True
+            idx -= 1
+            continue
+        if text.startswith(("import ", "from ")):
+            idx -= 1
+            continue
+        break
+    return False
+
+
 def insertion_anchor(tree: ast.Module) -> int:
     """1-based line number after which new imports are inserted."""
     anchor = 0
@@ -191,6 +214,10 @@ def process_file(path: Path, apply: bool) -> tuple[int, int, list[str]]:
             if any(isinstance(a, ast.If) and is_type_checking_test(a.test) for a in ancestors):
                 skipped += 1
                 notes.append(f"{path}:{node.lineno}: kept (TYPE_CHECKING guard)")
+                continue
+            if marked_local_import(node, lines):
+                skipped += 1
+                notes.append(f"{path}:{node.lineno}: kept ('# Local import:' marker)")
                 continue
             if sole_statement_in_block(node, parents):
                 skipped += 1

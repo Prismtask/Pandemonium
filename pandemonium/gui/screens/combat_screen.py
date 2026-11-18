@@ -30,6 +30,11 @@ from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 
 # ── GUI-specific I/O bridge ──────────────────────────────────────────────────
 
+# Tk re-lays out a wrapped Text buffer on every insert; an unbounded combat
+# log turns that into scrolling/typing lag in long fights (2026-11-17 perf pass).
+_MAX_COMBAT_LOG_LINES = 3000
+
+
 class _CombatAborted(Exception):
     """Raised in the combat thread when its screen is torn down mid-battle."""
 
@@ -165,6 +170,9 @@ class CombatScreen(BaseScreen):
         self._combat_thread = None
         self._poll_id = None
         self._hud_poll_id = None
+        self._hud_dirty = True   # Refresh the HUD on the next tick
+        self._hud_tick = 0       # Safety heartbeat counter (refresh 1x/s min)
+        self._log_appends = 0    # Appends since the last log-buffer trim
         self._pending_input_mode = None
         self._target_callback = None
         self._destroyed = False  # Guard against after() callbacks after destroy
@@ -811,11 +819,20 @@ class CombatScreen(BaseScreen):
             self._schedule_poll()
 
     def _schedule_hud_refresh(self):
-        """Poll player/enemy state and update the HUD renderer."""
+        """Poll player/enemy state and update the HUD renderer.
+
+        Refreshes only when new engine output landed (plus a 1 s safety
+        heartbeat). The old unconditional 5 Hz rebuild kept the main thread
+        in pure-Python/Tcl work, which on a battery-throttled laptop starved
+        the combat thread through the GIL (2026-11-17 perf pass).
+        """
         if self._destroyed or not self._widgets_alive():
             self._destroyed = True
             return
-        self._refresh_hud()
+        self._hud_tick += 1
+        if self._hud_dirty or self._hud_tick % 5 == 0:
+            self._hud_dirty = False
+            self._refresh_hud()
         self._hud_poll_id = self.after(200, self._schedule_hud_refresh)
 
     # ── Event handlers ────────────────────────────────────────────────────────
@@ -823,6 +840,7 @@ class CombatScreen(BaseScreen):
     def _handle_input_needed(self, prompt: str):
         """Combat thread is waiting for input — show appropriate UI."""
         from pandemonium.combat.ally import get_all_active_allies_including_defeated
+        self._hud_dirty = True
         from pandemonium.combat.ally import get_reserve_allies
         mode, context = self._parse_prompt(prompt)
 
@@ -1003,6 +1021,8 @@ class CombatScreen(BaseScreen):
         combat events: damage, heals, skills, DoT ticks, status effects.
         Also captures the engine's real turn order and turn-step indicators.
         """
+        self._hud_dirty = True
+
         # Detect round header and update the top bar
         if ">> ROUND" in text:
             self._on_round_header(text)
@@ -1843,8 +1863,31 @@ class CombatScreen(BaseScreen):
             at_bottom = True
         if at_bottom:
             self.log_text.see(tk.END)
+        # Trim the buffer in batches (every 100 appends) so Tk never has to
+        # lay out an unbounded wrapped text while the fight is running.
+        self._log_appends += 1
+        if self._log_appends >= 100:
+            self._log_appends = 0
+            self._trim_log()
         self.log_text.config(state=tk.DISABLED)
         self._set_ticker(text)
+
+    def _trim_log(self):
+        """Drop the oldest combat-log lines once the buffer grows too large."""
+        try:
+            total = int(self.log_text.index("end-1c").split(".")[0])
+            if total <= _MAX_COMBAT_LOG_LINES:
+                return
+            remove = total - (_MAX_COMBAT_LOG_LINES - 500)
+            self.log_text.delete("1.0", f"{remove + 1}.0")
+            # Keep the stored prompt mark pointing at the same text.
+            try:
+                line, col = self._log_mark.split(".")
+                self._log_mark = f"{max(1, int(line) - remove)}.{col}"
+            except (ValueError, AttributeError):
+                self._log_mark = "1.0"
+        except (tk.TclError, ValueError, AttributeError):
+            pass
 
     # Important lines that must survive the 3-line feed's turn sweep AND the
     # end-of-combat wipe. Emoji prefixes come from the producing modules:
@@ -2012,8 +2055,12 @@ class CombatScreen(BaseScreen):
         cap = max(120, int((width - 110) / 7) * 3)
         if len(text) > cap and not self._notice_line:
             text = "\u2026" + text[len(text) - cap:]
+        display = text or " "
+        if getattr(self, "_ticker_text", None) == display:
+            return  # Composed label is unchanged — skip the Tcl write.
+        self._ticker_text = display
         try:
-            self.ticker_label.config(text=text or " ")
+            self.ticker_label.config(text=display)
         except tk.TclError:
             pass
 
@@ -2051,6 +2098,7 @@ class CombatScreen(BaseScreen):
         used to discard all earlier rounds — including capture feedback.
         Pinned notices persist (they are also in the full log).
         """
+        self._hud_dirty = True
         self._ticker_feed = []
         self._skill_banner = None
         self._last_damage_actor = None
@@ -2062,6 +2110,8 @@ class CombatScreen(BaseScreen):
         self.log_text.config(state=tk.NORMAL)
         self.log_text.delete("1.0", tk.END)
         self.log_text.config(state=tk.DISABLED)
+        self._log_appends = 0
+        self._hud_dirty = True
         self._notices = []
         self._notice_line = None
         self._gimmick_line = None

@@ -58,6 +58,11 @@ class InventoryScreen(BaseScreen):
         self._char_view = "overview"     # "overview" | "skills" — shared by every character page
         self._char_pages = []            # One dict per character sub-tab (see _refresh_characters_tab)
         self._char_scroll = {}           # (id(character), view) -> last scroll fraction
+        self._bag_lazy = []              # Bag sub-tab entries drawn on first display
+        self._journal_lazy = []          # Journal sub-tab entries drawn on first display
+        self._bag_dirty = True           # Hidden tab needs a rebuild when shown
+        self._journal_dirty = True
+        self._eh_dirty = True
         self.char_notebook = None
         super().__init__(parent, screen_manager, **kwargs)
 
@@ -930,10 +935,13 @@ class InventoryScreen(BaseScreen):
     # ═══════════════════════════════════════════════════════════════════════
 
     def _build_bag_tab(self):
+        # Content is drawn when the tab is first selected: building all five
+        # bag sections up front cost ~0.18 s of the ~0.7 s screen-open time
+        # (2026-11-18 lag report).
         self.bag_frame = tk.Frame(self.notebook, bg=Theme.BG_DARK)
         self.notebook.add(self.bag_frame, text=" Bag ")
         self.bag_frame.grid_columnconfigure(0, weight=1)
-        self._refresh_bag_tab()
+        self._bag_dirty = True
 
     def _jump_to_bag_and_hint(self, slot_name: str, ally=None):
         """Switch to the Bag tab and hint the user to choose an item to equip.
@@ -961,6 +969,8 @@ class InventoryScreen(BaseScreen):
                     get_flower_items,
                 )
         from pandemonium.resources.trade_goods import cargo_total_weight, cargo_capacity
+        self._bag_dirty = False
+        self._bag_lazy = []
         for w in self.bag_frame.winfo_children():
             w.destroy()
 
@@ -1001,10 +1011,41 @@ class InventoryScreen(BaseScreen):
         for label, items, is_equip, is_key in sections:
             self._build_bag_subtab(label, items, is_equip, is_key)
 
+        # Only the visible section is drawn; the rest render on first view.
+        self.bag_sub.bind("<<NotebookTabChanged>>", self._on_bag_subtab_changed)
+        self.bag_sub.select(0)
+        self._draw_bag_subtab(self._bag_lazy[0])
+
     def _build_bag_subtab(self, label, items, is_equip, is_key):
-        """One scrollable sub-tab in the bag notebook."""
+        """Create a bag sub-tab shell; its rows are drawn on first display."""
         tab = tk.Frame(self.bag_sub, bg=Theme.BG_DARK)
         self.bag_sub.add(tab, text=label)
+        self._bag_lazy.append({
+            "frame": tab,
+            "items": items,
+            "is_equip": is_equip,
+            "is_key": is_key,
+            "drawn": False,
+        })
+
+    def _on_bag_subtab_changed(self, _event=None):
+        try:
+            index = self.bag_sub.index(self.bag_sub.select())
+        except (tk.TclError, ValueError):
+            return
+        if 0 <= index < len(self._bag_lazy):
+            self._draw_bag_subtab(self._bag_lazy[index])
+
+    def _draw_bag_subtab(self, entry):
+        """One scrollable sub-tab in the bag notebook."""
+        if entry["drawn"]:
+            return
+        entry["drawn"] = True
+
+        tab = entry["frame"]
+        items = entry["items"]
+        is_equip = entry["is_equip"]
+        is_key = entry["is_key"]
 
         scroll = tk.Scrollbar(tab)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -1297,13 +1338,16 @@ class InventoryScreen(BaseScreen):
     # ═══════════════════════════════════════════════════════════════════════
 
     def _build_journal_tab(self):
+        # Content is drawn when the tab is first selected (~0.18 s of widgets
+        # for the six sub-tabs — 2026-11-18 lag report).
         self.journal_frame = tk.Frame(self.notebook, bg=Theme.BG_DARK)
         self.notebook.add(self.journal_frame, text=" Journal ")
         self.journal_frame.grid_rowconfigure(0, weight=1)
         self.journal_frame.grid_columnconfigure(0, weight=1)
-        self._refresh_journal_tab()
+        self._journal_dirty = True
 
     def _refresh_journal_tab(self):
+        self._journal_dirty = False
         for w in self.journal_frame.winfo_children():
             w.destroy()
 
@@ -1315,35 +1359,48 @@ class InventoryScreen(BaseScreen):
         self.journal_notebook = ttk.Notebook(self.journal_frame, style="Ally.TNotebook")
         self.journal_notebook.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        # Bounty sub-tab
-        bounty_tab = tk.Frame(self.journal_notebook, bg=Theme.BG_DARK)
-        self.journal_notebook.add(bounty_tab, text=" Bounty ")
-        self._render_bounty_subtab(bounty_tab)
+        specs = [
+            (" Bounty ", self._render_bounty_subtab),
+            (" Main Quest ",
+             lambda p: self._render_quest_subtab(p, "main_quests", "No main quests yet.")),
+            (" Side Quest ",
+             lambda p: self._render_quest_subtab(p, "side_quests", "No side quests yet.")),
+            (" Event ", self._render_event_subtab),
+            (" Dreams ", self._render_dream_subtab),
+            (" Titles ", self._render_titles_subtab),
+        ]
+        self._journal_lazy = []
+        for label, renderer in specs:
+            tab = tk.Frame(self.journal_notebook, bg=Theme.BG_DARK)
+            self.journal_notebook.add(tab, text=label)
+            self._journal_lazy.append(
+                {"frame": tab, "render": renderer, "drawn": False}
+            )
 
-        # Main Quest sub-tab
-        main_quest_tab = tk.Frame(self.journal_notebook, bg=Theme.BG_DARK)
-        self.journal_notebook.add(main_quest_tab, text=" Main Quest ")
-        self._render_quest_subtab(main_quest_tab, "main_quests", "No main quests yet.")
+        # Only the visible sub-tab is built; the rest render on first view.
+        self.journal_notebook.bind(
+            "<<NotebookTabChanged>>", self._on_journal_subtab_changed
+        )
+        self.journal_notebook.select(0)
+        self._draw_journal_subtab(0)
 
-        # Side Quest sub-tab
-        side_quest_tab = tk.Frame(self.journal_notebook, bg=Theme.BG_DARK)
-        self.journal_notebook.add(side_quest_tab, text=" Side Quest ")
-        self._render_quest_subtab(side_quest_tab, "side_quests", "No side quests yet.")
+    def _on_journal_subtab_changed(self, _event=None):
+        try:
+            index = self.journal_notebook.index(
+                self.journal_notebook.select()
+            )
+        except (tk.TclError, ValueError):
+            return
+        self._draw_journal_subtab(index)
 
-        # Event sub-tab
-        event_tab = tk.Frame(self.journal_notebook, bg=Theme.BG_DARK)
-        self.journal_notebook.add(event_tab, text=" Event ")
-        self._render_event_subtab(event_tab)
-
-        # Dreams sub-tab (Dream Journal — docs/dream_events_design.md §5.3)
-        dream_tab = tk.Frame(self.journal_notebook, bg=Theme.BG_DARK)
-        self.journal_notebook.add(dream_tab, text=" Dreams ")
-        self._render_dream_subtab(dream_tab)
-
-        # Titles sub-tab (docs/titles_design.md)
-        titles_tab = tk.Frame(self.journal_notebook, bg=Theme.BG_DARK)
-        self.journal_notebook.add(titles_tab, text=" Titles ")
-        self._render_titles_subtab(titles_tab)
+    def _draw_journal_subtab(self, index):
+        if not (0 <= index < len(self._journal_lazy)):
+            return
+        entry = self._journal_lazy[index]
+        if entry["drawn"]:
+            return
+        entry["drawn"] = True
+        entry["render"](entry["frame"])
 
     def _render_dream_subtab(self, parent):
         """Render the Dream Journal — every dream seen so far, re-readable."""
@@ -1821,12 +1878,16 @@ class InventoryScreen(BaseScreen):
                 or int(state.get("best_room", 0) or 0) > 0)
 
     def _build_eh_tab(self):
+        # Content is drawn when the tab is first selected (~0.32 s of widgets
+        # when a run is live — the biggest single chunk of screen-open time,
+        # 2026-11-18 lag report).
         self.eh_frame = tk.Frame(self.notebook, bg=Theme.BG_DARK)
         self.notebook.add(self.eh_frame, text=" Event Horizon ")
-        self._refresh_eh_tab()
+        self._eh_dirty = True
 
     def _refresh_eh_tab(self):
         import pandemonium.world.event_horizon as eh
+        self._eh_dirty = False
         for w in self.eh_frame.winfo_children():
             w.destroy()
 
@@ -1849,16 +1910,40 @@ class InventoryScreen(BaseScreen):
             ).pack(anchor=tk.CENTER, expand=True, padx=18, pady=18)
             return
 
-        scroll = tk.Scrollbar(self.eh_frame)
+        # One read-only Text for the whole tab. A long run can carry 400+
+        # flask records, and Tk measures every line of a multi-line Label at
+        # creation time (~0.15 s here). Text lays out lazily, scrolls itself
+        # and keeps section colours via tags.
+        body = tk.Text(
+            self.eh_frame, wrap=tk.WORD, state=tk.NORMAL,
+            bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_SMALL,
+            highlightthickness=0, borderwidth=0, padx=10, pady=8,
+        )
+        scroll = tk.Scrollbar(self.eh_frame, command=body.yview)
+        body.config(yscrollcommand=scroll.set)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        canvas = tk.Canvas(self.eh_frame, bg=Theme.BG_DARK, highlightthickness=0)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll.config(command=canvas.yview)
-        canvas.config(yscrollcommand=scroll.set)
-        inner = tk.Frame(canvas, bg=Theme.BG_DARK)
-        canvas.create_window((0, 0), window=inner, anchor="nw")
-        inner.bind("<Configure>",
-                   lambda e: canvas.config(scrollregion=canvas.bbox("all")))
+        body.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        body.bind("<MouseWheel>",
+                  lambda e: body.yview_scroll(int(-1 * (e.delta / 120)),
+                                              "units"))
+
+        body.tag_configure("run", foreground=Theme.ACCENT,
+                           font=Theme.FONT_BOLD, spacing1=10)
+        body.tag_configure("good", foreground=Theme.BUFF_POSITIVE,
+                           font=Theme.FONT_BOLD, spacing1=10)
+        body.tag_configure("bad", foreground=Theme.BUFF_NEGATIVE,
+                           font=Theme.FONT_BOLD, spacing1=10)
+        body.tag_configure("section", foreground=Theme.TEXT_HEADER,
+                           font=Theme.FONT_BOLD, spacing1=10)
+        body.tag_configure("head", foreground=Theme.TEXT_HEADER,
+                           font=Theme.FONT_BOLD)
+        body.tag_configure("dim", foreground=Theme.TEXT_DIM)
+
+        def add(text, tag=None):
+            if tag:
+                body.insert(tk.END, text + "\n", tag)
+            else:
+                body.insert(tk.END, text + "\n")
 
         room = int(state.get("room", 0))
         motes = int(state.get("motes", 0))
@@ -1866,22 +1951,13 @@ class InventoryScreen(BaseScreen):
         pct = int(round(eh.entropy_stat_penalty(entropy) * 100))
 
         # ── Run status ──────────────────────────────────────────────────
-        status = tk.LabelFrame(
-            inner, text=" The Run ", bg=Theme.BG_DARK, fg=Theme.ACCENT,
-            font=Theme.FONT_BOLD, highlightthickness=1,
-            highlightbackground=Theme.BORDER,
-        )
-        status.pack(fill=tk.X, pady=4, padx=4)
+        add("\u25b8 The Run", "run")
         if inside:
-            banner, banner_fg = ("▶ IN RUN — deep in the distortion. "
-                                 "Everything below is live.", Theme.ACCENT)
+            add("\u25b6 IN RUN — deep in the distortion. "
+                "Everything below is live.", "run")
         else:
-            banner, banner_fg = ("⏸ SUSPENDED — resume at the Event Horizon "
-                                 "site. Flasks, cards and Entropy wait there.",
-                                 Theme.TEXT_DIM)
-        tk.Label(status, text=banner, bg=Theme.BG_DARK, fg=banner_fg,
-                 font=Theme.FONT_SMALL, anchor=tk.W, wraplength=620,
-                 justify=tk.LEFT).pack(fill=tk.X, padx=8, pady=(4, 2))
+            add("\u23f8 SUSPENDED — resume at the Event Horizon site. "
+                "Flasks, cards and Entropy wait there.", "dim")
         rows = [
             ("Next room", f"{room + 1}"),
             ("Deepest room (this run)", f"{room}"),
@@ -1889,54 +1965,32 @@ class InventoryScreen(BaseScreen):
             ("Horizon Motes", f"\u25ce {motes}"),
             ("Entropy", f"{entropy} stacks  (attributes \u2212{pct}%)"),
         ]
+        label_w = max(len(label) for label, _v in rows)
+        value_w = max(len(value) for _l, value in rows)
         for label, value in rows:
-            row = tk.Frame(status, bg=Theme.BG_DARK)
-            row.pack(fill=tk.X, padx=8, pady=1)
-            tk.Label(row, text=label, bg=Theme.BG_DARK, fg=Theme.TEXT_DIM,
-                     font=Theme.FONT_SMALL, anchor=tk.W).pack(side=tk.LEFT)
-            tk.Label(row, text=value, bg=Theme.BG_DARK, fg=Theme.TEXT,
-                     font=Theme.FONT_SMALL, anchor=tk.E).pack(side=tk.RIGHT)
-        tk.Frame(status, bg=Theme.BG_DARK, height=3).pack()
+            add(f"{label:<{label_w}}   {value:>{value_w}}")
 
         # ── Entropy afflictions ─────────────────────────────────────────
-        aff_frame = tk.LabelFrame(
-            inner, text=" Entropy Afflictions (battle-start debuffs) ",
-            bg=Theme.BG_DARK, fg=Theme.BUFF_NEGATIVE, font=Theme.FONT_BOLD,
-            highlightthickness=1, highlightbackground=Theme.BORDER,
-        )
-        aff_frame.pack(fill=tk.X, pady=4, padx=4)
+        add("\u25b8 Entropy Afflictions (battle-start debuffs)", "bad")
         aff = list(state.get("entropy_afflictions") or [])
         if aff:
+            aff_lines = []
             for i, key in enumerate(aff, 1):
                 name, desc = eh.ENTROPY_AFFLICTION_INFO.get(
                     key, (str(key).title(), ""))
-                tk.Label(
-                    aff_frame, text=f"{i}. {name} — {desc}",
-                    bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_SMALL,
-                    anchor=tk.W, wraplength=620, justify=tk.LEFT,
-                ).pack(fill=tk.X, padx=8, pady=1)
+                aff_lines.append(f"{i}. {name} — {desc}")
+            add("\n".join(aff_lines))
         else:
-            self.styled_label(aff_frame, text="None yet.",
-                              fg=Theme.TEXT_DIM).pack(anchor=tk.W, padx=8,
-                                                      pady=2)
+            add("None yet.", "dim")
         if len(aff) < len(eh.ENTROPY_DEBUFF_POOL):
             next_at = (len(aff) + 1) * eh.EH_ENTROPY_AFFLICTION_EVERY
-            self.styled_label(
-                aff_frame,
-                text=(f"Entropy gains a random affliction every "
-                      f"{eh.EH_ENTROPY_AFFLICTION_EVERY} stacks "
-                      f"(next at {next_at}). Battles only use the afflictions "
-                      f"listed above."),
-                fg=Theme.TEXT_DIM,
-            ).pack(anchor=tk.W, padx=8, pady=(2, 4))
+            add(f"Entropy gains a random affliction every "
+                f"{eh.EH_ENTROPY_AFFLICTION_EVERY} stacks "
+                f"(next at {next_at}). Battles only use the afflictions "
+                f"listed above.", "dim")
 
         # ── Flask effects per actor ─────────────────────────────────────
-        flask_frame = tk.LabelFrame(
-            inner, text=" Flask Effects (permanent for the run) ",
-            bg=Theme.BG_DARK, fg=Theme.BUFF_POSITIVE, font=Theme.FONT_BOLD,
-            highlightthickness=1, highlightbackground=Theme.BORDER,
-        )
-        flask_frame.pack(fill=tk.X, pady=4, padx=4)
+        add("\u25b8 Flask Effects (permanent for the run)", "good")
         flasks = state.get("actor_flasks") or {}
         if flasks:
             for key in sorted(flasks):
@@ -1944,110 +1998,59 @@ class InventoryScreen(BaseScreen):
                 # Running total of the actor's flasks rides on the name row
                 # (2026-10-08 request: "+n% dmg, so on" beside the actor name).
                 total = eh.format_flask_summary(flasks[key])
-                head = tk.Frame(flask_frame, bg=Theme.BG_DARK)
-                head.pack(fill=tk.X, padx=8, pady=(4, 0))
-                tk.Label(head, text=who, bg=Theme.BG_DARK,
-                         fg=Theme.TEXT_HEADER, font=Theme.FONT_BOLD,
-                         anchor=tk.W).pack(side=tk.LEFT)
-                if total:
-                    tk.Label(head, text=total, bg=Theme.BG_DARK,
-                             fg=Theme.BUFF_POSITIVE, font=Theme.FONT_SMALL,
-                             anchor=tk.E).pack(side=tk.RIGHT)
-                for rec in flasks[key]:
-                    tk.Label(
-                        flask_frame,
-                        text=f"    \u2022 {rec.get('label') or rec.get('name', '?')}",
-                        bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_SMALL,
-                        anchor=tk.W, wraplength=620, justify=tk.LEFT,
-                    ).pack(fill=tk.X, padx=8)
+                add(who + (f"   {total}" if total else ""), "head")
+                records = flasks[key] or []
+                if records:
+                    add("\n".join(
+                        f"    \u2022 {rec.get('label') or rec.get('name', '?')}"
+                        for rec in records
+                    ))
         else:
-            self.styled_label(flask_frame, text="No flasks consumed yet.",
-                              fg=Theme.TEXT_DIM).pack(anchor=tk.W, padx=8, pady=4)
+            add("No flasks consumed yet.", "dim")
 
         # ── Tarot hand (the Joker's arcana, docs/joker_cards_proposal.md) ──
-        tarot_frame = tk.LabelFrame(
-            inner, text=" Tarot Hand (the Joker's arcana) ", bg=Theme.BG_DARK,
-            fg=Theme.TEXT_HEADER, font=Theme.FONT_BOLD,
-            highlightthickness=1, highlightbackground=Theme.BORDER,
-        )
-        tarot_frame.pack(fill=tk.X, pady=4, padx=4)
+        add("\u25b8 Tarot Hand (the Joker's arcana)", "section")
         jokers = state.get("joker_cards") or []
-        head = tk.Frame(tarot_frame, bg=Theme.BG_DARK)
-        head.pack(fill=tk.X, padx=8, pady=(4, 0))
-        tk.Label(head, text=f"Hand: {len(jokers)} / {eh.EH_JOKER_HAND_CAP}",
-                 bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_SMALL,
-                 anchor=tk.W).pack(side=tk.LEFT)
-        if any(r.get("id") == "joker_world" for r in jokers):
-            tk.Label(head, text="The deal is closed.", bg=Theme.BG_DARK,
-                     fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL,
-                     anchor=tk.E).pack(side=tk.RIGHT)
-        else:
-            tk.Label(head, text="the Joker deals 2 at every 25th room",
-                     bg=Theme.BG_DARK, fg=Theme.TEXT_DIM,
-                     font=Theme.FONT_SMALL,
-                     anchor=tk.E).pack(side=tk.RIGHT)
+        note = ("The deal is closed."
+                if any(r.get("id") == "joker_world" for r in jokers)
+                else "the Joker deals 2 at every 25th room")
+        add(f"Hand: {len(jokers)} / {eh.EH_JOKER_HAND_CAP}   {note}", "head")
         if jokers:
-            for r in jokers:
-                tk.Label(
-                    tarot_frame,
-                    text=f"  \u2022 {r.get('name', '?')} — {r.get('desc', '')}",
-                    bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_SMALL,
-                    anchor=tk.W, wraplength=620, justify=tk.LEFT,
-                ).pack(fill=tk.X, padx=8, pady=1)
+            add("\n".join(
+                f"  \u2022 {r.get('name', '?')} — {r.get('desc', '')}"
+                for r in jokers
+            ))
         else:
-            self.styled_label(tarot_frame, text="No arcana taken yet.",
-                              fg=Theme.TEXT_DIM).pack(anchor=tk.W, padx=8, pady=4)
+            add("No arcana taken yet.", "dim")
 
         # ── Positive cards ──────────────────────────────────────────────
-        pos_frame = tk.LabelFrame(
-            inner, text=" Deep Boons (team cards) ", bg=Theme.BG_DARK,
-            fg=Theme.BUFF_POSITIVE, font=Theme.FONT_BOLD,
-            highlightthickness=1, highlightbackground=Theme.BORDER,
-        )
-        pos_frame.pack(fill=tk.X, pady=4, padx=4)
+        add("\u25b8 Deep Boons (team cards)", "good")
         pos = state.get("positive_cards") or []
         if pos:
-            for c in pos:
-                tk.Label(
-                    pos_frame,
-                    text=(f"\u2022 {c.get('name', '?')} (T{c.get('tier', '?')}) "
-                          f"— {c.get('desc', '')}"),
-                    bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_SMALL,
-                    anchor=tk.W, wraplength=620, justify=tk.LEFT,
-                ).pack(fill=tk.X, padx=8, pady=1)
+            add("\n".join(
+                f"\u2022 {c.get('name', '?')} (T{c.get('tier', '?')}) "
+                f"— {c.get('desc', '')}"
+                for c in pos
+            ))
         else:
-            self.styled_label(pos_frame, text="None taken.",
-                              fg=Theme.TEXT_DIM).pack(anchor=tk.W, padx=8, pady=4)
+            add("None taken.", "dim")
 
         # ── Negative cards ──────────────────────────────────────────────
-        neg_frame = tk.LabelFrame(
-            inner, text=" Trial Burdens (enemy cards) ", bg=Theme.BG_DARK,
-            fg=Theme.BUFF_NEGATIVE, font=Theme.FONT_BOLD,
-            highlightthickness=1, highlightbackground=Theme.BORDER,
-        )
-        neg_frame.pack(fill=tk.X, pady=4, padx=4)
+        add("\u25b8 Trial Burdens (enemy cards)", "bad")
         neg = state.get("negative_cards") or []
         if neg:
-            for c in neg:
-                cost = c.get("entropy_cost", 0)
-                tk.Label(
-                    neg_frame,
-                    text=(f"\u2022 {c.get('name', '?')} (T{c.get('tier', '?')}) "
-                          f"— {c.get('desc', '')}  [Entropy +{cost}]"),
-                    bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_SMALL,
-                    anchor=tk.W, wraplength=620, justify=tk.LEFT,
-                ).pack(fill=tk.X, padx=8, pady=1)
+            add("\n".join(
+                f"\u2022 {c.get('name', '?')} (T{c.get('tier', '?')}) "
+                f"— {c.get('desc', '')}  [Entropy +{c.get('entropy_cost', 0)}]"
+                for c in neg
+            ))
         else:
-            self.styled_label(neg_frame, text="None taken.",
-                              fg=Theme.TEXT_DIM).pack(anchor=tk.W, padx=8, pady=4)
+            add("None taken.", "dim")
 
         # ── Footer ───────────────────────────────────────────────────────
-        self.styled_label(
-            inner,
-            text=("Everything here is lost on death or abandon — only your "
-                  "best room is kept. Save & quit suspends the run."),
-            fg=Theme.TEXT_DIM,
-        ).pack(anchor=tk.W, padx=6, pady=(6, 10))
+        add("\nEverything here is lost on death or abandon — only your "
+            "best room is kept. Save & quit suspends the run.", "dim")
+        body.config(state=tk.DISABLED)
 
     @staticmethod
     def _weapon_element_line(item):
@@ -2442,14 +2445,22 @@ class InventoryScreen(BaseScreen):
     # ═══════════════════════════════════════════════════════════════════════
 
     def _on_main_tab_changed(self, _event=None):
-        """Rebuild the Bag whenever it becomes the visible tab.
+        """Build/refresh the selected tab on demand.
 
-        Dungeon loot (flowers especially) is added while this screen sits
-        hidden, so a bag built once at login went stale and looked empty.
+        The Bag is always rebuilt on selection: dungeon loot (flowers
+        especially) can be added while this screen sits hidden, so a bag
+        built once at login looked empty. Journal/EH rebuild only when a
+        refresh marked them dirty — their content cannot change behind the
+        screen.
         """
         try:
-            if self.notebook.select() == str(self.bag_frame):
+            selected = self.notebook.select()
+            if selected == str(self.bag_frame):
                 self._refresh_bag_tab()
+            elif selected == str(self.journal_frame) and self._journal_dirty:
+                self._refresh_journal_tab()
+            elif hasattr(self, "eh_frame") and selected == str(self.eh_frame) and self._eh_dirty:
+                self._refresh_eh_tab()
         except tk.TclError:
             pass
 
@@ -2492,10 +2503,26 @@ class InventoryScreen(BaseScreen):
             pass
 
     def _refresh_all(self):
+        """Rebuild what is visible; flag hidden tabs for rebuild on next view.
+
+        Building every tab synchronously made opening/refreshing this screen
+        cost ~0.7 s (2026-11-18 report). Characters are the default tab and
+        cheap (~40 ms), so they are always rebuilt; the heavy tabs are only
+        rebuilt when they are the selected one.
+        """
+        self._bag_dirty = True
+        self._journal_dirty = True
+        self._eh_dirty = True
         self._refresh_characters_tab()
-        self._refresh_bag_tab()
-        self._refresh_journal_tab()
-        if hasattr(self, "eh_frame"):
+        try:
+            selected = self.notebook.select()
+        except tk.TclError:
+            return
+        if selected == str(self.bag_frame):
+            self._refresh_bag_tab()
+        elif selected == str(self.journal_frame):
+            self._refresh_journal_tab()
+        elif hasattr(self, "eh_frame") and selected == str(self.eh_frame):
             self._refresh_eh_tab()
 
     def _on_back(self):

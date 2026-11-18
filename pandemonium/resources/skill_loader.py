@@ -1,7 +1,8 @@
 # resources/skill_loader.py – Skill Data Loader
 """Loads and caches skill definitions from the skill_book YAML."""
 import os
-import yaml
+
+from pandemonium.resources.yaml_loader import load_yaml
 
 
 def _resolve_yaml_path() -> str:
@@ -25,7 +26,7 @@ class SkillLoader:
     def _load(self):
         path = _resolve_yaml_path()
         with open(path, "r", encoding="utf-8") as f:
-            self._skill_data = yaml.safe_load(f)
+            self._skill_data = load_yaml(f)
 
     @property
     def passive_skills(self) -> dict:

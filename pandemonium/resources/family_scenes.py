@@ -6,11 +6,11 @@ This module keeps the stable constants/helper API used by the UI and tests.
 """
 import os
 
-import yaml
+from pandemonium.resources.yaml_loader import load_yaml
 
 _YAML_PATH = os.path.join(os.path.dirname(__file__), "family_scenes.yaml")
 with open(_YAML_PATH, encoding="utf-8") as _handle:
-    _DATA = yaml.safe_load(_handle) or {}
+    _DATA = load_yaml(_handle) or {}
 
 ACTION_PROMPTS = _DATA.get("action_prompts", {}) or {}
 ACTION_LINES = _DATA.get("action_lines", {}) or {}

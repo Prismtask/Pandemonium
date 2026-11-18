@@ -1,5 +1,6 @@
-import yaml
 import os
+
+from pandemonium.resources.yaml_loader import load_yaml
 
 # Global containers for extra data extracted from YAML files
 AFFECTION_GIFTS = {}
@@ -34,7 +35,7 @@ def load_enemies():
         filepath = os.path.join(yaml_dir, filename)
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f)
+                data = load_yaml(f)
         except Exception as e:
             print(f"Error loading {filename}: {e}")
             continue

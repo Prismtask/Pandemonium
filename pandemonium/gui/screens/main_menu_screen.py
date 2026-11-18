@@ -13,7 +13,6 @@ from pandemonium.gui.screens.settings_screen import SettingsScreen
 from pandemonium.gui.screens.changelog_screen import ChangelogScreen
 from pandemonium.core.save_load import list_save_details, load_game, delete_save
 from pandemonium.core.character import ensure_player_fields
-import pandemonium.progression.karma as karma
 
 
 class MainMenuScreen(BaseScreen):
@@ -234,6 +233,10 @@ class MainMenuScreen(BaseScreen):
             name = state["info"].get(slot, {}).get("name", "Unknown")
 
             def _confirmed():
+                # Local import: keeps the karma/title data chain off the main
+                # menu's startup path (only needed once a save is loaded).
+                import pandemonium.progression.karma as karma
+
                 player = load_game(slot)
                 if player is None:
                     ok_dialog(self, "Error", f"Failed to load Savefile {slot}.",

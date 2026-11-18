@@ -13,7 +13,9 @@ import queue
 import time
 import tkinter as tk
 
-from pandemonium.gui.screens.facility_screen import FacilityScreen
+from pandemonium.gui.screens.facility_screen import (
+    FacilityScreen, _MAX_OUTPUT_LINES, _TRIM_OUTPUT_TO,
+)
 from pandemonium.gui.theme import Theme
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 from pandemonium.gui.screens.city_screen import CityScreen
@@ -473,6 +475,7 @@ class DungeonScreen(FacilityScreen):
                 self.output_text.insert(tk.END, strip_ansi(line) + "\n")
             self.output_text.see(tk.END)
             self.output_text.config(state=tk.DISABLED)
+            self._output_line_count = len(saved_log)
 
     def _set_subtitle(self, text):
         """Refresh the header subtitle (floor/room line)."""
@@ -577,8 +580,13 @@ class DungeonScreen(FacilityScreen):
     def _flush_output(self):
         """Override to also persist dungeon log lines to player save data."""
         with self._pending_lock:
+            self._flush_scheduled = False
             lines = self._pending_lines[:]
             self._pending_lines.clear()
+
+        # Drop queued lines if the screen is closing / already destroyed.
+        if self._stopped or not self._widgets_alive():
+            return
 
         if not lines:
             return
@@ -591,11 +599,19 @@ class DungeonScreen(FacilityScreen):
             except tk.TclError:
                 pass
 
-        self.output_text.config(state=tk.NORMAL)
-        for line in lines:
-            self.output_text.insert(tk.END, strip_ansi(line) + "\n")
-        self.output_text.see(tk.END)
-        self.output_text.config(state=tk.DISABLED)
+        try:
+            self.output_text.config(state=tk.NORMAL)
+            chunk = "".join(strip_ansi(line) + "\n" for line in lines)
+            self.output_text.insert(tk.END, chunk)
+            self._output_line_count += chunk.count("\n")
+            if self._output_line_count > _MAX_OUTPUT_LINES:
+                remove = self._output_line_count - _TRIM_OUTPUT_TO
+                self.output_text.delete("1.0", f"{remove + 1}.0")
+                self._output_line_count = _TRIM_OUTPUT_TO
+            self.output_text.see(tk.END)
+            self.output_text.config(state=tk.DISABLED)
+        except tk.TclError:
+            return
 
         # Persist to player save data so the log survives leaving the dungeon
         log = self.player.get("_dungeon_log", None)

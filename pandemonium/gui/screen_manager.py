@@ -11,7 +11,6 @@ import tkinter as tk
 
 from pandemonium.gui.theme import Theme
 from pandemonium.core.time_blocks import register_time_listener
-from pandemonium.gui.screens.city_screen import CityScreen
 from pandemonium.core.time_blocks import format_block_track
 from pandemonium.core.events import format_date
 from pandemonium.gui.widgets.notification_toast import NotificationToast
@@ -287,7 +286,9 @@ class ScreenManager:
         if self._overlay_screen is not None or self.player is None:
             return
         screen = self.current_screen
-        if not isinstance(screen, CityScreen):
+        # Name check instead of isinstance: importing city_screen here would
+        # pull the whole game-screen chain into the main-menu startup path.
+        if type(screen).__name__ != "CityScreen":
             return
         if not self.player.get("event_queue"):
             return

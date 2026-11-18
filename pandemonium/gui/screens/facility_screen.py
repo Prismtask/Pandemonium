@@ -20,6 +20,11 @@ from pandemonium.gui.screens.base_screen import city_header_parts
 
 
 # ── Internal exception for clean thread abort ──────────────────────────────────
+# Output buffer caps: Tk Text re-layout cost grows with buffer size, which
+# shows up as sluggish scrolling/typing on long facility sessions
+# (2026-11-17 perf pass).
+_MAX_OUTPUT_LINES = 6000
+_TRIM_OUTPUT_TO = 5000
 
 class _FacilityStopped(Exception):
     """Raised inside the facility thread when the user aborts early."""
@@ -107,6 +112,8 @@ class FacilityScreen(BaseScreen):
         self._input_queue = queue.Queue()
         self._pending_lines = []
         self._pending_lock = threading.Lock()
+        self._flush_scheduled = False  # One coalesced flush per frame max
+        self._output_line_count = 0    # Approximate Text buffer size (lines)
         self._input_mode = False
         self._input_prompt = ""
         self._stopped = False  # Set when user aborts early — thread should bail out
@@ -371,16 +378,27 @@ class FacilityScreen(BaseScreen):
     # ── Output management (thread-safe) ───────────────────────────────────────
 
     def _append_output(self, text):
-        """Thread-safe append to output text. Called from facility thread."""
+        """Thread-safe append to output text. Called from facility thread.
+
+        Lines are coalesced: one flush runs per frame (16 ms) no matter how
+        many print() calls arrive, instead of one after(0) callback per line.
+        Facility menus can print hundreds of lines in a burst; per-line
+        scheduling flooded the Tk event queue and made the UI crawl on
+        battery-throttled machines (2026-11-17 perf pass).
+        """
         if self._stopped:
             return
         with self._pending_lock:
             self._pending_lines.append(text)
+            if self._flush_scheduled:
+                return
+            self._flush_scheduled = True
         # Schedule UI update on main thread
         try:
-            self.after(0, self._flush_output)
+            self.after(16, self._flush_output)
         except (RuntimeError, tk.TclError):
-            pass  # widget destroyed
+            with self._pending_lock:
+                self._flush_scheduled = False
 
     def _widgets_alive(self):
         """True while this screen's Tcl widgets still exist.
@@ -396,10 +414,13 @@ class FacilityScreen(BaseScreen):
 
     def _flush_output(self):
         """Flush pending lines to the Text widget (main thread only)."""
+        with self._pending_lock:
+            self._flush_scheduled = False
+            lines = self._pending_lines[:]
+            self._pending_lines.clear()
+
         # Drop queued lines if the screen is closing / already destroyed.
         if self._stopped or not self._widgets_alive():
-            with self._pending_lock:
-                self._pending_lines.clear()
             return
 
         # Hide loading indicator on first output
@@ -410,17 +431,20 @@ class FacilityScreen(BaseScreen):
             except tk.TclError:
                 pass
 
-        with self._pending_lock:
-            lines = self._pending_lines[:]
-            self._pending_lines.clear()
-
         if not lines:
             return
 
         try:
             self.output_text.config(state=tk.NORMAL)
-            for line in lines:
-                self.output_text.insert(tk.END, strip_ansi(line) + "\n")
+            # One insert for the whole batch — far cheaper than per-line
+            # insert/see/state-toggle cycles.
+            chunk = "".join(strip_ansi(line) + "\n" for line in lines)
+            self.output_text.insert(tk.END, chunk)
+            self._output_line_count += chunk.count("\n")
+            if self._output_line_count > _MAX_OUTPUT_LINES:
+                remove = self._output_line_count - _TRIM_OUTPUT_TO
+                self.output_text.delete("1.0", f"{remove + 1}.0")
+                self._output_line_count = _TRIM_OUTPUT_TO
             self.output_text.see(tk.END)
             self.output_text.config(state=tk.DISABLED)
         except tk.TclError:
@@ -428,6 +452,10 @@ class FacilityScreen(BaseScreen):
 
     def _clear_output(self):
         """Thread-safe clear. Called from facility thread."""
+        # Drop anything queued before the clear so a pending flush cannot
+        # repaint the old screen after it has been wiped.
+        with self._pending_lock:
+            self._pending_lines.clear()
         try:
             self.after(0, self._do_clear)
         except (RuntimeError, tk.TclError):
@@ -439,6 +467,7 @@ class FacilityScreen(BaseScreen):
             self.output_text.config(state=tk.NORMAL)
             self.output_text.delete("1.0", tk.END)
             self.output_text.config(state=tk.DISABLED)
+            self._output_line_count = 0
         except tk.TclError:
             pass  # Widget already destroyed — ignore
 

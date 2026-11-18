@@ -2,7 +2,8 @@ from pandemonium.combat.combat_io import c_print, c_input, c_renders_menus
 # combat/ally_skills.py - Ally skill system: passive, innate, and learnable skills
 import os
 import random
-import yaml
+
+from pandemonium.resources.yaml_loader import load_yaml
 
 from pandemonium.combat.helpers import format_damage_msg, ACTION_CANCELLED_MSG
 from pandemonium.core.utils import display_name
@@ -47,9 +48,9 @@ def _load_innate_and_learnable():
     learnable_path = os.path.join(os.path.dirname(__file__), "../resources/skill_book/skill_list.yaml")
     
     with open(innate_path, "r", encoding="utf-8") as f:
-        innate_data = yaml.safe_load(f)
+        innate_data = load_yaml(f)
     with open(learnable_path, "r", encoding="utf-8") as f:
-        learnable_data = yaml.safe_load(f)
+        learnable_data = load_yaml(f)
     
     return innate_data, learnable_data
 
