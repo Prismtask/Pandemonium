@@ -39,7 +39,7 @@ Days are spent in sequence: block 1 → 12. Sleep (Night) ends the day rested; a
 | 5 | **Night's teeth = fatigue AND a small phase bump** (see §7) — replaces the old 1.0–1.8× swing. |
 | 6 | **Rest/sleep at inn/home** — no dungeon camping. Exception: **road camp** on multi-day journeys (row 15). Long dungeon runs are multi-day pushes by design. |
 | 7 | **Pandemonium / EH:** rooms cost 1 block (parity with today's 1 h/room); difficulty freeze unchanged (baseline revisited as a tuning knob); **Event Horizon suppresses fatigue stacks and hallucinations — Pandemonium accrues both as of rev 3.5 (player call 2026-10-14)**. |
-| 8 | **UI shows phases/blocks, not HH:MM** — e.g. `☀ Morning ▮▮▮▮▮▯▯▯ · 12/01 · Spring`; fatigue rides along (` · 👁 FATIGUE II` from stack II). |
+| 8 | **UI shows phases/blocks, not HH:MM** — e.g. `☀ Morning ■■■■■□□□ · 12/01 · Spring`; fatigue rides along (` · 👁 FATIGUE II` from stack II). |
 | 9 | **Blocks are canonical; `time_minutes` becomes a derived compat value** for legacy readers (block × 120, day starts 06:00). |
 | 10 | **Travel is priced in blocks (rev 3.1):** 1 block per **started 30 min** (min 1); mounts shave `tier//2` (encounter mitigation unchanged); rain +1 / heavy rain +2 — tier 3–4 mounts ignore plain rain (+1 heavy only). Journeys may span days (§15); travel-event delays no longer add time (§8). |
 | 11 | **Facility opening hours** by phase (§9): most trades Morning–Noon, black market Night-only, inn/house always; closed services are dimmed with a message. |
@@ -118,7 +118,7 @@ Ignoring the warnings should have a face — literally.
 - **Combat difficulty:** `phase_mult` = **Morning 1.0 / Noon 1.1 / Night 1.25**. Daily-event modifiers (Full Moon +20%, Peaceful Skies −10%, Crimson Dawn +15%) multiply on top, unchanged. `get_difficulty_multiplier_from_time` is replaced by a phase-based version.
 - **Travel danger:** `facilities/travel_events.py` and `world_map_screen.py` switch to `phase_mult`; the encounter-count/chance exponents need a retune since they were calibrated against 1.0–1.8.
 - **Gates:** `get_time_period` consumers map to phases (Morning / Noon / Night); legacy hour gates are replaced per §6.
-- **Display:** top bar shows `☀ Morning ▮▮▮▮▮▯▯▯ · 👁 FATIGUE II · 12/01 · Spring` (night: 🌙), and the calendar year is **360 days** — twelve 30-day months with a 90-day season every three months (`events.SEASON_LENGTH_DAYS`). **Wonderland (rev 3.4):** the block track is **removed entirely** — the bar keeps only the whimsical flavor day line (`Curiouser Day — Days get curiouser and curiouser.`), re-rolled on screen changes/renders (no timer); costs stay nullified and exiting restores the same day/blocks.
+- **Display:** top bar shows `☀ Morning ■■■■■□□□ · 👁 FATIGUE II · 12/01 · Spring` (night: 🌙), and the calendar year is **360 days** — twelve 30-day months with a 90-day season every three months (`events.SEASON_LENGTH_DAYS`). **Wonderland (rev 3.4):** the block track is **removed entirely** — the bar keeps only the whimsical flavor day line (`Curiouser Day — Days get curiouser and curiouser.`), re-rolled on screen changes/renders (no timer); costs stay nullified and exiting restores the same day/blocks.
 - **Night as content, not punishment:** night remains the danger-richer phase for travel/wild encounters — now a deliberate choice (you spend night blocks to be there).
 
 ## 8. Travel in the block model

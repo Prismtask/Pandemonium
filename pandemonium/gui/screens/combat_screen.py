@@ -26,6 +26,7 @@ import queue as _queue
 from pandemonium.core.character import _reconcile_heroine_vorpal_skills
 from pandemonium.core.time_blocks import format_block_track
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
+from pandemonium.gui.widgets.overlay_panel import OverlayPanel
 
 
 # ── GUI-specific I/O bridge ──────────────────────────────────────────────────
@@ -254,6 +255,10 @@ class CombatScreen(BaseScreen):
         # the same button toggles open/closed.
         self._ticker_feed = []
         self._skill_banner = None
+        # Feed snapshot taken when a skill description pins the banner. The
+        # description replaces the previous actor's action lines; a canceled
+        # skill puts them back (2026-11-19 feedback).
+        self._skill_feed_stash = None
         self._last_damage_actor = None  # Persists the latest damage line across turns
         self._actor_has_output = False  # First action line of the current turn?
         self._ticker_width = None
@@ -296,20 +301,29 @@ class CombatScreen(BaseScreen):
         )
         self.ticker_label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 6), pady=3)
 
-        # The full combat log (Toplevel, hidden until requested). It is a
-        # child of this screen, so Tk destroys it together with the screen.
-        # No grab — it can stay pinned open while the fight continues.
-        self.log_window = tk.Toplevel(self)
-        self.log_window.title("Combat Log")
-        self.log_window.configure(bg=Theme.BG_DARK)
-        self.log_window.geometry("660x340")
-        self.log_window.transient(self.winfo_toplevel())
-        self.log_window.withdraw()
-        self.log_window.protocol("WM_DELETE_WINDOW", self._close_log_popup)
-        self.log_window.bind("<Escape>", lambda e: self._close_log_popup())
+        # The full combat log: a pinned floating panel (built hidden), the
+        # same window style as the other dialogs but WITHOUT grab — it can
+        # stay open while the fight continues.  Escape or the footer Close
+        # button hides it.  Child of this screen, so it dies with it.
+        self._log_panel = OverlayPanel(
+            self, "Combat Log", width=660, height=340, shown=False,
+        )
+
+        # Footer first so the fixed panel height can never clip the button.
+        log_footer = tk.Frame(self._log_panel.body, bg=Theme.BG_DARK)
+        log_footer.pack(side=tk.BOTTOM, fill=tk.X, padx=8, pady=(0, 8))
+        tk.Button(
+            log_footer, text="Close", command=self._close_log_popup, width=10,
+            bg=Theme.BUTTON_BG, fg=Theme.TEXT,
+            activebackground=Theme.BUTTON_ACTIVE_BG,
+            font=Theme.FONT_BOLD, cursor="hand2",
+        ).pack(side=tk.RIGHT)
+
+        log_area = tk.Frame(self._log_panel.body, bg=Theme.BG_DARK)
+        log_area.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 4))
 
         self.log_text = tk.Text(
-            self.log_window,
+            log_area,
             height=5,
             wrap=tk.WORD,
             state=tk.DISABLED,
@@ -319,18 +333,20 @@ class CombatScreen(BaseScreen):
             highlightthickness=0,
             borderwidth=0,
         )
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0), pady=8)
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         log_scroll = tk.Scrollbar(
-            self.log_window,
+            log_area,
             command=self.log_text.yview,
             bg=Theme.BG_MID,
             troughcolor=Theme.BG_DARK,
         )
-        log_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 8), pady=8)
+        log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.log_text.config(yscrollcommand=log_scroll.set)
         # Bind mouse wheel to scroll
         self.log_text.bind("<MouseWheel>", lambda e: self.log_text.yview_scroll(-1 * (e.delta // 120), "units"))
+
+        self._log_panel.bind_escape(self._close_log_popup)
 
         # ── Boss-intro paging (2026-11-10) ────────────────────────────────
         # Superboss modules print 15-25 lines of prose before their opening
@@ -620,6 +636,18 @@ class CombatScreen(BaseScreen):
                     self.action_panel.disable_all()
             return
 
+        # Two-tier menu: Esc backs out of a Skill/Attack submenu without
+        # spending the turn (the engine never sees a key). 'A' re-opens the
+        # gloves' workshop list and 'K' opens the skill list from the top bar.
+        if event.keysym == "Escape" and self.action_panel.in_submenu():
+            self.action_panel.go_back()
+            return
+        if (key == "a" and self.action_panel._buttons.get("a") is None
+                and self.action_panel.open_attack_submenu()):
+            return
+        if key == "k" and self.action_panel.open_skill_submenu():
+            return
+
         # Map keys to action keys
         key_map = {
             "a": "a",      # Attack
@@ -667,6 +695,12 @@ class CombatScreen(BaseScreen):
             self._pending_input_mode = None
             if self.player:
                 self.player["_ally_switch_mode"] = False
+            return
+
+        # Escape at the top-level bar cancels as before; inside a Skill/Attack
+        # submenu it only backs out — no key is sent, no turn is spent.
+        if self.action_panel.in_submenu():
+            self.action_panel.go_back()
 
     def _acquire_item_gui(self, player, item):
         """Combat-thread bridge for a full inventory (called from the fight thread).
@@ -1042,6 +1076,7 @@ class CombatScreen(BaseScreen):
             # damage/evade here made item-use output vanish instantly
             # (2026-11-07 feedback: "using item didn't get printed in the box").
             self._skill_banner = None
+            self._skill_feed_stash = None  # resolved skill — no cancel restore
             self._actor_has_output = False
             self._render_ticker()
             # HUD feedback: spotlight the combatant who is acting now, and
@@ -1285,6 +1320,7 @@ class CombatScreen(BaseScreen):
         # The fight is over — the result gets a clean feed: no leftover action
         # lines from the last actor (2026-10-04).
         self._skill_banner = None
+        self._skill_feed_stash = None
         self._ticker_feed = []
         self._last_damage_actor = None
         # Pinned notices are re-listed above Leave Battle; clear the ticker
@@ -1515,6 +1551,7 @@ class CombatScreen(BaseScreen):
             return False
         self._ticker_feed = []
         self._skill_banner = None
+        self._skill_feed_stash = None
         self._last_damage_actor = None
         self._actor_has_output = False
         self._narration_pages = [
@@ -1961,11 +1998,15 @@ class CombatScreen(BaseScreen):
     def _set_ticker(self, text: str):
         """Feed the latest log lines into the combat ticker.
 
-        The feed keeps the last few events; a skill line (">>> Name: desc",
-        printed by player_actions when a skill fires) also pins its text as
-        the banner — the old log pane used to show the description while
-        the action resolved. Damage lines persist across turn headers until
-        the next combatant's damage replaces them (2026-10-05).
+        The feed keeps the last few events; a skill description line
+        (">>> Name: desc" for the player, ">> Name: desc" for allies) pins
+        its text as the banner — the old log pane used to show the
+        description while the action resolved. Pinning a description also
+        clears the previous actor's leftover action lines so the strip
+        reads as a clean skill card; the lines are stashed and restored if
+        the skill is canceled (2026-11-19 feedback). Damage lines persist
+        across turn headers until the next combatant's damage replaces them
+        (2026-10-05).
 
         Quest/capture/loot notices are pinned SEPARATELY above the feed:
         they never scroll out, never get a turn prefix, and survive the
@@ -1978,9 +2019,30 @@ class CombatScreen(BaseScreen):
             if ">> ROUND" in line:
                 # Redundant — the top bar already shows the round (feedback).
                 continue
-            if line.startswith(">>>"):
+            # ── Canceled action (ACTION_CANCELLED_MSG) ───────────────────
+            # Target selection was canceled: the skill description is moot,
+            # so drop the banner and put the stashed action lines back.
+            clean_line = re.sub(r'^\[\d+/\d+\]\s*', '', line).strip()
+            if clean_line.lower() in ("action canceled.", "action canceled"):
+                if self._skill_feed_stash is not None:
+                    self._ticker_feed = (self._skill_feed_stash
+                                         + self._ticker_feed)[-6:]
+                    self._skill_feed_stash = None
+                self._skill_banner = None
+                # Record the cancel without tripping the first-action sweep
+                # (_actor_has_output stays False, so the next real action
+                # still starts a clean feed).
+                self._ticker_feed = (self._ticker_feed + [line])[-6:]
+                continue
+            if line.startswith(">>"):
                 banner = line.lstrip(">").replace("<<<", "").strip()
                 if banner:
+                    if self._skill_banner is None:
+                        # A new skill prompt: the description replaces the
+                        # previous action lines rather than sitting on top
+                        # of them. Stashed for a possible cancel.
+                        self._skill_feed_stash = self._ticker_feed or None
+                        self._ticker_feed = []
                     self._skill_banner = banner
                 continue  # the banner row represents it — don't duplicate it
             if self._is_notice_line(line):
@@ -2101,6 +2163,7 @@ class CombatScreen(BaseScreen):
         self._hud_dirty = True
         self._ticker_feed = []
         self._skill_banner = None
+        self._skill_feed_stash = None
         self._last_damage_actor = None
         self._actor_has_output = False
         self._render_ticker()
@@ -2122,26 +2185,29 @@ class CombatScreen(BaseScreen):
         self._reset_round_feed()
 
     def open_log_popup(self):
-        """Toggle the full combat log (ticker button / top-bar 📜 in combat).
+        """Toggle the full combat log panel (ticker button / top-bar 📜).
 
-        Clicking again hides it — no need to aim for the window's X.
+        Clicking again hides it; Escape and the footer Close button also
+        hide it.  The panel is pinned (no grab) so the fight runs on.
         """
         if not self._widgets_alive():
             return
         try:
-            if self.log_window.state() == "normal":
-                self.log_window.withdraw()
+            if self._log_panel.is_shown():
+                self._close_log_popup()
                 return
-            self.log_window.deiconify()
-            self.log_window.lift()
+            self._log_panel.show()
+            # Focus the panel so Escape reaches it; closing hands the
+            # keyboard back to the combat screen.
+            self._log_panel.holder.focus_set()
             self.log_text.see(tk.END)
         except tk.TclError:
             pass
 
     def _close_log_popup(self):
         try:
-            if self.log_window.winfo_exists():
-                self.log_window.withdraw()
+            self._log_panel.hide()
+            self.focus_set()   # restore combat key bindings
         except tk.TclError:
             pass
 

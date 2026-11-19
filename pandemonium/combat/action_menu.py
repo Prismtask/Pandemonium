@@ -127,7 +127,9 @@ def _get_gloves_menu(player, enemies):
         if int(key) not in workshop_state:
             actions.append((key, label))
         else:
-            actions.append((key, f'{label} [USED]'))
+            # Used workshop: keep the base label so every button in the row
+            # has the same width; the greyed/sunken button is the cue.
+            actions.append((key, label))
             disabled_keys.append(key)
 
     # Furioso — only if all 9 used

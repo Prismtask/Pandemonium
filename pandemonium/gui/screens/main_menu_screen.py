@@ -297,11 +297,19 @@ class MainMenuScreen(BaseScreen):
             confirm_panel(
                 parent=self,
                 title="Confirm Deletion",
-                message=f"Permanently delete '{name}' (Savefile {slot})?\nThis cannot be undone.",
+                message=(
+                    f"Delete '{name}' (Savefile {slot})?\n"
+                    "A backup copy is kept in the savefile folder."
+                ),
                 on_yes=_confirmed,
                 on_no=_regrab,
                 yes_text="Delete",
                 no_text="Cancel",
+                # Enter/instant-confirm must never delete a save: start the
+                # outline on Cancel.  A double-click on a card can open this
+                # panel under the cursor, and Enter would otherwise fire the
+                # default Delete button immediately.
+                focus_no=True,
             )
 
         # One bottom button: "Close" normally, flips to "Cancel" while a save

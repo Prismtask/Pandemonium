@@ -750,7 +750,7 @@ This is the defining rule. It is implemented as a **projected clock**:
    `cursor = start_blocks + (n - 1)`.
 3. `phase = time_blocks.get_day_phase(cursor % 24)`.
 4. The header gets a projected label built from `cursor % 24`
-   (`☀ Morning ▮▮▮▮▮▮▮▯`). A display-only
+   (`☀ Morning ■■■■■■■□`). A display-only
    `player["_combat_time_label"]` is read by `combat_ui.current_time_label`.
 5. `player["_map_boss_clock_blocks"] = cursor` for the Warden's Signet unique.
 6. On **exit** (victory, flee, death, interrupt), commit the whole fight at once:

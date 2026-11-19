@@ -89,6 +89,7 @@ class OverlayPanel:
         width: int = 520,
         height: Optional[int] = None,
         on_close: Optional[Callable] = None,
+        shown: bool = True,
     ):
         self.parent = parent
         self.on_close = on_close
@@ -100,21 +101,22 @@ class OverlayPanel:
             self._prev_focus = None
 
         host = panel_host(parent)
-        width = max(280, min(width, host.winfo_width() - 40))
+        self._host = host
+        self._width_req = width
+        self._height_req = height
+        width, height = self._clamp_size(width, height)
 
         # Floating panel: centered over the current screen, which stays fully
         # visible around it.  The dark frame is the pseudo-shadow rim.
         self.shadow = tk.Frame(host, bg=_SHADOW_BG)
-        self.shadow.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        self.shadow.lift()
-        # Marker used by diagnostics to find open panels on a screen.
         self.shadow._pandemonium_panel = True
+        if shown:
+            self._place_shadow()
 
         outer = tk.Frame(self.shadow, bg=Theme.BORDER)  # 1px panel border
         outer.pack(padx=_SHADOW_PAD, pady=_SHADOW_PAD)
 
         if height is not None:
-            height = max(160, min(height, host.winfo_height() - 60))
             holder = tk.Frame(
                 outer, bg=Theme.BG_DARK, width=width - 2, height=height - 2,
             )
@@ -141,6 +143,71 @@ class OverlayPanel:
         self.body.pack(fill=tk.BOTH, expand=True)
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
+
+    def _clamp_size(self, width: int, height: Optional[int]):
+        """Fit the requested size to the host screen, once it is laid out.
+
+        Panels built during screen construction (the combat log) see an
+        unrealised host (winfo_width() == 1); clamping then would collapse
+        them to the minimum.  The clamp is re-applied on ``show()`` instead.
+        """
+        try:
+            host_w = self._host.winfo_width()
+            host_h = self._host.winfo_height()
+        except tk.TclError:
+            host_w = host_h = 1
+        width = max(280, min(width, host_w - 40)) if host_w > 1 else max(280, width)
+        if height is not None:
+            height = (
+                max(160, min(height, host_h - 60)) if host_h > 1
+                else max(160, height)
+            )
+        return width, height
+
+    def _place_shadow(self) -> None:
+        self.shadow.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        self.shadow.lift()
+
+    def show(self) -> None:
+        """Re-show a panel built with ``shown=False`` (e.g. the combat log).
+
+        Fixed-size panels re-clamp to the screen here — by now the host is
+        laid out, so a panel built before layout (combat log) keeps its
+        intended size instead of the construction-time minimum.
+        """
+        if self._closed:
+            return
+        try:
+            if self._height_req is not None:
+                width, height = self._clamp_size(
+                    self._width_req, self._height_req,
+                )
+                self.holder.configure(width=width - 2, height=height - 2)
+            self._place_shadow()
+        except tk.TclError:
+            pass
+
+    def hide(self) -> None:
+        """Hide without destroying — kept content (e.g. a Text log) survives."""
+        try:
+            self.shadow.place_forget()
+        except tk.TclError:
+            pass
+
+    def is_shown(self) -> bool:
+        """True when the panel is currently placed on its screen."""
+        try:
+            return bool(self.shadow.winfo_manager())
+        except tk.TclError:
+            return False
+
+    def bind_escape(self, handler: Callable) -> None:
+        """Bind Escape over the panel subtree without focusing or grabbing.
+
+        For non-modal pinned panels (the combat log) that must not steal
+        modality from the running screen.
+        """
+        _bind_escape_recursive(self.holder, handler)
 
     def finalize(self, on_escape: Optional[Callable] = None) -> None:
         """Wire Escape, focus and modality — call once after building content."""

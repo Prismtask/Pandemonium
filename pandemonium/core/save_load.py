@@ -2,7 +2,10 @@
 import json
 import os
 import glob
+import re
+import shutil
 import sys
+from datetime import datetime
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)          # next to Pandemonium.exe
@@ -44,13 +47,22 @@ def list_save_details():
     """
     details = {}
     pattern = os.path.join(SAVE_DIR, f"{SAVE_PREFIX}*.json")
+    # Only exact savegame_<slot>.json files are saves.  Timestamped backups
+    # (savegame_1.backup_20261014_233611.json) must never appear as phantom
+    # slots in the browser — index them would show "Savefile 233611".
+    name_re = re.compile(rf"^{re.escape(SAVE_PREFIX)}(\d+)\.json$")
 
     for fname in glob.glob(pattern):
         try:
             base_name = os.path.basename(fname)
-            slot = int(base_name.split('_')[-1].split('.')[0])
+            match = name_re.match(base_name)
+            if match is None:
+                continue  # backup / helper file, not a save slot
+            slot = int(match.group(1))
             with open(fname, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+            if not isinstance(data, dict):
+                continue
             details[slot] = {
                 "name": data.get("name", "Unknown"),
                 "class": data.get("class", "Unknown"),
@@ -123,12 +135,25 @@ def load_game(slot):
         return None
     
 def delete_save(slot):
-    """Delete savefile/savegame_<slot>.json if it exists. Returns True if successful."""
+    """Delete savefile/savegame_<slot>.json, keeping a timestamped backup.
+
+    Returns True if the save existed and was removed.  The backup uses the
+    existing ``savegame_<slot>.backup_YYYYMMDD_HHMMSS.json`` convention, so a
+    mistaken delete is always recoverable from the savefile folder.
+    """
     filename = get_filename(slot)
-    if os.path.exists(filename):
-        try:
-            os.remove(filename)
-            return True
-        except OSError:
-            return False
-    return False
+    if not os.path.exists(filename):
+        return False
+    base, ext = os.path.splitext(filename)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup = f"{base}.backup_{stamp}{ext}"
+    try:
+        shutil.copy2(filename, backup)
+    except OSError:
+        # If the safety copy fails, do not delete the only remaining copy.
+        return False
+    try:
+        os.remove(filename)
+        return True
+    except OSError:
+        return False

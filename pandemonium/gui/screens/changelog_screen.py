@@ -7,7 +7,7 @@ import tkinter as tk
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
 
-from pandemonium.core.version import IS_BETA
+from pandemonium.core.version import IS_PRERELEASE, RELEASE_STAGE
 
 
 class ChangelogScreen(BaseScreen):
@@ -29,11 +29,11 @@ class ChangelogScreen(BaseScreen):
             font=Theme.FONT_LARGE,
         ).pack(anchor=tk.W, pady=(0, 12))
 
-        # Beta clarifier (pre-1.0)
-        if IS_BETA:
+        # Pre-release clarifier (pre-1.0)
+        if IS_PRERELEASE:
             tk.Label(
                 container,
-                text="Pre-1.0 beta — features, balance, and save formats may change between builds.",
+                text=f"Pre-1.0 {RELEASE_STAGE} — features, balance, and save formats may change between builds.",
                 bg=Theme.BG_DARK,
                 fg=Theme.TEXT_DIM,
                 font=Theme.FONT_SMALL,
@@ -184,6 +184,44 @@ class ChangelogScreen(BaseScreen):
         self._add_bullet("Ally **Overview** pages now show a **Personal Information** box like the "
                          "player's: the given name (nickname/awakened name), the species name and "
                          "the race — replacing the player-only Race/Class line.")
+
+        self._add_section("UI — Combat Action Buttons")
+        self._add_bullet("Every combat action button now uses **one fixed size** — your menu, "
+                         "an ally's menu and the capture prompt all share it, so the bar is an "
+                         "even grid on every turn. A label that runs past the standard width is "
+                         "shortened with an ellipsis, and **trailing values stay visible**: a "
+                         "workshop reads `[4] Old Boys Wo... [STR]` and a slaver deal reads "
+                         "`[2] Sell t... (−5 Karma)` instead of losing the stat or the price.")
+        self._add_bullet("Buttons wrap at **seven per row** and the three-row height reservation "
+                         "is unchanged. Used workshops stay **greyed and sunken** in place; the "
+                         "`[USED]` text suffix is gone so the grid never jumps when a workshop is "
+                         "spent.")
+
+        self._add_section("UI — Two-Tier Action Bar")
+        self._add_bullet("The top bar now shows **Attack, Skill, Defend, Use item and Flee** "
+                         "(Capture, Switch and free actions appear when they apply). **Skill** "
+                         "opens the full list — class skills plus equipment innates (Wield the "
+                         "Abyss, Moonlight, Crew Rally, Rewrite, brush exhibits) — on the same "
+                         "even grid. Free actions like Blank Canvas and Stance stay on the top "
+                         "bar because they do not spend the turn.")
+        self._add_bullet("With the **Black Silence Gloves** equipped, **Attack** opens the nine "
+                         "workshops plus **Furioso** (the gloves replace your basic attack and "
+                         "class skills, so no Skill menu is shown). Spent workshops stay greyed "
+                         "in place; **Esc** or **Back** returns to the top bar without spending "
+                         "the turn. Keyboard: **K** opens Skills, **A** opens Attack on gloved "
+                         "turns, and number keys still pick the numbered entry.")
+
+        self._add_section("UI — Time Block Track")
+        self._add_bullet("The time-block pips now use **■ / □ (U+25A0 / U+25A1)**. The old "
+                         "▮/▯ glyphs are missing from Consolas, so Tk substituted a fallback "
+                         "face whose width changed with font-load order — the track no longer "
+                         "changes size mid-session or after a reload.")
+
+        self._add_section("Release Stage — Back to Alpha")
+        self._add_bullet("Pandemonium is now labelled a **pre-1.0 alpha** instead of beta: "
+                         "features are still being added and placeholders remain in the game, "
+                         "so beta's feature-frozen promise did not fit. The stage appears in "
+                         "the window title, the main-menu version line and this screen.")
 
         self._add_version("v0.1.9.0 — The Family We Choose")
 

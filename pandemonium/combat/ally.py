@@ -1189,7 +1189,9 @@ def _ally_gloves_menu(ally, player, enemies):
         key = str(wid)
         label = f'{ws["name"]} [{ws["stat"][:3].upper()}]'
         if wid in workshop_state:
-            actions.append((key, f'{label} [USED]'))
+            # Used workshop: keep the base label so every button in the row
+            # has the same width; the greyed/sunken button is the cue.
+            actions.append((key, label))
             disabled_keys.append(key)
         else:
             actions.append((key, label))

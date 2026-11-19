@@ -228,7 +228,7 @@ def blocks_remaining(player):
 
 
 def format_block_track(player, include_day=True):
-    """Compact display track, e.g. `☀ Morning ▮▮▯▯ · 12/01 · Spring`.
+    """Compact display track, e.g. `☀ Morning ■■□□ · 12/01 · Spring`.
 
     Pips are the *remaining* blocks of the current phase (drain as time
     passes); the calendar date comes from the player dict. Wonderland is a
@@ -244,7 +244,11 @@ def format_block_track(player, include_day=True):
     if weather:
         icon = weather          # phase word still carries the time of day
     spent_in_phase = blocks % BLOCKS_PER_PHASE
-    pips = "▮" * (BLOCKS_PER_PHASE - spent_in_phase) + "▯" * spent_in_phase
+    # Consolas owns ■/□ (U+25A0/U+25A1) at its exact 8 px cell. The old
+    # ▮/▯ (U+25AE/25AF) are missing from Consolas, so Tk substituted a
+    # fallback face whose width depended on font-load order — the block
+    # visibly changed size mid-session and after reloads.
+    pips = "■" * (BLOCKS_PER_PHASE - spent_in_phase) + "□" * spent_in_phase
     text = f"{icon} {name.title()} {pips}"
     stacks = get_fatigue_stacks(player)
     if stacks > 0:

@@ -6,7 +6,7 @@ Dark theme optimized for ASCII art preservation and readability.
 
 import platform
 
-from pandemonium.core.version import GAME_VERSION, IS_BETA
+from pandemonium.core.version import GAME_VERSION, IS_PRERELEASE, RELEASE_STAGE
 
 # ── Font Configuration ────────────────────────────────────────────────────────
 # Monospace is mandatory: combat HUD, dungeon map, and stat tables rely on
@@ -130,7 +130,7 @@ class Theme:
 WINDOW_MIN_WIDTH = 900
 WINDOW_MIN_HEIGHT = 700
 WINDOW_DEFAULT_SIZE = f"{WINDOW_MIN_WIDTH}x{WINDOW_MIN_HEIGHT}"
-WINDOW_TITLE = f"Pandemonium v{GAME_VERSION}" + (" (beta)" if IS_BETA else "")
+WINDOW_TITLE = f"Pandemonium v{GAME_VERSION}" + (f" ({RELEASE_STAGE})" if IS_PRERELEASE else "")
 
 # ── Layout Constants ──────────────────────────────────────────────────────────
 TOP_BAR_HEIGHT = 40

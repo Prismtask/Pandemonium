@@ -813,7 +813,7 @@ def current_time_label(player):
     """Current in-game time for combat headers.
 
     The block model replaced the legacy HH:MM clock, so headers show the same
-    `☀ Morning ▮▮▮▮▮▮▮▯` track the top bar uses instead of a stale clock
+    `☀ Morning ■■■■■■■□` track the top bar uses instead of a stale clock
     reading. Wonderland is a time pocket (no track) — its whimsical clock
     flavour is kept as the fallback.
 
@@ -843,7 +843,7 @@ def print_round_header(round_num, floor=None, room_num=None, total_rooms=None, t
             # Superbosses have no room counter — show the floor alone.
             parts.append(f"Floor {floor}")
     if time_str:
-        # Already the phase track (`☀ Morning ▮▮▮▮▮▮▮▯`) — no clock label.
+        # Already the phase track (`☀ Morning ■■■■■■■□`) — no clock label.
         parts.append(time_str)
     c_print("  " + " | ".join(parts))
     c_print("  " + "-" * 66)

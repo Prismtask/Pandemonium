@@ -2,7 +2,7 @@
 
 A text-based dungeon crawler RPG built in Python with a tkinter GUI.
 
-> **Status:** Pre-1.0 beta — features, balance, and save formats may change between builds.
+> **Status:** Pre-1.0 alpha — features, balance, and save formats may change between builds.
 
 ---
 
