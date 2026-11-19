@@ -20,6 +20,7 @@ from pandemonium.combat.stat_milestones import get_wisdom_bonus
 from pandemonium.world.curse_pandemonium import apply_healing_reduction
 from pandemonium.world.curse_pandemonium import get_cooldown_increase
 from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
+from pandemonium.combat.weapon.admin_staff import apply_admin_staff_damage
 
 # Maximum number of learnable skills an ally can have at once
 MAX_LEARNED_SKILLS = 3
@@ -828,6 +829,8 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
         dmg = int(dmg * father_legacy_damage_mult(ally))
         # Warden of the Long Day: Signet phase bonus + Long Day's Edge stacks
         dmg = apply_long_day_damage(ally, dmg)
+        # Admin Staff (dev-only): flat 999999 damage, ignoring all modifiers.
+        dmg = apply_admin_staff_damage(ally, dmg)
         return dmg, did_crit
 
     # ── Determine Target ──

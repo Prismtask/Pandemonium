@@ -14,6 +14,7 @@ import tkinter as tk
 
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
+from pandemonium.gui.widgets.keyboard_nav import NavGroup
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
 from pandemonium.core.utils import strip_ansi
 from pandemonium.gui.screens.base_screen import city_header_parts
@@ -557,6 +558,8 @@ class FacilityScreen(BaseScreen):
     def _do_show_buttons(self, options, prompt, allow_cancel, cancel_label, styles=None, columns=3):
         """Create choice buttons on the main thread."""
         try:
+            # A previous menu's nav group may still hold destroyed widgets.
+            self._button_nav = None
             # Hide text input row
             self.prompt_label.grid_remove()
             self.input_entry.grid_remove()
@@ -572,6 +575,8 @@ class FacilityScreen(BaseScreen):
             # Reset canvas scroll to top
             self._button_canvas.yview_moveto(0)
 
+            option_entries = []
+
             # Create option buttons — N columns (default 3), left-aligned, with scroll.
             # Long labels wrap inside their button instead of being clipped.
             max_cols = max(1, int(columns or 3))
@@ -586,7 +591,13 @@ class FacilityScreen(BaseScreen):
                     panel_px = 0
             wrap_px = max(160, panel_px // max_cols - 18) if panel_px and panel_px > 50 else 0
             for i, opt in enumerate(options):
-                label = f"[{i + 1}] {opt}" if len(options) > 1 else opt
+                # Only 1-9 are real keyboard shortcuts.  Longer lists used to
+                # advertise dead [10]/[11] labels; indent those entries so the
+                # text still lines up and navigate them with the outline.
+                if len(options) > 1:
+                    label = f"[{i + 1}] {opt}" if i < 9 else f"    {opt}"
+                else:
+                    label = opt
 
                 # Per-button style overrides
                 style = (styles or {}).__getitem__(i) if styles and i < len(styles) else None
@@ -597,8 +608,16 @@ class FacilityScreen(BaseScreen):
                 active_bg = style.get("active_bg", Theme.BUTTON_ACTIVE_BG)
                 active_fg = style.get("active_fg", Theme.BUTTON_ACTIVE_FG)
 
-                btn = tk.Button(
+                # Wrapper frame carries the 1px keyboard-focus outline (Tk
+                # buttons ignore highlight rings on Windows).
+                wrap = tk.Frame(
                     self._button_container,
+                    bg=Theme.BG_DARK,
+                    highlightthickness=1,
+                    highlightbackground=Theme.BG_DARK,
+                )
+                btn = tk.Button(
+                    wrap,
                     text=label,
                     bg=bg,
                     fg=fg,
@@ -619,11 +638,13 @@ class FacilityScreen(BaseScreen):
                     wraplength=wrap_px,
                     command=lambda idx=i: self._on_button_choice(idx),
                 )
+                btn.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
                 row = i // max_cols
                 col = i % max_cols
                 # nsew: every button in a row stretches to the row's tallest
                 # request, so wrapped multi-line options never render "bigger".
-                btn.grid(row=row, column=col, padx=3, pady=3, sticky="nsew")
+                wrap.grid(row=row, column=col, padx=3, pady=3, sticky="nsew")
+                option_entries.append((wrap, btn))
 
             # Make all columns equal weight
             for c in range(max_cols):
@@ -632,9 +653,17 @@ class FacilityScreen(BaseScreen):
             # Cancel button — placed outside scroll area, always visible
             for w in self._cancel_frame.winfo_children():
                 w.destroy()
+            cancel_entry = None
             if allow_cancel:
-                cancel_btn = tk.Button(
+                cancel_wrap = tk.Frame(
                     self._cancel_frame,
+                    bg=Theme.BG_DARK,
+                    highlightthickness=1,
+                    highlightbackground=Theme.BG_DARK,
+                )
+                cancel_wrap.pack(fill=tk.X, padx=4, pady=2)
+                cancel_btn = tk.Button(
+                    cancel_wrap,
                     text=cancel_label,
                     bg="#5a3a5a",
                     fg=Theme.BUTTON_FG,
@@ -649,19 +678,33 @@ class FacilityScreen(BaseScreen):
                     cursor="hand2",
                     command=lambda: self._on_button_choice(-1),
                 )
-                cancel_btn.pack(fill=tk.X, padx=4, pady=2)
+                cancel_btn.pack(fill=tk.X, padx=1, pady=1)
                 self._cancel_frame.grid()
+                cancel_entry = (cancel_wrap, cancel_btn)
             else:
                 self._cancel_frame.grid_remove()
 
+            # ── Keyboard focus outline over options (+ Cancel) ────────────
+            entries = list(option_entries)
+            if cancel_entry is not None:
+                entries.append(cancel_entry)
+            self._button_option_wraps = [wrap for wrap, _btn in option_entries]
+            self._button_columns = max_cols
+            self._button_nav = NavGroup(
+                self, entries, start=0,
+                on_change=self._scroll_option_into_view,
+            )
+
             self._button_frame.grid()
+            # NavGroup init may have run before the canvas was mapped; force
+            # the fresh menu to start at the top with the first option shown.
+            self._button_canvas.yview_moveto(0)
             self._input_mode = True
 
             # ── Keyboard support for button mode ──────────────────────────
             self._bind_button_keys(options, allow_cancel)
             # Keep focus on the FacilityScreen frame so its <KeyPress>
-            # binding fires reliably for keyboard shortcuts.  The Enter
-            # key already maps to the first option via _on_button_key.
+            # binding fires reliably for keyboard shortcuts.
             self.focus_set()
 
         except (tk.TclError, RuntimeError):
@@ -671,6 +714,34 @@ class FacilityScreen(BaseScreen):
                 self._input_queue.put("-1")
             except Exception:
                 pass
+
+    def _scroll_option_into_view(self, index):
+        """Keep the outlined option visible inside the scroll canvas.
+
+        The Cancel entry lives outside the canvas; indices beyond the option
+        list are ignored here.
+        """
+        wraps = getattr(self, "_button_option_wraps", [])
+        if not (0 <= index < len(wraps)):
+            return
+        wrap = wraps[index]
+        try:
+            if not self._button_canvas.winfo_ismapped():
+                return  # Panel is still being built; it starts scrolled to top.
+            self._button_container.update_idletasks()
+            total = self._button_container.winfo_height()
+            view_h = self._button_canvas.winfo_height()
+            if total <= 0 or view_h <= 1:
+                return
+            top = self._button_canvas.canvasy(0)
+            y = wrap.winfo_y()
+            h = wrap.winfo_height()
+            if y < top:
+                self._button_canvas.yview_moveto(max(0.0, y / total))
+            elif y + h > top + view_h:
+                self._button_canvas.yview_moveto((y + h - view_h) / total)
+        except tk.TclError:
+            pass
 
     def _bind_button_keys(self, options, allow_cancel):
         """Store button options so the permanent _on_facility_key handler
@@ -686,8 +757,36 @@ class FacilityScreen(BaseScreen):
 
         key = event.keysym
         char = event.char
+        nav = getattr(self, "_button_nav", None)
 
-        # Enter / Return → first option
+        # ── Outline navigation (arrows / Tab / Home / End / Enter) ────────
+        if nav is not None:
+            if key in ("Left", "ISO_Left_Tab"):
+                nav.move(-1)
+                return
+            if key == "Tab":
+                nav.move(-1 if (event.state & 0x1) else 1)
+                return
+            if key == "Right":
+                nav.move(1)
+                return
+            if key == "Up":
+                nav.move(-getattr(self, "_button_columns", 3))
+                return
+            if key == "Down":
+                nav.move(getattr(self, "_button_columns", 3))
+                return
+            if key == "Home":
+                nav.select(0)
+                return
+            if key == "End":
+                nav.select(len(nav.widgets) - 1)
+                return
+            if key in ("Return", "KP_Enter", "space"):
+                nav.activate()
+                return
+
+        # Enter / Return → first option (fallback if no nav group exists)
         if key in ("Return", "KP_Enter"):
             self._on_button_choice(0)
             return
@@ -727,6 +826,8 @@ class FacilityScreen(BaseScreen):
         """Clear stored button options (the <KeyPress> binding stays active)."""
         self._button_key_options = []
         self._button_key_allow_cancel = False
+        self._button_nav = None
+        self._button_option_wraps = []
 
     def _on_button_choice(self, index):
         """Handle a button click — put the index into the input queue."""

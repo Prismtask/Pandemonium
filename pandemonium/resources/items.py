@@ -388,6 +388,24 @@ ITEMS = {
         "special": "sky_piercer",
     },
 
+    # Dev-only cheat weapon (never appears in shops, drops or random loot).
+    "admin_staff": {
+        "name": "Admin Staff",
+        "weapon_type": "staff",
+        "type": "equipment",
+        "slot": "weapon",
+        "unique": True,
+        "base_mods": {"Wisdom": 50, "Dexterity": 50, "Strength": 50, "Constitution": 50, "Learning": 50, "Charisma": 50},
+        "scaling_stat": "Wisdom",
+        "form": "staff",
+        "special": "admin_staff",
+        "description": (
+            "A debug-only rod. Every attack and damaging skill deals a flat "
+            "999999 damage. It exists for fast playtesting and never appears "
+            "in shops or loot."
+        ),
+    },
+
     "prescript_ledger": {
         "name": "Prescript Ledger",
         "type": "equipment",

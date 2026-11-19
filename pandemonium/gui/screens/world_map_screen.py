@@ -23,6 +23,7 @@ import random
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
+from pandemonium.gui.widgets.overlay_panel import OverlayPanel
 
 from pandemonium.resources.cities import CITIES
 from pandemonium.resources.items import ITEMS, build_item, is_unique_item, soften_rarity
@@ -66,6 +67,12 @@ from pandemonium.resources.world_layout import (
     REGIONS as _REGIONS,
     NODE_W as _NODE_W,
     NODE_H as _NODE_H,
+    WILD_MARKER_W as _WILD_MARKER_W,
+    WILD_MARKER_H as _WILD_MARKER_H,
+    MAP_BOSS_MARKER_W as _MAP_BOSS_MARKER_W,
+    MAP_BOSS_MARKER_H as _MAP_BOSS_MARKER_H,
+    EVENT_HORIZON_MARKER_W as _EH_MARKER_W,
+    EVENT_HORIZON_MARKER_H as _EH_MARKER_H,
 )
 from pandemonium.core.events import format_date
 from pandemonium.core.time_blocks import format_block_track
@@ -122,9 +129,9 @@ _ANIM_STEPS = 30        # animation frames per segment
 _ANIM_INTERVAL = 40     # ms between frames
 _EVENT_CHECKPOINTS = 3  # event slots per segment
 
-# Wild dungeon marker appearance (canvas px)
-_WILD_MARKER_W = 96
-_WILD_MARKER_H = 30
+# Wild dungeon marker appearance (canvas px). Sizes come from
+# resources/world_layout.py so spawn placement and the drawn rectangles
+# cannot drift apart.
 _WILD_MARKER_FILL = "#2b1622"
 _WILD_MARKER_OUTLINE = "#c44dff"
 _WILD_MARKER_SELECTED = "#f1c40f"
@@ -152,8 +159,7 @@ _WILD_FALLBACK_ICON = "\u2620"      # ☠
 
 # Seasonal map boss marker appearance (docs/map_boss_design.md §10.1).
 # Gold, so it never reads as a wild ruin (purple) or the Event Horizon (violet).
-_MAP_BOSS_MARKER_W = 116
-_MAP_BOSS_MARKER_H = 30
+# Sizes come from resources/world_layout.py (shared with placement checks).
 _MAP_BOSS_MARKER_FILL = "#241d08"
 _MAP_BOSS_MARKER_OUTLINE = "#d4a017"
 _MAP_BOSS_MARKER_SELECTED = "#f1c40f"
@@ -192,6 +198,10 @@ class WorldMapScreen(BaseScreen):
         # Map panning (drag) state
         self._drag_start = None          # (x, y) where the mouse was pressed
         self._dragging_map = False       # True once the drag threshold is passed
+
+        # Keyboard node-focus group: "city" or "special" (wild/EH/Warden).
+        # Tab alternates between the two sets.
+        self._nav_group = "city"
 
         # Travel state
         self._travel_segments = []
@@ -335,13 +345,24 @@ class WorldMapScreen(BaseScreen):
         )
         self._btn_back.pack(side=tk.LEFT, padx=4)
 
-        self._btn_legend = self.styled_button(
-            self._bottom_bar, text="Show Legend",
-            command=self._show_legend, width=16,
+        self._btn_help = self.styled_button(
+            self._bottom_bar, text="Help [H]",
+            command=self._show_map_help, width=14,
         )
-        self._btn_legend.pack(side=tk.RIGHT, padx=4)
+        self._btn_help.pack(side=tk.RIGHT, padx=4)
 
         self.bind("<Escape>", self._on_escape_event)
+        self.bind("<KeyPress>", self._on_map_key)
+        # Canvas can take focus (click) — insert the screen bind tag ahead of
+        # the Canvas class so arrow/WASD keys still reach _on_map_key.
+        try:
+            tags = list(self._canvas.bindtags())
+            mine = str(self)
+            if mine not in tags:
+                tags.insert(1, mine)
+                self._canvas.bindtags(tuple(tags))
+        except tk.TclError:
+            pass
         self.focus_set()
 
     # ── Drawing ──────────────────────────────────────────────────────────
@@ -557,8 +578,9 @@ class WorldMapScreen(BaseScreen):
         if not self.player or not site_unlocked(self.player):
             return
         px, py = EVENT_HORIZON_POSITION
-        x1, y1 = px - 75, py - 15
-        x2, y2 = px + 75, py + 15
+        half_w, half_h = _EH_MARKER_W // 2, _EH_MARKER_H // 2
+        x1, y1 = px - half_w, py - half_h
+        x2, y2 = px + half_w, py + half_h
         selected = self._selected_horizon
         self._horizon_rect_id = self._canvas.create_rectangle(
             x1, y1, x2, y2,
@@ -1012,6 +1034,288 @@ class WorldMapScreen(BaseScreen):
                 return dungeon_id
         return None
 
+    # ── Keyboard node navigation ──────────────────────────────────────────
+    #
+    #  Arrow keys move a focus from node to node by GEOMETRY: the next node
+    #  is the one whose direction from the current node best matches the
+    #  pressed arrow (closest to straight ahead, then nearest).  This is the
+    #  standard map-navigation model — predictable on an irregular layout and
+    #  it never requires pre-defined neighbours.
+    #
+    #  W/A/S/D pans the map.  Enter selects the focused node (or starts on the
+    #  player's current city) so the info panel is reachable without a mouse.
+
+    def _nav_node_list(self):
+        """All selectable map nodes with their canvas-centre coordinates."""
+        nodes = []
+        for city_id, (cx, cy) in _CITY_POSITIONS.items():
+            nodes.append({
+                "kind": "city",
+                "key": city_id,
+                "x": cx + _NODE_W / 2,
+                "y": cy + _NODE_H / 2,
+                "rect": self._node_rects.get(city_id),
+            })
+        for dungeon_id, (x1, y1, x2, y2) in self._wild_hitboxes.items():
+            nodes.append({
+                "kind": "wild",
+                "key": dungeon_id,
+                "x": (x1 + x2) / 2,
+                "y": (y1 + y2) / 2,
+                "rect": self._wild_rect_ids.get(dungeon_id),
+            })
+        if self._horizon_hitbox:
+            x1, y1, x2, y2 = self._horizon_hitbox
+            nodes.append({
+                "kind": "horizon",
+                "key": None,
+                "x": (x1 + x2) / 2,
+                "y": (y1 + y2) / 2,
+                "rect": self._horizon_rect_id,
+            })
+        if self._map_boss_hitbox:
+            x1, y1, x2, y2 = self._map_boss_hitbox
+            nodes.append({
+                "kind": "boss",
+                "key": None,
+                "x": (x1 + x2) / 2,
+                "y": (y1 + y2) / 2,
+                "rect": self._map_boss_rect_id,
+            })
+        return nodes
+
+    def _nav_current_key(self):
+        if self._selected_city is not None:
+            return ("city", self._selected_city)
+        if self._selected_wild is not None:
+            return ("wild", self._selected_wild)
+        if self._selected_horizon:
+            return ("horizon", None)
+        if self._selected_map_boss:
+            return ("boss", None)
+        return None
+
+    def _nav_apply(self, node):
+        """Select one node exactly like a mouse click would."""
+        kind = node["kind"]
+        if kind == "city":
+            if self._selected_wild is not None:
+                self._deselect_wild()
+            if self._selected_horizon:
+                self._deselect_horizon()
+            if self._selected_map_boss:
+                self._deselect_map_boss()
+            self._select_city(node["key"])
+        elif kind == "wild":
+            if self._selected_horizon:
+                self._deselect_horizon()
+            if self._selected_map_boss:
+                self._deselect_map_boss()
+            self._select_wild(node["key"])
+        elif kind == "horizon":
+            if self._selected_city is not None:
+                self._deselect_city()
+            if self._selected_wild is not None:
+                self._deselect_wild()
+            if self._selected_map_boss:
+                self._deselect_map_boss()
+            self._select_horizon()
+        elif kind == "boss":
+            if self._selected_city is not None:
+                self._deselect_city()
+            if self._selected_wild is not None:
+                self._deselect_wild()
+            if self._selected_horizon:
+                self._deselect_horizon()
+            self._select_map_boss()
+        if node.get("rect") is not None:
+            self._nav_ensure_visible(node["rect"])
+
+    def _nav_ensure_visible(self, rect_id):
+        """Scroll the canvas so the node is comfortably inside the viewport."""
+        try:
+            bbox = self._canvas.bbox(rect_id)
+            region = str(self._canvas.cget("scrollregion")).split()
+            if not bbox or len(region) != 4:
+                return
+            sx0, sy0, sx1, sy1 = (int(float(v)) for v in region)
+            total_w = max(1, sx1 - sx0)
+            total_h = max(1, sy1 - sy0)
+            view_w = max(1, self._canvas.winfo_width())
+            view_h = max(1, self._canvas.winfo_height())
+            cur_x = self._canvas.canvasx(0)
+            cur_y = self._canvas.canvasy(0)
+            margin = 40
+            target_x, target_y = cur_x, cur_y
+            if bbox[0] < cur_x + margin:
+                target_x = bbox[0] - margin
+            elif bbox[2] > cur_x + view_w - margin:
+                target_x = bbox[2] - view_w + margin
+            if bbox[1] < cur_y + margin:
+                target_y = bbox[1] - margin
+            elif bbox[3] > cur_y + view_h - margin:
+                target_y = bbox[3] - view_h + margin
+            if target_x != cur_x:
+                self._canvas.xview_moveto(max(0.0, (target_x - sx0) / total_w))
+            if target_y != cur_y:
+                self._canvas.yview_moveto(max(0.0, (target_y - sy0) / total_h))
+        except (tk.TclError, ValueError):
+            pass
+
+    @staticmethod
+    def _nav_group_of(node):
+        return "city" if node["kind"] == "city" else "special"
+
+    def _nav_toggle_group(self):
+        """Tab: jump between the city set and the ruin/rift/Warden set."""
+        if self._mode == self.MODE_TRAVEL:
+            return
+        nodes = self._nav_node_list()
+        if not nodes:
+            return
+        current = self._nav_current_key()
+        if current is not None:
+            self._nav_group = "city" if current[0] == "city" else "special"
+        new_group = "special" if self._nav_group == "city" else "city"
+        candidates = [n for n in nodes if self._nav_group_of(n) == new_group]
+        if not candidates:
+            return
+        ref = next((n for n in nodes if (n["kind"], n["key"]) == current),
+                   None)
+        if ref is None:
+            ref = next(
+                (n for n in nodes
+                 if n["kind"] == "city" and n["key"] == self.city_id),
+                candidates[0],
+            )
+        target = min(candidates,
+                     key=lambda n: ((n["x"] - ref["x"]) ** 2
+                                    + (n["y"] - ref["y"]) ** 2))
+        self._nav_group = new_group
+        self._nav_apply(target)
+
+    def _nav_move(self, dx, dy):
+        """Move the focus to the best node in the (dx, dy) direction."""
+        if self._mode == self.MODE_TRAVEL:
+            return  # clicks are disabled during travel; keep the travel log
+        nodes = self._nav_node_list()
+        if not nodes:
+            return
+        current = self._nav_current_key()
+        if current is not None:
+            # Follow the selection's set (mouse click syncs the Tab group).
+            self._nav_group = "city" if current[0] == "city" else "special"
+        candidates = [n for n in nodes if self._nav_group_of(n) == self._nav_group]
+        if not candidates:
+            candidates = nodes
+
+        if current is None:
+            # Start inside the active set (current city, or nearest to it).
+            start = next(
+                (n for n in candidates
+                 if n["kind"] == "city" and n["key"] == self.city_id),
+                None,
+            )
+            if start is None:
+                home = next(
+                    (n for n in nodes
+                     if n["kind"] == "city" and n["key"] == self.city_id),
+                    candidates[0],
+                )
+                start = min(candidates,
+                            key=lambda n: ((n["x"] - home["x"]) ** 2
+                                           + (n["y"] - home["y"]) ** 2))
+            self._nav_apply(start)
+            return
+
+        cur = next((n for n in candidates
+                    if (n["kind"], n["key"]) == current), None)
+        if cur is None:
+            self._nav_apply(candidates[0])
+            return
+
+        best = None
+        best_score = None
+        for node in candidates:
+            if node is cur:
+                continue
+            vx = node["x"] - cur["x"]
+            vy = node["y"] - cur["y"]
+            ahead = vx * dx + vy * dy
+            if ahead <= 1:
+                continue  # behind the pressed direction
+            across = abs(vx * dy - vy * dx)
+            dist = (vx * vx + vy * vy) ** 0.5
+            # Mostly "straight ahead", then closer: keeps the move readable
+            # even when the map layout is irregular.
+            score = ahead + 1.8 * across + 0.05 * dist
+            if best_score is None or score < best_score:
+                best, best_score = node, score
+        if best is not None:
+            self._nav_apply(best)
+
+    def _nav_activate(self):
+        """Enter: start/refresh the selection so the info panel opens."""
+        if self._mode == self.MODE_TRAVEL:
+            return
+        current = self._nav_current_key()
+        if current is None:
+            self._nav_move(0, 1)   # starts on the player's city
+            return
+        nodes = self._nav_node_list()
+        cur = next((n for n in nodes if (n["kind"], n["key"]) == current), None)
+        if cur is not None:
+            self._nav_apply(cur)
+
+    def _pan_by_keys(self, char):
+        """W/A/S/D pan the map (works in travel mode too, like mouse drag)."""
+        steps = {
+            "w": (0, -1),
+            "s": (0, 1),
+            "a": (-1, 0),
+            "d": (1, 0),
+        }
+        step = steps.get(char)
+        if step is None:
+            return False
+        try:
+            if step[0]:
+                self._canvas.xview_scroll(step[0], "units")
+            if step[1]:
+                self._canvas.yview_scroll(step[1], "units")
+        except tk.TclError:
+            pass
+        return True
+
+    def _on_map_key(self, event):
+        """Arrows move node focus; Tab switches sets; WASD pans; H help."""
+        key = event.keysym
+        if key == "Left":
+            self._nav_move(-1, 0)
+            return "break"
+        if key == "Right":
+            self._nav_move(1, 0)
+            return "break"
+        if key == "Up":
+            self._nav_move(0, -1)
+            return "break"
+        if key == "Down":
+            self._nav_move(0, 1)
+            return "break"
+        if key in ("Tab", "ISO_Left_Tab"):
+            self._nav_toggle_group()
+            return "break"
+        if key in ("Return", "KP_Enter", "space"):
+            self._nav_activate()
+            return "break"
+        char = (event.char or "").lower()
+        if char == "h":
+            self._show_map_help()
+            return "break"
+        if self._pan_by_keys(char):
+            return "break"
+        return None
+
     # ── Drag-panning ─────────────────────────────────────────────────────
 
     def _on_canvas_press(self, event):
@@ -1261,7 +1565,8 @@ class WorldMapScreen(BaseScreen):
         self._clear_info_panel()
         tk.Label(
             self._info_frame,
-            text="Click a city or a ruin marker\non the map to view details.\n\nDrag the map to pan.",
+            text=("Click a city or a ruin marker\non the map to view details.\n\n"
+                  "Arrows: cities · Tab: ruins/rift · WASD: pan"),
             bg=Theme.BG_CARD, fg=Theme.TEXT_DIM,
             font=Theme.FONT_SMALL, justify=tk.CENTER,
         ).pack(expand=True)
@@ -2456,45 +2761,33 @@ class WorldMapScreen(BaseScreen):
 
         cha_disc = _charisma_discount(player)
 
-        # ── Build toplevel dialog ────────────────────────────────────────
-        try:
-            parent = self.winfo_toplevel()
-        except tk.TclError:
-            parent = self
-        dialog = tk.Toplevel(parent)
-        dialog.title("Wandering Merchant")
-        dialog.transient(parent)
-        dialog.resizable(False, False)
-        dialog.configure(bg=Theme.BG_DARK)
-
-        # Wider dialog to prevent Buy button cutoff
-        dw, dh = 540, 360 + len(stock) * 56
-        try:
-            dh = min(dh, parent.winfo_screenheight() - 80)
-        except Exception:
-            pass
+        # ── Build in-app panel (Option C window design) ──────────────────
+        dw = 540
+        dh = 360 + len(stock) * 56
+        panel = OverlayPanel(self, "Wandering Merchant", width=dw, height=dh)
+        body = panel.body
 
         # ── Header ──────────────────────────────────────────────────────
         tk.Label(
-            dialog, text='"Wares! Quality goods — fair price for a fellow traveler!"',
+            body, text='"Wares! Quality goods — fair price for a fellow traveler!"',
             bg=Theme.BG_DARK, fg=Theme.ACCENT, font=Theme.FONT_BOLD,
             wraplength=dw - 40, justify=tk.CENTER,
-        ).pack(padx=20, pady=(14, 2))
+        ).pack(padx=20, pady=(0, 2))
 
         gold_text = f"Your gold: {player.get('gold', 0)}g"
         if cha_disc > 0:
             gold_text += f"  |  Charisma discount: {cha_disc:.0f}%"
         gold_label = tk.Label(
-            dialog, text=gold_text,
+            body, text=gold_text,
             bg=Theme.BG_DARK, fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL,
         )
         gold_label.pack(padx=20, pady=(0, 8))
 
         # ── Stock items ─────────────────────────────────────────────────
-        sep = tk.Frame(dialog, bg=Theme.BORDER, height=1)
+        sep = tk.Frame(body, bg=Theme.BORDER, height=1)
         sep.pack(fill=tk.X, padx=20)
 
-        stock_frame = tk.Frame(dialog, bg=Theme.BG_DARK)
+        stock_frame = tk.Frame(body, bg=Theme.BG_DARK)
         stock_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=6)
 
         # Track buy buttons so we can disable them after purchase
@@ -2535,9 +2828,11 @@ class WorldMapScreen(BaseScreen):
 
         def _do_sell():
             """Defer sell dialog to avoid nested grab issues."""
-            dialog.grab_release()
+            panel.holder.grab_release()
             # Use after(0) so sell dialog opens in a clean event-loop iteration
-            dialog.after(0, lambda: self._merchant_sell_dialog(player, dialog, _refresh_gold))
+            panel.holder.after(
+                0, lambda: self._merchant_sell_dialog(player, panel, _refresh_gold),
+            )
 
         def _do_leave():
             """Close dialog and resume travel."""
@@ -2545,11 +2840,7 @@ class WorldMapScreen(BaseScreen):
                 self._log('"Safe roads, traveler!"', "dim")
             except Exception:
                 pass
-            try:
-                dialog.grab_release()
-                dialog.destroy()
-            except tk.TclError:
-                pass
+            panel.close()
             self._resume_anim()
 
         # ── Build stock item rows ───────────────────────────────────────
@@ -2592,7 +2883,7 @@ class WorldMapScreen(BaseScreen):
             buy_buttons.append(btn)
 
         # ── Bottom buttons ──────────────────────────────────────────────
-        btn_frame = tk.Frame(dialog, bg=Theme.BG_DARK)
+        btn_frame = tk.Frame(body, bg=Theme.BG_DARK)
         btn_frame.pack(fill=tk.X, padx=20, pady=(8, 14))
 
         sell_btn = tk.Button(
@@ -2613,32 +2904,15 @@ class WorldMapScreen(BaseScreen):
         )
         leave_btn.pack(side=tk.RIGHT)
 
-        # ── Keyboard / close bindings ────────────────────────────────────
-        dialog.bind("<Escape>", lambda e: _do_leave())
-        dialog.protocol("WM_DELETE_WINDOW", _do_leave)
-
-        # ── NOW center, map, grab, and focus ────────────────────────────
-        dialog.update_idletasks()
-        try:
-            px = parent.winfo_x()
-            py = parent.winfo_y()
-            pw = parent.winfo_width()
-            ph = parent.winfo_height()
-            dialog.geometry(f"{dw}x{dh}+{px + (pw - dw) // 2}+{py + (ph - dh) // 2}")
-        except Exception:
-            pass
-
-        # Use update() instead of wait_visibility() to avoid hangs
-        dialog.update()
-        dialog.grab_set()
-        leave_btn.focus_set()
+        # ── Wire Escape, focus and modality ─────────────────────────────
+        panel.finalize(on_escape=lambda _e: _do_leave())
 
     def _merchant_sell_dialog(self, player, merchant_dialog=None, on_done=None):
-        """Show a sell-to-merchant dialog (nested popup).
+        """Show a sell-to-merchant panel (nested over the merchant panel).
 
         Args:
             player: Player state dict.
-            merchant_dialog: The parent merchant Toplevel (to re-grab after close).
+            merchant_dialog: The parent merchant OverlayPanel (re-grabbed after close).
             on_done: Optional callback() called after the sell dialog closes.
         """
         inv = player.get("inventory", [])
@@ -2647,10 +2921,7 @@ class WorldMapScreen(BaseScreen):
             if on_done:
                 on_done()
             if merchant_dialog:
-                try:
-                    merchant_dialog.grab_set()
-                except tk.TclError:
-                    pass
+                merchant_dialog.grab()
             return
 
         # Cargo sells at road cargo rates; everything else at the normal rate.
@@ -2666,33 +2937,22 @@ class WorldMapScreen(BaseScreen):
             if on_done:
                 on_done()
             if merchant_dialog:
-                try:
-                    merchant_dialog.grab_set()
-                except tk.TclError:
-                    pass
+                merchant_dialog.grab()
             return
 
-        try:
-            parent = self.winfo_toplevel()
-        except tk.TclError:
-            parent = self
-        sd = tk.Toplevel(parent)
-        sd.title("Sell to Merchant")
-        sd.transient(parent)
-        sd.resizable(False, False)
-        sd.configure(bg=Theme.BG_DARK)
-
-        # Dynamic height based on inventory size
-        dw2, dh2 = 460, min(140 + len(sellable) * 44, 520)
+        dw2 = 460
+        dh2 = min(140 + len(sellable) * 44, 520)
+        panel = OverlayPanel(self, "Sell to Merchant", width=dw2, height=dh2)
+        body = panel.body
 
         tk.Label(
-            sd, text="The merchant eyes your pack with practiced interest.\n"
-                     "(Road sell rate: ~75% of city shop value)",
+            body, text="The merchant eyes your pack with practiced interest.\n"
+                       "(Road sell rate: ~75% of city shop value)",
             bg=Theme.BG_DARK, fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL,
             wraplength=dw2 - 40, justify=tk.CENTER,
-        ).pack(padx=20, pady=(12, 6))
+        ).pack(padx=20, pady=(0, 6))
 
-        sep2 = tk.Frame(sd, bg=Theme.BORDER, height=1)
+        sep2 = tk.Frame(body, bg=Theme.BORDER, height=1)
         sep2.pack(fill=tk.X, padx=20)
 
         # ── Callbacks ───────────────────────────────────────────────────
@@ -2722,26 +2982,19 @@ class WorldMapScreen(BaseScreen):
             _close_sell()
 
         def _close_sell():
-            """Close sell dialog and restore merchant dialog grab."""
-            try:
-                sd.grab_release()
-                sd.destroy()
-            except tk.TclError:
-                pass
+            """Close sell panel and restore merchant panel grab."""
+            panel.close()
             if on_done:
                 on_done()
             if merchant_dialog:
-                try:
-                    merchant_dialog.grab_set()
-                except tk.TclError:
-                    pass
+                merchant_dialog.grab()
 
         # ── Build sell rows (scrollable if many items) ──────────────────
         # Canvas + scrollbar for long inventories
         needs_scroll = len(sellable) > 6
         if needs_scroll:
-            sell_canvas = tk.Canvas(sd, bg=Theme.BG_DARK, highlightthickness=0, height=280)
-            sell_scroll = tk.Scrollbar(sd, orient=tk.VERTICAL, command=sell_canvas.yview,
+            sell_canvas = tk.Canvas(body, bg=Theme.BG_DARK, highlightthickness=0, height=280)
+            sell_scroll = tk.Scrollbar(body, orient=tk.VERTICAL, command=sell_canvas.yview,
                                        bg=Theme.BG_MID, troughcolor=Theme.BG_DARK)
             sell_canvas.configure(yscrollcommand=sell_scroll.set)
             sell_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0), pady=6)
@@ -2760,7 +3013,7 @@ class WorldMapScreen(BaseScreen):
             sell_canvas.bind("<Enter>", lambda e: sell_canvas.bind("<MouseWheel>", _mw))
             sell_canvas.bind("<Leave>", lambda e: sell_canvas.unbind("<MouseWheel>"))
         else:
-            sell_frame = tk.Frame(sd, bg=Theme.BG_DARK)
+            sell_frame = tk.Frame(body, bg=Theme.BG_DARK)
             sell_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=6)
 
         for i, (item, unit_price) in enumerate(sellable):
@@ -2798,7 +3051,7 @@ class WorldMapScreen(BaseScreen):
             ).pack(side=tk.RIGHT)
 
         # ── Bottom button ───────────────────────────────────────────────
-        btn_row = tk.Frame(sd, bg=Theme.BG_DARK)
+        btn_row = tk.Frame(body, bg=Theme.BG_DARK)
         btn_row.pack(fill=tk.X, padx=20, pady=(8, 12))
 
         done_btn = tk.Button(
@@ -2810,23 +3063,8 @@ class WorldMapScreen(BaseScreen):
         )
         done_btn.pack(side=tk.RIGHT)
 
-        sd.bind("<Escape>", lambda e: _close_sell())
-        sd.protocol("WM_DELETE_WINDOW", _close_sell)
-
-        # ── NOW center, map, grab, and focus ────────────────────────────
-        sd.update_idletasks()
-        try:
-            px2 = parent.winfo_x()
-            py2 = parent.winfo_y()
-            pw2 = parent.winfo_width()
-            ph2 = parent.winfo_height()
-            sd.geometry(f"{dw2}x{dh2}+{px2 + (pw2 - dw2) // 2}+{py2 + (ph2 - dh2) // 2}")
-        except Exception:
-            pass
-
-        sd.update()
-        sd.grab_set()
-        done_btn.focus_set()
+        # ── Wire Escape, focus and modality ─────────────────────────────
+        panel.finalize(on_escape=lambda _e: _close_sell())
 
     def _handle_discovery_gui(self, event):
         """Show a discovery popup with gold or item found."""
@@ -3005,68 +3243,47 @@ class WorldMapScreen(BaseScreen):
         )
 
     def _show_event_popup(self, title, message):
-        """Show a brief event popup that resumes travel when dismissed."""
-        try:
-            parent = self.winfo_toplevel()
-        except tk.TclError:
-            parent = self
+        """Show a brief event panel that resumes travel when dismissed.
 
+        The panel auto-sizes to its content (``height=None``): a fixed height
+        estimated from *source* lines under-counted wrapped visual lines, so a
+        long description (e.g. the 76-char spike-trap line wraps at dw-40)
+        left the packer 28px short — and the last packed widget, the Continue
+        button, absorbed the deficit (squashed 42px -> 14px, bottom gap gone).
+        Measuring real content removes the estimate entirely; packing the
+        button row FIRST with ``side=BOTTOM`` keeps it safe from any future
+        sizing regression (confirm_dialog convention, 2026-09-28).
+        """
         lines = message.split("\n")
         max_line = max((len(l) for l in lines), default=30)
         est_w = max(280, min(500, max_line * 7 + 60))
-        line_h = 18
-        msg_h = max(len(lines), 1) * line_h + 30
         dw = max(340, int(est_w))
-        dh = 90 + msg_h
 
-        popup = tk.Toplevel(parent)
-        popup.title(title)
-        popup.transient(parent)
-        popup.resizable(False, False)
-        popup.configure(bg=Theme.BG_DARK)
+        panel = OverlayPanel(self, title, width=dw)
 
-        tk.Label(
-            popup, text=message,
-            bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
-            wraplength=dw - 40, justify=tk.CENTER,
-        ).pack(padx=20, pady=(16, 10), fill=tk.BOTH, expand=True)
-
-        def _close():
-            try:
-                popup.grab_release()
-                popup.destroy()
-            except tk.TclError:
-                pass
+        def _close(_event=None):
+            panel.close()
             self._resume_anim()
 
-        cont_btn = tk.Button(
-            popup, text="Continue",
+        # Button row packed before the expand=True message label, as a BOTTOM
+        # slice, so the label can only consume leftover space.
+        tk.Button(
+            panel.body, text="Continue",
             bg=Theme.ACCENT, fg="#ffffff", font=Theme.FONT_BOLD,
             activebackground="#45a049", activeforeground="#ffffff",
             relief=tk.FLAT, padx=20, pady=6, cursor="hand2",
             command=_close,
-        )
-        cont_btn.pack(pady=(0, 16))
+        ).pack(side=tk.BOTTOM, pady=(0, 16))
 
-        popup.bind("<Return>", lambda e: _close())
-        popup.bind("<Escape>", lambda e: _close())
-        popup.bind("<space>", lambda e: _close())
-        popup.protocol("WM_DELETE_WINDOW", _close)
+        tk.Label(
+            panel.body, text=message,
+            bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
+            wraplength=dw - 40, justify=tk.CENTER,
+        ).pack(padx=20, pady=(0, 10), fill=tk.BOTH, expand=True)
 
-        # ── NOW center, map, grab, and focus ────────────────────────────
-        popup.update_idletasks()
-        try:
-            px = parent.winfo_x()
-            py = parent.winfo_y()
-            pw = parent.winfo_width()
-            ph = parent.winfo_height()
-            popup.geometry(f"{dw}x{dh}+{px + (pw - dw) // 2}+{py + (ph - dh) // 2}")
-        except Exception:
-            pass
-
-        popup.wait_visibility()
-        popup.grab_set()
-        cont_btn.focus_set()
+        panel.finalize(on_escape=_close)
+        panel.holder.bind("<Return>", _close)
+        panel.holder.bind("<space>", _close)
 
     # ── Combat overlay ──────────────────────────────────────────────────
 
@@ -3689,8 +3906,16 @@ class WorldMapScreen(BaseScreen):
             **death_kwargs,
         )
 
-    def _show_legend(self):
-        legend = (
+    def _show_map_help(self):
+        """Keyboard controls + the map legend (replaces the old Legend button)."""
+        help_text = (
+            "MAP CONTROLS\n\n"
+            "Arrows   — select city nodes\n"
+            "Tab      — switch cities ↔ ruins / rift / Warden\n"
+            "Enter    — open the selected node's panel\n"
+            "W A S D  — pan the map (same as dragging)\n"
+            "Esc      — deselect / leave the map\n"
+            "H        — this help\n\n"
             "MAP LEGEND\n\n"
             "Colored nodes = Cities (by biome)\n"
             "\u2605  = Your current location\n"
@@ -3701,13 +3926,9 @@ class WorldMapScreen(BaseScreen):
             "\u2014\u2014 Solid line = Land route\n"
             "- - Dashed line = Sea route\n\n"
             "A killed Warden reforms the next, stronger Echo.\n"
-            "A new Warden takes over each season.\n\n"
-            "Click a city, ruin, rift or Warden to view details.\n"
-            "Click 'Travel Here' or 'Travel to the Warden' to journey there.\n"
-            "Drag the map to pan around.\n"
-            "Press Esc to deselect / go back."
+            "A new Warden takes over each season."
         )
-        ok_dialog(self, "Map Legend", legend)
+        ok_dialog(self, "World Map — Help", help_text)
 
     def destroy(self):
         if self._travel_anim_job:

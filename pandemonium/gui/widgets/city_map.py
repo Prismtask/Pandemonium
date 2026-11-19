@@ -69,6 +69,13 @@ class CityMapWidget(tk.Text):
         # Track hover state for cursor changes
         self._hovered_tag = None
 
+        # Keyboard focus state (city-screen navigation).  The tag is kept
+        # configured even while inactive; only its range is added/removed so
+        # Tk keeps it above the service tags.
+        self._focus_index = 0
+        self._focus_active = False
+        self._configure_focus_tag()
+
         # Defer centering until the widget has a real width on screen.
         # Also re-center whenever the widget is resized.
         self.bind("<Configure>", self._on_configure)
@@ -240,6 +247,93 @@ class CityMapWidget(tk.Text):
         if self.on_dungeon_click:
             self.on_dungeon_click()
 
+    # ── Keyboard focus (city screen navigation) ──────────────────────────
+
+    def _configure_focus_tag(self):
+        """Style the keyboard-focus tag around a facility name."""
+        self.tag_configure(
+            "focus",
+            foreground=Theme.TEXT_HEADER,
+            background=Theme.BG_LIGHT,
+            underline=True,
+            font=(Theme.FONT_FAMILY, max(8, Theme.FONT_SIZE - 1), "bold"),
+            relief=tk.RAISED,
+            borderwidth=1,
+        )
+        self.tag_raise("focus")
+
+    def facility_order(self):
+        """Facility keys in reading order (top-to-bottom, left-to-right)."""
+        return [
+            key for key, _pos in sorted(
+                self.positions.items(),
+                key=lambda item: (item[1][0], item[1][1]),
+            )
+        ]
+
+    @property
+    def facility_index(self):
+        return self._focus_index
+
+    def facility_count(self):
+        return len(self.positions)
+
+    def current_facility(self):
+        """Return the facility key currently outlined (or None)."""
+        order = self.facility_order()
+        if not order:
+            return None
+        return order[self._focus_index % len(order)]
+
+    def select_facility(self, index):
+        """Outline a facility by index (wrapping). Returns the key."""
+        order = self.facility_order()
+        if not order:
+            return None
+        self._focus_index = index % len(order)
+        self._focus_active = True
+        self._paint_focus()
+        return order[self._focus_index]
+
+    def move_facility(self, delta):
+        """Move the outline by ``delta`` entries (used by arrow keys)."""
+        return self.select_facility(self._focus_index + delta)
+
+    def select_facility_key(self, key):
+        """Select a known facility key (used by the 1-9 shortcuts)."""
+        order = self.facility_order()
+        if key in order:
+            return self.select_facility(order.index(key))
+        return None
+
+    def clear_facility_focus(self):
+        """Remove the focus highlight (the button bar zone is active)."""
+        self._focus_active = False
+        self.tag_remove("focus", "1.0", tk.END)
+
+    def _paint_focus(self):
+        """Draw the focus tag around the selected facility name."""
+        self.tag_remove("focus", "1.0", tk.END)
+        if not self._focus_active:
+            return
+        order = self.facility_order()
+        if not order:
+            return
+        self._focus_index %= len(order)
+        pos = self.positions.get(order[self._focus_index])
+        if not pos:
+            return
+        line, start_col, end_col = pos
+        line_idx = line + 1
+        # One extra character of padding each side makes the tag read as a
+        # box around the facility name rather than a tight text band.
+        self.tag_add(
+            "focus",
+            f"{line_idx}.{max(0, start_col - 1)}",
+            f"{line_idx}.{end_col + 1}",
+        )
+        self.tag_raise("focus")
+
     def refresh(self, city_id, city, positions):
         """Re-render the widget for a different city."""
         map_art = get_city_map(city_id) or ""
@@ -264,6 +358,9 @@ class CityMapWidget(tk.Text):
         self.tag_add("center", "1.0", tk.END)
         self._apply_service_tags()
         self._apply_dungeon_tag()
+        # tag_delete() above removed the focus tag's styling too.
+        self._configure_focus_tag()
+        self._paint_focus()
         self.configure(state=tk.DISABLED)
 
         # Re-center for the new map

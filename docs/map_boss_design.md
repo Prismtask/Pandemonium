@@ -380,27 +380,38 @@ Example (unlock on Day 20 in Spring, with kills on Days 22, 27 and 64):
 | 64 | Spring | 3 | 80 | Echo 2 killed; reforms immediately |
 | 91 | Summer | 0 | 20 | season turns; Summer Warden replaces Spring at a new site |
 
-### 5.2 Deterministic spawn
+### 5.2 Authored, deterministic spawn
 
-The spawn is **not random per load**. Each **season** rolls one site; its
-Echoes reuse that site:
+The spawn is **not random per load**. Each season has a **locked arena** —
+`site_city` + `site_position` in `resources/map_boss_data.py` — so the Warden
+always surfaces at its most suited location; every Echo of that season reuses
+it:
 
-```python
-season_day = events.season_start_day(day)   # 1 / 91 / 181 / 271
-rng = random.Random(20260101 + season_day * 7919)
-```
+| Season | Anchor city (biome) | Arena position |
+|---|---|---|
+| Spring | **Veilholt** (forest) | `(760, 45)` |
+| Summer | **Cinderpeak** (volcanic) | `(538, 286)` |
+| Autumn | **Thornwall** (temperate) | `(386, 142)` |
+| Winter | **Stormhold** (tundra) | `(95, 165)` |
 
-1. Choose an accessible seed city (the same accessibility rules as wild
-   dungeons), preferring the season's biome list (§5.5).
-2. Biome = that city's biome; the seasonal element/weakness are fixed by the
-   season, not the biome.
-3. Position = a point on a 90–260 px ring around the city node, clamped to the
-   canvas, clear of city nodes, active wild dungeons, and the Event Horizon site.
-4. Derive `nearest_city` from the final position.
+1. Biome = the anchor city's biome; the seasonal element/weakness are fixed by
+   the season, not the biome.
+2. Position = the authored canvas point. It is kept fully on-canvas and clear
+   of every city node, active wild-dungeon marker and the Event Horizon site.
+   If a wild ruin already occupies it (spawned before the season turned), the
+   site hops a short deterministic offset and returns to the authored point
+   once the ruin expires.
+3. Derive `nearest_city` from the final position (the anchor city for all four).
 
 Every Echo in the season reuses the same site, position, biome and element. The
-next season rolls a new site. Loading the same save in the same season always
-produces the same site.
+next season spawns at its own anchor. Loading the same save in the same season
+always produces the same site. Saves that predate the authored layout are
+repaired on the next map open (`map_boss._repair_site`), keeping the Echo, HP
+and pre-rolled spoils.
+
+The seeded ring roll (`random.Random(20260101 + season_start_day * 7919)`) is
+retained only as a fallback for restricted worlds where the anchor city is
+inaccessible.
 
 ### 5.3 Hook and idempotency
 

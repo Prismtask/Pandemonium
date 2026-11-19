@@ -21,6 +21,9 @@ from pandemonium.combat.weapon.dopo_robe import get_robe_multiplier
 from pandemonium.combat.weapon.chance_and_choice import apply_chance_and_choice
 from pandemonium.combat.form_perks import get_outgoing_damage_multiplier
 from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
+from pandemonium.combat.weapon.admin_staff import (
+    actor_has_admin_staff, admin_staff_damage_all, apply_admin_staff_damage,
+)
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.resources.items import build_item
 from pandemonium.progression.titles import check_unlock
@@ -1529,6 +1532,12 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
 
     # ----- ATTACK -----
     if action == "a":
+        # Admin Staff (dev-only): basic attacks strike every enemy for 999999.
+        if actor_has_admin_staff(ally):
+            for line in admin_staff_damage_all(ally, enemies, on_kill=on_kill):
+                c_print(line)
+            return "continue"
+
         # Moonlight Greatsword: while empowered, basics become a magical wave
         # that strikes every enemy (no target selection).
         if is_moonlight_active(ally):
@@ -1691,6 +1700,9 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
 
         # Father's Legacy (Orc child): +7.5% damage below 50% HP
         final_dmg = int(final_dmg * father_legacy_damage_mult(ally))
+
+        # Admin Staff (dev-only): flat 999999 damage, ignoring all modifiers.
+        final_dmg = apply_admin_staff_damage(ally, final_dmg)
 
         target["hp"] -= final_dmg
         # Event Horizon — Death: allies drain 10% of the damage dealt

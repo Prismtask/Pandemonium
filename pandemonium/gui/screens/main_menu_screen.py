@@ -6,13 +6,26 @@ import tkinter as tk
 
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
-from pandemonium.gui.widgets.confirm_dialog import confirm_dialog, ok_dialog
+from pandemonium.gui.widgets.confirm_dialog import ok_dialog
+from pandemonium.gui.widgets.keyboard_nav import NavGroup
+from pandemonium.gui.widgets.overlay_panel import OverlayPanel, confirm_panel
 
 from pandemonium.core.version import VERSION_LABEL
 from pandemonium.gui.screens.settings_screen import SettingsScreen
 from pandemonium.gui.screens.changelog_screen import ChangelogScreen
 from pandemonium.core.save_load import list_save_details, load_game, delete_save
 from pandemonium.core.character import ensure_player_fields
+
+
+# Last keyboard selection, kept across MainMenuScreen rebuilds so returning
+# from Settings / Changelog lands on the same button (Quit / Load dialogs
+# already keep the live screen instance, so they preserved the selection).
+_last_nav_index = 0
+
+
+def _remember_nav_index(index: int) -> None:
+    global _last_nav_index
+    _last_nav_index = index
 
 
 class MainMenuScreen(BaseScreen):
@@ -45,44 +58,38 @@ class MainMenuScreen(BaseScreen):
             font=Theme.FONT_SMALL,
         ).pack(pady=(0, 30))
 
-        # Buttons
+        # Buttons — each Button sits in a wrapper Frame because Tk buttons on
+        # Windows ignore the highlight ring; the wrapper carries the 1px
+        # keyboard-focus outline.  The 2px inner gap keeps the outline from
+        # touching the button's own 3D border.
         btn_width = 20
         btn_pady = 6
+        menu_buttons = []
+        menu_entries = []
 
-        self.styled_button(
-            container,
-            text="New Game",
-            command=self._on_new_game,
-            width=btn_width,
-        ).pack(pady=btn_pady)
-
-        self.styled_button(
-            container,
-            text="Load Game",
-            command=self._on_load_game,
-            width=btn_width,
-        ).pack(pady=btn_pady)
-
-        self.styled_button(
-            container,
-            text="Settings",
-            command=self._on_settings,
-            width=btn_width,
-        ).pack(pady=btn_pady)
-
-        self.styled_button(
-            container,
-            text="Changelog",
-            command=self._on_changelog,
-            width=btn_width,
-        ).pack(pady=btn_pady)
-
-        self.styled_button(
-            container,
-            text="Quit",
-            command=self._on_quit,
-            width=btn_width,
-        ).pack(pady=btn_pady)
+        for text, command in (
+            ("New Game", self._on_new_game),
+            ("Load Game", self._on_load_game),
+            ("Settings", self._on_settings),
+            ("Changelog", self._on_changelog),
+            ("Quit", self._on_quit),
+        ):
+            wrapper = tk.Frame(
+                container,
+                bg=Theme.BG_DARK,
+                highlightthickness=1,
+                highlightbackground=Theme.BG_DARK,
+            )
+            wrapper.pack(pady=btn_pady - 2)
+            btn = self.styled_button(
+                wrapper,
+                text=text,
+                command=command,
+                width=btn_width,
+            )
+            btn.pack(padx=2, pady=2)
+            menu_buttons.append(btn)
+            menu_entries.append((wrapper, btn))
 
         # Version label + beta clarifier (single source of truth: version.py)
         tk.Label(
@@ -92,6 +99,23 @@ class MainMenuScreen(BaseScreen):
             fg=Theme.TEXT_DIM,
             font=Theme.FONT_SMALL,
         ).pack(pady=(20, 0))
+
+        # ── Keyboard navigation ───────────────────────────────────────────
+        # Keyboard focus stays on this screen frame, so Tk's dotted in-button
+        # focus rectangle never appears.  Arrow keys / Tab move a thin 1px
+        # outline between the menu buttons; Enter or Space activates the
+        # outlined one.  The selection is remembered across screen rebuilds.
+        self._nav = NavGroup(
+            self,
+            menu_entries,
+            start=_last_nav_index,
+            on_change=_remember_nav_index,
+        )
+        self._nav.bind_keys()
+        # Mouse clicks move the outline too, so the next Enter/Space press
+        # lands on the button the player last interacted with.
+        for i, btn in enumerate(menu_buttons):
+            btn.bind("<Button-1>", lambda _e, i=i: self._nav.select(i), add="+")
 
     # ── Button handlers ───────────────────────────────────────────────────────
 
@@ -103,7 +127,7 @@ class MainMenuScreen(BaseScreen):
         self._show_save_browser()
 
     def _on_quit(self):
-        confirm_dialog(
+        confirm_panel(
             parent=self,
             title="Quit Game",
             message="Are you sure you want to quit?",
@@ -131,32 +155,30 @@ class MainMenuScreen(BaseScreen):
             ok_dialog(self, "Save Files", "No save files found.")
             return
 
-        dialog = tk.Toplevel(self)
-        dialog.title("Save Files")
-        dialog.transient(self.winfo_toplevel())
-        dialog.resizable(True, True)
-        dialog.configure(bg=Theme.BG_DARK)
-        dialog.withdraw()  # build offscreen to avoid a blank flash
+        # Option C window design: the browser is a panel drawn inside the
+        # main menu (no Toplevel), so there is no native title bar at all.
+        # The panel restores keyboard focus to the menu when it closes.
+        def _cleanup():
+            try:
+                self.unbind_all("<MouseWheel>")
+            except tk.TclError:
+                pass
 
-        dialog.update_idletasks()
-        px = self.winfo_toplevel().winfo_x()
-        py = self.winfo_toplevel().winfo_y()
-        pw = self.winfo_toplevel().winfo_width()
-        ph = self.winfo_toplevel().winfo_height()
-        dw, dh = 520, 480
-        dialog.geometry(f"{dw}x{dh}+{px + (pw - dw) // 2}+{py + (ph - dh) // 2}")
-        dialog.minsize(460, 340)
+        panel = OverlayPanel(
+            self, "Save Files", width=520, height=480, on_close=_cleanup,
+        )
+        body = panel.body
 
         tk.Label(
-            dialog,
+            body,
             text="Select a save file:",
             bg=Theme.BG_DARK,
             fg=Theme.TEXT,
             font=Theme.FONT_BOLD,
-        ).pack(padx=20, pady=(16, 8))
+        ).pack(padx=20, pady=(0, 8))
 
         # ── Scrollable card list ─────────────────────────────────────────
-        list_outer = tk.Frame(dialog, bg=Theme.BG_DARK)
+        list_outer = tk.Frame(body, bg=Theme.BG_DARK)
         list_outer.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 8))
 
         canvas = tk.Canvas(list_outer, bg=Theme.BG_DARK, highlightthickness=0, bd=0)
@@ -198,10 +220,10 @@ class MainMenuScreen(BaseScreen):
             except tk.TclError:
                 pass
 
-        dialog.bind_all("<MouseWheel>", _on_mousewheel)
+        body.bind_all("<MouseWheel>", _on_mousewheel)
 
         # ── Action bar (fixed — buttons never shrink with the save count) ─
-        action_bar = tk.Frame(dialog, bg=Theme.BG_DARK)
+        action_bar = tk.Frame(body, bg=Theme.BG_DARK)
         action_bar.pack(fill=tk.X, padx=20, pady=(0, 14))
 
         hint = tk.Label(
@@ -213,20 +235,22 @@ class MainMenuScreen(BaseScreen):
         )
         hint.pack(side=tk.LEFT)
 
-        state = {"slot": None, "info": {}, "cards": {}}
+        state = {
+            "slot": None,
+            "info": {},
+            "cards": {},
+            "order": [],
+            "list_index": 0,
+            "list_nav": None,
+            "action_nav": None,
+            "nav": None,
+        }
 
         def _regrab():
-            try:
-                dialog.grab_set()
-            except tk.TclError:
-                pass
+            panel.grab()
 
         def _close():
-            try:
-                dialog.unbind_all("<MouseWheel>")
-            except tk.TclError:
-                pass
-            dialog.destroy()
+            panel.close()   # unbinds MouseWheel via on_close, restores focus
 
         # ── Actions (each one asks for confirmation / cancel) ────────────
         def _do_load(slot):
@@ -249,8 +273,8 @@ class MainMenuScreen(BaseScreen):
                 self.sm.log(f"Loaded {player['name']} — {player['race']} {player['class']}")
                 self.sm.switch_to(CityScreen)
 
-            confirm_dialog(
-                parent=dialog,
+            confirm_panel(
+                parent=self,
                 title="Confirm Load",
                 message=f"Load '{name}' (Savefile {slot})?",
                 on_yes=_confirmed,
@@ -270,8 +294,8 @@ class MainMenuScreen(BaseScreen):
                     ok_dialog(self, "Error", f"Could not delete Savefile {slot}.",
                               on_ok=_regrab)
 
-            confirm_dialog(
-                parent=dialog,
+            confirm_panel(
+                parent=self,
                 title="Confirm Deletion",
                 message=f"Permanently delete '{name}' (Savefile {slot})?\nThis cannot be undone.",
                 on_yes=_confirmed,
@@ -289,13 +313,61 @@ class MainMenuScreen(BaseScreen):
             else:
                 _close()
 
+        bottom_wrap = tk.Frame(
+            action_bar, bg=Theme.BG_DARK,
+            highlightthickness=1, highlightbackground=Theme.BG_DARK,
+        )
+        bottom_wrap.pack(side=tk.RIGHT)
         bottom_btn = tk.Button(
-            action_bar, text="Close", command=_on_bottom_action, width=10,
+            bottom_wrap, text="Close", command=_on_bottom_action, width=10,
             bg=Theme.BUTTON_BG, fg=Theme.TEXT,
             activebackground=Theme.BUTTON_ACTIVE_BG,
             font=Theme.FONT_BOLD, cursor="hand2",
         )
-        bottom_btn.pack(side=tk.RIGHT)
+        bottom_btn.pack(padx=2, pady=2)
+
+        # ── Keyboard navigation helpers ──────────────────────────────────
+        def _remember_slot_index(slot):
+            try:
+                state["list_index"] = state["order"].index(slot)
+            except ValueError:
+                pass
+
+        def _scroll_into_view(widget):
+            """Keep the outlined entry visible inside the scroll canvas."""
+            try:
+                cards.update_idletasks()
+                total = cards.winfo_height()
+                view_h = canvas.winfo_height()
+                if total <= 0 or view_h <= 0:
+                    return
+                top = canvas.canvasy(0)
+                y = widget.winfo_y()
+                h = widget.winfo_height()
+                if y < top:
+                    canvas.yview_moveto(max(0.0, y / total))
+                elif y + h > top + view_h:
+                    canvas.yview_moveto((y + h - view_h) / total)
+            except tk.TclError:
+                pass
+
+        def _on_list_change(index):
+            state["list_index"] = index
+            if 0 <= index < len(state["order"]):
+                _scroll_into_view(
+                    state["cards"][state["order"][index]]["wrapper"]
+                )
+
+        def _activate_card(slot):
+            _remember_slot_index(slot)
+            _select(slot)
+
+        def _on_browser_key(event):
+            """Forward keys to the active nav group (card list or actions)."""
+            nav = state["nav"]
+            if nav is not None:
+                return nav.on_key(event)
+            return None
 
         # ── Selection state ──────────────────────────────────────────────
         def _select(slot):
@@ -311,24 +383,54 @@ class MainMenuScreen(BaseScreen):
                                             highlightthickness=1)
                     entry["btn_frame"].pack_forget()
                     entry["slot_lbl"].pack(anchor=tk.E)
+
             if slot is None:
+                state["nav"] = state["list_nav"]
+                if state["list_nav"] is not None:
+                    # Return the outline to the card list.
+                    state["list_nav"].select(state["list_index"])
                 bottom_btn.configure(text="Close")
                 hint.configure(text="Click a save file to load or delete it.",
                                fg=Theme.TEXT_DIM)
-            else:
-                bottom_btn.configure(text="Cancel")
-                name = state["info"].get(slot, {}).get("name", "Unknown")
-                hint.configure(text=f"Selected: Savefile {slot} — {name}",
-                               fg=Theme.TEXT)
+                return
+
+            # Card selected: fade the list outline and outline the inline
+            # Load / Delete buttons (Load first — Enter then activates it).
+            if state["list_nav"] is not None:
+                state["list_nav"].clear_outline()
+            entry = state["cards"].get(slot)
+            if entry is not None:
+                state["action_nav"] = NavGroup(
+                    panel.holder,
+                    [
+                        (entry["load_wrap"], entry["load_btn"]),
+                        (entry["delete_wrap"], entry["delete_btn"]),
+                    ],
+                    idle_color=Theme.BG_CARD,
+                )
+                state["nav"] = state["action_nav"]
+            bottom_btn.configure(text="Cancel")
+            name = state["info"].get(slot, {}).get("name", "Unknown")
+            hint.configure(text=f"Selected: Savefile {slot} — {name}",
+                           fg=Theme.TEXT)
 
         # ── Card rendering ───────────────────────────────────────────────
         def _make_card(slot, info):
+            # Wrapper frame carries the white keyboard outline (Tk buttons
+            # ignore highlight rings on Windows); the card's own accent ring
+            # means "selected for action".
+            wrapper = tk.Frame(
+                cards, bg=Theme.BG_DARK,
+                highlightthickness=1, highlightbackground=Theme.BG_DARK,
+            )
+            wrapper.pack(fill=tk.X, pady=2)
+
             card = tk.Frame(
-                cards, bg=Theme.BG_CARD,
+                wrapper, bg=Theme.BG_CARD,
                 highlightthickness=1, highlightbackground=Theme.BORDER,
                 cursor="hand2",
             )
-            card.pack(fill=tk.X, pady=4)
+            card.pack(fill=tk.X, padx=2, pady=2)
 
             # Right side: "Savefile N" normally, replaced by Load / Delete
             # when this card is selected.  Packed first so the buttons always
@@ -343,21 +445,33 @@ class MainMenuScreen(BaseScreen):
             slot_lbl.pack(anchor=tk.E)
 
             btn_frame = tk.Frame(right, bg=Theme.BG_CARD)
+
+            load_wrap = tk.Frame(
+                btn_frame, bg=Theme.BG_CARD,
+                highlightthickness=1, highlightbackground=Theme.BG_CARD,
+            )
+            load_wrap.pack(side=tk.LEFT)
             card_load_btn = tk.Button(
-                btn_frame, text="Load", command=lambda s=slot: _do_load(s),
+                load_wrap, text="Load", command=lambda s=slot: _do_load(s),
                 width=6, bg=Theme.ACCENT, fg=Theme.TEXT_HEADER,
                 activebackground=Theme.ACCENT_HOVER,
                 font=Theme.FONT_BOLD, cursor="hand2",
             )
-            card_load_btn.pack(side=tk.LEFT)
+            card_load_btn.pack(padx=2, pady=2)
+
+            delete_wrap = tk.Frame(
+                btn_frame, bg=Theme.BG_CARD,
+                highlightthickness=1, highlightbackground=Theme.BG_CARD,
+            )
+            delete_wrap.pack(side=tk.LEFT, padx=(6, 0))
             card_delete_btn = tk.Button(
-                btn_frame, text="Delete", command=lambda s=slot: _do_delete(s),
+                delete_wrap, text="Delete", command=lambda s=slot: _do_delete(s),
                 width=7, bg=Theme.BUTTON_BG, fg=Theme.ACCENT,
                 activebackground=Theme.BUTTON_ACTIVE_BG,
                 activeforeground=Theme.ACCENT_HOVER,
                 font=Theme.FONT_BOLD, cursor="hand2",
             )
-            card_delete_btn.pack(side=tk.LEFT, padx=(6, 0))
+            card_delete_btn.pack(padx=2, pady=2)
 
             # Left side: character info (always visible)
             info_frame = tk.Frame(card, bg=Theme.BG_CARD)
@@ -377,39 +491,73 @@ class MainMenuScreen(BaseScreen):
             # Clicking anywhere on the card toggles selection; clicking the
             # selected card again backs out of the pending action.
             def _click(_event=None, s=slot):
-                _select(None if state["slot"] == s else s)
+                if state["slot"] == s:
+                    _select(None)
+                else:
+                    _remember_slot_index(s)
+                    _select(s)
 
-            for widget in (card, info_frame, name_lbl, detail_lbl, slot_lbl):
+            for widget in (wrapper, card, info_frame, name_lbl, detail_lbl,
+                           slot_lbl):
                 widget.bind("<Button-1>", _click)
             state["cards"][slot] = {
-                "card": card, "slot_lbl": slot_lbl, "btn_frame": btn_frame,
+                "card": card,
+                "wrapper": wrapper,
+                "slot_lbl": slot_lbl,
+                "btn_frame": btn_frame,
+                "load_wrap": load_wrap,
+                "load_btn": card_load_btn,
+                "delete_wrap": delete_wrap,
+                "delete_btn": card_delete_btn,
             }
+
+        def _build_list_nav():
+            """Outline targets for the list: cards in order, then Close."""
+            entries = [
+                (state["cards"][s]["wrapper"], lambda s=s: _activate_card(s))
+                for s in state["order"]
+            ]
+            entries.append((bottom_wrap, _on_bottom_action))
+            return NavGroup(
+                panel.holder,
+                entries,
+                start=state["list_index"],
+                on_change=_on_list_change,
+            )
 
         def _rebuild():
             state["slot"] = None
+            state["action_nav"] = None
             for child in cards.winfo_children():
                 child.destroy()
             state["cards"].clear()
             state["info"] = list_save_details()
-            for slot in sorted(state["info"]):
+            state["order"] = sorted(state["info"])
+            for slot in state["order"]:
                 _make_card(slot, state["info"][slot])
             if not state["info"]:
                 tk.Label(
                     cards, text="No save files found.",
                     bg=Theme.BG_DARK, fg=Theme.TEXT_DIM, font=Theme.FONT,
                 ).pack(pady=24)
+            state["list_nav"] = _build_list_nav()
             _select(None)
-            canvas.yview_moveto(0)
 
         def _on_escape(_event=None):
             _on_bottom_action()   # Escape = Cancel while selected, else Close
 
-        dialog.protocol("WM_DELETE_WINDOW", _close)
-        dialog.bind("<Escape>", _on_escape)
+        # ── Keyboard bindings ────────────────────────────────────────────
+        # The panel holder owns keyboard focus; one dispatcher forwards keys
+        # to the active NavGroup (card list, or inline Load/Delete actions).
+        for sequence in (
+            "<Up>", "<Down>", "<Left>", "<Right>",
+            "<Tab>", "<Shift-Tab>", "<ISO_Left_Tab>",
+            "<Home>", "<End>",
+            "<Return>", "<KP_Enter>", "<space>",
+        ):
+            panel.holder.bind(sequence, _on_browser_key)
 
         _rebuild()
-        dialog.deiconify()
-        dialog.lift()
-        dialog.grab_set()
-        dialog.focus_set()
+        # Escape = Cancel while a card is selected, else Close.
+        panel.finalize(on_escape=_on_escape)
 

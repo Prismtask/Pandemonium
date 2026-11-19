@@ -95,6 +95,10 @@ MAP_BOSS_UNIQUE_ITEMS = ("warden_signet", "long_day", "echo_mantle",
 #
 # ``biomes`` is the season's biome preference for the arena site; the
 # season element/weakness/mechanic never change with biome or Echo.
+# ``site_city`` / ``site_position`` lock each Warden's arena to its most
+# suited location (docs/map_boss_design.md §5.2) — the position is a fixed
+# canvas point that already clears every city node, wild marker and the
+# Event Horizon site.
 WARDENS = {
     "spring": {
         "season_name": "Spring",
@@ -103,6 +107,8 @@ WARDENS = {
         "element": "earth",
         "weakness": "fire",
         "biomes": ("forest", "temperate"),
+        "site_city": "veilholt",               # the blooming forest
+        "site_position": (760, 45),            # north of Veilholt
         "mechanic": "bloom",
         "mechanic_name": "Bloom",
         "stack_tag": "BLOOM",
@@ -118,6 +124,8 @@ WARDENS = {
         "element": "fire",
         "weakness": "water",
         "biomes": ("desert", "volcanic", "savanna"),
+        "site_city": "cinderpeak",             # the volcanic noon
+        "site_position": (538, 286),           # south-west of Cinderpeak
         "mechanic": "heat",
         "mechanic_name": "Heat",
         "stack_tag": "HEAT",
@@ -133,6 +141,8 @@ WARDENS = {
         "element": "wind",
         "weakness": "thunder",
         "biomes": ("savanna", "forest", "temperate"),
+        "site_city": "thornwall",              # the harvest frontier
+        "site_position": (386, 142),           # north-east of Thornwall
         "mechanic": "harvest",
         "mechanic_name": "Harvest",
         "stack_tag": "HARVEST",
@@ -148,6 +158,8 @@ WARDENS = {
         "element": "water",
         "weakness": "fire",
         "biomes": ("tundra", "mountain"),
+        "site_city": "stormhold",              # the frozen north
+        "site_position": (95, 165),            # south-west of Stormhold
         "mechanic": "frostbite",
         "mechanic_name": "Frostbite",
         "stack_tag": "FROST",

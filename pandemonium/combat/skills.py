@@ -17,6 +17,9 @@ from pandemonium.progression.titles import mod as _title_mod
 from pandemonium.combat.weapon.map_boss_uniques import apply_long_day_damage
 from pandemonium.combat.stat_milestones import get_wisdom_bonus
 from pandemonium.combat.weapon.sky_piercer import check_sky_piercer_execute
+from pandemonium.combat.weapon.admin_staff import (
+    actor_has_admin_staff, admin_staff_skill_aoe, apply_admin_staff_damage,
+)
 
 
 # ── Skill Queries ──────────────────────────────────────────────────────────
@@ -451,11 +454,17 @@ def execute_skill(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p_wis, 
     """
     if skill_id not in get_class_skill_map(player):
         return "That skill does not exist.", False
+    hp_before = {id(e): e.get("hp", 0) for e in enemies}
     msg, victory = _execute_skill_core(
         player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, allies
     )
     if msg == ACTION_CANCELLED_MSG:
         return msg, victory
+    # Admin Staff (dev-only): a damaging skill also bursts every enemy.
+    extra = admin_staff_skill_aoe(player, enemies, hp_before)
+    if extra:
+        msg = f"{msg} {' '.join(extra)}"
+        victory = victory or not any(e.get("hp", 0) > 0 for e in enemies)
     mastery_upgrade = add_skill_mastery_xp(player, skill_id)
     if mastery_upgrade:
         msg = f"{msg} Skill Mastery increased to Level {mastery_upgrade}! ★"
@@ -701,6 +710,8 @@ def _execute_skill_core(player, skill_id, enemies, p_str, p_con, p_dex, p_ler, p
         dmg = apply_long_day_damage(player, dmg)
         apply_wedding_on_hit(player, target, enemies, dmg)
         player["wedding_first_attack_done"] = True
+        # Admin Staff (dev-only): flat 999999 damage, ignoring all modifiers.
+        dmg = apply_admin_staff_damage(player, dmg)
         return DamageResult(dmg, is_crit)
 
     # ── Life Steal Helper ──

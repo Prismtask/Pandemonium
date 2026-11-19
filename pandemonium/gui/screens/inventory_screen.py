@@ -16,7 +16,6 @@ from pandemonium.core.character import player_max_hp
 from pandemonium.resources.races_classes import ATTRIBUTES
 from pandemonium.combat.stat_milestones import format_milestone_label
 from pandemonium.progression.titles import combat_stat_bonus as title_bonus
-from pandemonium.combat.stat_milestones import format_milestone_bonuses
 from pandemonium.resources.skill_loader import PROFESSIONS
 from pandemonium.resources.enemies import ENEMIES
 from pandemonium.resources.item_generation import is_flower_item
@@ -31,6 +30,8 @@ from pandemonium.resources.items import ITEMS
 from pandemonium.resources.unique_effects import unique_effect_text
 from pandemonium.gui.widgets.confirm_dialog import ok_dialog
 from pandemonium.gui.widgets.confirm_dialog import confirm_dialog
+from pandemonium.gui.widgets.keyboard_nav import NavGroup
+from pandemonium.gui.widgets.overlay_panel import OverlayPanel
 
 
 class InventoryScreen(BaseScreen):
@@ -64,6 +65,23 @@ class InventoryScreen(BaseScreen):
         self._journal_dirty = True
         self._eh_dirty = True
         self.char_notebook = None
+        # ── Keyboard navigation state ─────────────────────────────────────
+        # Levels: main (tab bar + Back/Close) → subtabs (character/bag/
+        # journal tabs) → content (cards; Left/Right cycles the card's
+        # buttons).  Tab exits one level; Enter enters one level.
+        self._nav_level = "main"
+        self._main_focus_index = 0    # main tabs... then the Back/Close button
+        self._content_index = 0
+        self._content_button_index = 0
+        self._row_sink = None          # list receiving rows during a render
+        self._content_canvas = None
+        self._content_inner = None
+        self._notebook_wrap = None
+        self._char_nb_wrap = None
+        self._bag_nb_wrap = None
+        self._journal_nb_wrap = None
+        self._scroll_target = None     # lazy journal entry being rendered
+        self._nav_ready = False
         super().__init__(parent, screen_manager, **kwargs)
 
     def build_ui(self):
@@ -117,8 +135,17 @@ class InventoryScreen(BaseScreen):
             foreground=[("selected", Theme.TEXT_HEADER)],
         )
 
-        self.notebook = ttk.Notebook(container, style="Inv.TNotebook")
-        self.notebook.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self._notebook_wrap = tk.Frame(
+            container, bg=Theme.BG_DARK,
+            highlightthickness=1, highlightbackground=Theme.BG_DARK,
+        )
+        self._notebook_wrap.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self._notebook_wrap.grid_rowconfigure(0, weight=1)
+        self._notebook_wrap.grid_columnconfigure(0, weight=1)
+
+        self.notebook = ttk.Notebook(self._notebook_wrap, style="Inv.TNotebook")
+        self.notebook.grid(row=0, column=0, sticky="nsew")
+        self._share_keys(self.notebook)
 
         # Create tabs
         self._build_characters_tab()
@@ -136,21 +163,35 @@ class InventoryScreen(BaseScreen):
         action_frame = tk.Frame(container, bg=Theme.BG_DARK)
         action_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
 
+        # Back/Close is part of the MAIN horizontal focus row (←/→ at the tab
+        # level reaches it); Refresh is deliberately not in the focus ring —
+        # use the R shortcut or click it.
         back_label = "← Close" if self.is_overlay else "← Back"
-        self.styled_button(
-            action_frame,
+        self._back_wrap = tk.Frame(
+            action_frame, bg=Theme.BG_DARK,
+            highlightthickness=1, highlightbackground=Theme.BG_DARK,
+        )
+        self._back_wrap.pack(side=tk.LEFT)
+        self._back_btn = self.styled_button(
+            self._back_wrap,
             text=back_label,
             command=self._on_back,
             width=16,
-        ).pack(side=tk.LEFT)
+        )
+        self._back_btn.pack(padx=1, pady=1)
 
         refresh_btn = self.styled_button(
             action_frame,
-            text="Refresh",
+            text="Refresh [R]",
             command=self._refresh_all,
-            width=12,
+            width=14,
         )
         refresh_btn.pack(side=tk.RIGHT)
+
+        # ── Keyboard navigation ──────────────────────────────────────────────
+        self._setup_inventory_keys()
+        self._nav_ready = True
+        self._paint_nav()
 
     # ═══════════════════════════════════════════════════════════════════════
     #  TAB 1 — Characters  (one sub-tab per character: You, then each ally)
@@ -204,9 +245,17 @@ class InventoryScreen(BaseScreen):
             return
 
         chars = self._characters()
-        nb = ttk.Notebook(self.characters_frame, style="Ally.TNotebook")
-        nb.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self._char_nb_wrap = tk.Frame(
+            self.characters_frame, bg=Theme.BG_DARK,
+            highlightthickness=1, highlightbackground=Theme.BG_DARK,
+        )
+        self._char_nb_wrap.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self._char_nb_wrap.grid_rowconfigure(0, weight=1)
+        self._char_nb_wrap.grid_columnconfigure(0, weight=1)
+        nb = ttk.Notebook(self._char_nb_wrap, style="Ally.TNotebook")
+        nb.grid(row=0, column=0, sticky="nsew")
         self.char_notebook = nb
+        self._share_keys(nb)
 
         for idx, char in enumerate(chars):
             is_player = idx == 0
@@ -241,6 +290,10 @@ class InventoryScreen(BaseScreen):
             index = self._current_char_index()
             self._char_tab_index = index
             self._ensure_char_page(index)
+            if getattr(self, "_nav_ready", False) and self._nav_level == "content":
+                self._content_index = 0
+                self._content_button_index = 0
+                self.after_idle(self._paint_nav)
         except tk.TclError:
             pass
 
@@ -275,6 +328,9 @@ class InventoryScreen(BaseScreen):
             w.destroy()
         page["canvas"] = None
         page["view"] = self._char_view
+        page["nav_rows"] = []
+        page["inner"] = None
+        self._row_sink = page["nav_rows"]
 
         if not is_player:
             # Safety net: ensures innate/learned skills match the vorpal flags
@@ -284,25 +340,39 @@ class InventoryScreen(BaseScreen):
 
         self._render_view_toggle(page["bar"])
 
+        if self._char_view == "skills":
+            # Pinned header: loadout/profession/passive stay visible while
+            # the skill list scrolls (player and ally pages alike).
+            header = tk.Frame(page["body"], bg=Theme.BG_DARK)
+            header.pack(fill=tk.X, padx=4, pady=(2, 0))
+            self._render_skills_header(header, char, is_player)
+
         canvas, inner = self._make_scroll_area(page["body"])
         page["canvas"] = canvas
+        page["inner"] = inner
 
         if self._char_view == "skills":
             self._render_character_skills(inner, char, is_player)
         else:
             self._render_character_overview(inner, char, is_player)
 
+        self._row_sink = None
         self._restore_page_scroll(page)
 
     def _render_view_toggle(self, bar):
+        entries = []
         for key, label in (("overview", "Overview"), ("skills", "Skills")):
             active = self._char_view == key
-            self.styled_button(
-                bar, text=label, width=12,
+            wrap, btn = self._row_button(
+                bar, side=tk.LEFT, padx=(0, 2),
+                text=label, width=12,
                 command=lambda k=key: self._set_char_view(k),
                 bg=Theme.BG_LIGHT if active else Theme.BG_MID,
                 fg=Theme.TEXT_HEADER if active else Theme.TEXT_DIM,
-            ).pack(side=tk.LEFT, padx=(0, 2))
+            )
+            entries.append((wrap, btn))
+        # First content row: Left/Right picks Overview/Skills, Enter switches.
+        self._register_row(bar, entries)
 
     def _make_scroll_area(self, parent):
         """Vertical scroll container. Returns (canvas, inner_frame)."""
@@ -360,7 +430,7 @@ class InventoryScreen(BaseScreen):
     # ── Overview view ────────────────────────────────────────────────────────
 
     def _render_character_overview(self, inner, char, is_player):
-        """Identity/vitals, attributes + equipment side by side, milestones."""
+        """Identity/vitals and the attributes + equipment block."""
         if is_player:
             self._render_personal_box(inner)
             hp = f"{char.get('current_hp', 0)}/{player_max_hp(char)}"
@@ -370,7 +440,7 @@ class InventoryScreen(BaseScreen):
             self._render_ally_header(inner, char)
 
         # Side by side so gear and the stat totals it feeds are visible
-        # together without scrolling. Milestones (below) stay full width.
+        # together without scrolling.
         columns = tk.Frame(inner, bg=Theme.BG_DARK)
         columns.pack(fill=tk.X, pady=4, padx=4)
         # 2 : 3 split — equipment rows carry more text than attribute rows.
@@ -380,7 +450,6 @@ class InventoryScreen(BaseScreen):
 
         self._render_attributes_box(columns, char, is_player)
         self._render_equipment_box(columns, char, is_player)
-        self._render_milestones_box(inner, char)
 
     def _render_ally_header(self, inner, ally):
         from pandemonium.combat.ally import get_growth_label
@@ -600,34 +669,31 @@ class InventoryScreen(BaseScreen):
 
                 # Every worn piece is examinable — affinity and effect without
                 # a trip to the blacksmith.
-                self.styled_button(
-                    btn_col, text="Examine", width=9,
+                entries = []
+                wrap, btn = self._row_button(
+                    btn_col, side=tk.LEFT, padx=(0, 2),
+                    text="Examine", width=9,
                     command=lambda it=item: self._examine_item(it),
-                ).pack(side=tk.LEFT, padx=(0, 2))
-                self.styled_button(
-                    btn_col, text="Unequip", width=8,
+                )
+                entries.append((wrap, btn))
+                wrap, btn = self._row_button(
+                    btn_col, side=tk.LEFT, padx=0,
+                    text="Unequip", width=8,
                     command=unequip_cmd(slot),
-                ).pack(side=tk.LEFT)
+                )
+                entries.append((wrap, btn))
+                self._register_row(row, entries)
             else:
                 self.styled_label(
                     text_col, text=f"{prefix} (empty)", fg=Theme.TEXT_DIM,
                 ).pack(anchor=tk.W)
                 # Quick jump to the Bag to equip an item into this empty slot
-                self.styled_button(
-                    btn_col, text="Equip", width=6,
+                wrap, btn = self._row_button(
+                    btn_col, side=tk.LEFT, padx=0,
+                    text="Equip", width=6,
                     command=equip_cmd(slot),
-                ).pack(side=tk.LEFT)
-
-    def _render_milestones_box(self, parent, char):
-        mb = format_milestone_bonuses(char)
-        if not mb:
-            return
-        mb_frame = self._section_box(parent, "Milestones")
-        tk.Label(
-            mb_frame, text=mb,
-            bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT,
-            wraplength=600, justify=tk.LEFT,
-        ).pack(anchor=tk.W, padx=6, pady=4)
+                )
+                self._register_row(row, [(wrap, btn)])
 
     # ── Skills view ──────────────────────────────────────────────────────────
     #
@@ -676,11 +742,13 @@ class InventoryScreen(BaseScreen):
 
         if marker in ("on", "off"):
             on = marker == "on"
-            self.styled_button(
-                top, text="✓" if on else "–", width=2, command=on_toggle,
+            wrap, btn = self._row_button(
+                top, side=tk.LEFT, padx=0,
+                text="✓" if on else "–", width=2, command=on_toggle,
                 bg=Theme.BG_LIGHT if on else Theme.BG_MID,
                 fg=Theme.BUFF_POSITIVE if on else Theme.TEXT_DIM,
-            ).pack(side=tk.LEFT, anchor=tk.N)
+            )
+            self._register_row(entry, [(wrap, btn)])
         elif marker == "locked":
             tk.Label(
                 top, text="🔒", width=2, bg=Theme.BG_DARK,
@@ -715,12 +783,43 @@ class InventoryScreen(BaseScreen):
         else:
             self._render_ally_skills(inner, char)
 
+    def _render_skills_header(self, header, char, is_player):
+        """Pinned top block of the Skills view (outside the scroll area)."""
+        if is_player:
+            self._render_player_skills_header(header)
+        else:
+            self._render_passive_box(header, self._ally_passive(char))
+
+    def _render_player_skills_header(self, header):
+        """Battle loadout line, profession line, and class/profession passive."""
+        from pandemonium.combat.skills import (
+                    get_equipped_skill_ids, MAX_SKILL_LOADOUT, get_passive_skill,
+                )
+        p = self.player
+        equipped = set(get_equipped_skill_ids(p))
+        self.styled_label(
+            header,
+            text=f"Battle Loadout: {len(equipped)}/{MAX_SKILL_LOADOUT} equipped — "
+                 "click a skill's ✓/– box to choose what you bring into combat.",
+            fg=Theme.ACCENT,
+        ).pack(anchor=tk.W, padx=6, pady=(6, 0))
+
+        profs = PROFESSIONS.get(p.get("class"), {})
+        if profs:
+            prof = p.get("profession")
+            prof_text = (f"Profession: {profs[prof]['name']}" if prof in profs
+                         else "Profession: none — choose at the Guild after the Lv-40 capstone")
+            self.styled_label(header, text=prof_text, fg=Theme.TEXT_DIM).pack(
+                anchor=tk.W, padx=6, pady=(2, 0)
+            )
+
+        self._render_passive_box(header, get_passive_skill(p))
+
     def _render_player_skills(self, inner):
-        """Battle loadout, class passive, unlocked/locked skills, profession."""
+        """Unlocked/locked skills and the abandoned profession branch."""
         from pandemonium.combat.skills import (
                     get_class_skill_map, format_mastery_label, get_equipped_skill_ids,
-                    MAX_SKILL_LOADOUT, get_skill_mastery_level, get_mastery_bonuses,
-                    get_passive_skill,
+                    get_skill_mastery_level, get_mastery_bonuses,
                 )
         p = self.player
 
@@ -734,25 +833,7 @@ class InventoryScreen(BaseScreen):
         level = p.get("level", 1)
         cooldowns = p.get("skill_cooldowns", {})
         mastery_uses = p.get("skill_mastery", {})
-
-        self.styled_label(
-            inner,
-            text=f"Battle Loadout: {len(equipped)}/{MAX_SKILL_LOADOUT} equipped — "
-                 "click a skill's ✓/– box to choose what you bring into combat.",
-            fg=Theme.ACCENT,
-        ).pack(anchor=tk.W, padx=6, pady=(6, 0))
-
         profs = PROFESSIONS.get(p.get("class"), {})
-        if profs:
-            prof = p.get("profession")
-            prof_text = (f"Profession: {profs[prof]['name']}" if prof in profs
-                         else "Profession: none — choose at the Guild after the Lv-40 capstone")
-            self.styled_label(inner, text=prof_text, fg=Theme.TEXT_DIM).pack(
-                anchor=tk.W, padx=6, pady=(2, 0)
-            )
-
-        # ── Passive skill (class passive, upgraded by the chosen profession) ─
-        self._render_passive_box(inner, get_passive_skill(p))
 
         def mastery_text(sid, mastery_lvl):
             bonuses = get_mastery_bonuses(sid, mastery_lvl)
@@ -868,14 +949,12 @@ class InventoryScreen(BaseScreen):
         return passive
 
     def _render_ally_skills(self, inner, ally):
-        """Passive, then Innate / Upgrades / Learned, then learning progress."""
+        """Innate / Upgrades / Learned, then learning progress."""
         from pandemonium.combat.ally_skills import (
                     get_innate_skill_def, get_learnable_skill_def,
                     get_ally_skill_mastery_level, format_skill_learning_progress,
                     format_ally_mastery_label,
                 )
-
-        self._render_passive_box(inner, self._ally_passive(ally))
 
         tier_labels = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
         groups = (
@@ -998,8 +1077,14 @@ class InventoryScreen(BaseScreen):
                      if not is_flower_item(i)]
 
         # ── Sub-tabs dividing the bag by item type ──────────────────────────
-        self.bag_sub = ttk.Notebook(self.bag_frame, style="Ally.TNotebook")
+        self._bag_nb_wrap = tk.Frame(
+            self.bag_frame, bg=Theme.BG_DARK,
+            highlightthickness=1, highlightbackground=Theme.BG_DARK,
+        )
+        self._bag_nb_wrap.pack(fill=tk.BOTH, expand=True)
+        self.bag_sub = ttk.Notebook(self._bag_nb_wrap, style="Ally.TNotebook")
         self.bag_sub.pack(fill=tk.BOTH, expand=True)
+        self._share_keys(self.bag_sub)
 
         sections = [
             (" Equipment ", get_sorted_equipment(self.player), True, False),
@@ -1035,6 +1120,10 @@ class InventoryScreen(BaseScreen):
             return
         if 0 <= index < len(self._bag_lazy):
             self._draw_bag_subtab(self._bag_lazy[index])
+            if getattr(self, "_nav_ready", False) and self._nav_level == "content":
+                self._content_index = 0
+                self._content_button_index = 0
+                self.after_idle(self._paint_nav)
 
     def _draw_bag_subtab(self, entry):
         """One scrollable sub-tab in the bag notebook."""
@@ -1061,8 +1150,15 @@ class InventoryScreen(BaseScreen):
         inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
         canvas.bind("<Configure>", lambda e: canvas.itemconfig(canvas_window, width=e.width))
 
+        # Content-navigation context for this sub-tab.
+        entry["nav_rows"] = []
+        entry["canvas"] = canvas
+        entry["inner"] = inner
+        self._row_sink = entry["nav_rows"]
+
         if not items:
             self.styled_label(inner, text="Nothing here.").pack(pady=20)
+            self._row_sink = None
             return
 
         # Column widths: short names are padded so [slot]/(type), the stat
@@ -1076,6 +1172,7 @@ class InventoryScreen(BaseScreen):
         for item in items:
             self._render_bag_item(inner, item, is_equip=is_equip, is_key=is_key,
                                   widths=widths)
+        self._row_sink = None
 
     def _is_unique_item(self, item):
         """True if the item is unique (template fallback covers old saves)."""
@@ -1156,45 +1253,47 @@ class InventoryScreen(BaseScreen):
                     fg=Theme.RARITY_LEGENDARY, font=Theme.FONT_SMALL,
                 ).pack(side=tk.LEFT)
 
-        # Key items and crafting materials cannot be dropped, sold, or used,
-        # but they can be examined for their name and lore. (The Beating Root
-        # is the exception — it opens a third accessory slot for one actor.)
+        # Buttons are packed RIGHT (visual left-to-right is creation order
+        # reversed); register them in visual order for Left/Right navigation.
+        entries = []
         if is_key:
             if item.get("special") == "beating_root":
-                self.styled_button(
-                    row, text="Use", width=5,
+                entries.append(self._row_button(
+                    row, side=tk.RIGHT, padx=2, text="Use", width=5,
                     command=lambda it=item: self._use_beating_root(it),
-                ).pack(side=tk.RIGHT, padx=2)
-            self.styled_button(
-                row, text="Examine", width=9,
+                ))
+            entries.append(self._row_button(
+                row, side=tk.RIGHT, padx=2, text="Examine", width=9,
                 command=lambda it=item: self._examine_item(it),
-            ).pack(side=tk.RIGHT, padx=2)
+            ))
+            self._register_row(row, list(reversed(entries)))
             sep = tk.Frame(parent, height=1, bg=Theme.BORDER)
             sep.pack(fill=tk.X, padx=10, pady=0)
             return
 
         if is_equip:
-            self.styled_button(
-                row, text="Equip", width=6,
+            entries.append(self._row_button(
+                row, side=tk.RIGHT, padx=2, text="Equip", width=6,
                 command=lambda it=item: self._equip_item(it),
-            ).pack(side=tk.RIGHT, padx=2)
+            ))
             # Every piece of equipment explains its affinity and effect —
             # uniques additionally carry lore in the same popup.
-            self.styled_button(
-                row, text="Examine", width=9,
+            entries.append(self._row_button(
+                row, side=tk.RIGHT, padx=2, text="Examine", width=9,
                 command=lambda it=item: self._examine_item(it),
-            ).pack(side=tk.RIGHT, padx=2)
+            ))
 
         if item.get("type") in ("consumable", "utility"):
-            self.styled_button(
-                row, text="Use", width=5,
+            entries.append(self._row_button(
+                row, side=tk.RIGHT, padx=2, text="Use", width=5,
                 command=lambda it=item: self._use_item(it),
-            ).pack(side=tk.RIGHT, padx=2)
+            ))
 
-        self.styled_button(
-            row, text="Drop", width=6,
+        entries.append(self._row_button(
+            row, side=tk.RIGHT, padx=2, text="Drop", width=6,
             command=lambda it=item: self._drop_item(it),
-        ).pack(side=tk.RIGHT, padx=2)
+        ))
+        self._register_row(row, list(reversed(entries)))
 
         # Thin separator line between items
         sep = tk.Frame(parent, height=1, bg=Theme.BORDER)
@@ -1356,8 +1455,16 @@ class InventoryScreen(BaseScreen):
             return
 
         # ── Sub-notebook for journal categories ──────────────────────────────
-        self.journal_notebook = ttk.Notebook(self.journal_frame, style="Ally.TNotebook")
-        self.journal_notebook.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self._journal_nb_wrap = tk.Frame(
+            self.journal_frame, bg=Theme.BG_DARK,
+            highlightthickness=1, highlightbackground=Theme.BG_DARK,
+        )
+        self._journal_nb_wrap.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self._journal_nb_wrap.grid_rowconfigure(0, weight=1)
+        self._journal_nb_wrap.grid_columnconfigure(0, weight=1)
+        self.journal_notebook = ttk.Notebook(self._journal_nb_wrap, style="Ally.TNotebook")
+        self.journal_notebook.grid(row=0, column=0, sticky="nsew")
+        self._share_keys(self.journal_notebook)
 
         specs = [
             (" Bounty ", self._render_bounty_subtab),
@@ -1392,6 +1499,10 @@ class InventoryScreen(BaseScreen):
         except (tk.TclError, ValueError):
             return
         self._draw_journal_subtab(index)
+        if getattr(self, "_nav_ready", False) and self._nav_level == "content":
+            self._content_index = 0
+            self._content_button_index = 0
+            self.after_idle(self._paint_nav)
 
     def _draw_journal_subtab(self, index):
         if not (0 <= index < len(self._journal_lazy)):
@@ -1400,7 +1511,15 @@ class InventoryScreen(BaseScreen):
         if entry["drawn"]:
             return
         entry["drawn"] = True
-        entry["render"](entry["frame"])
+        entry.setdefault("nav_rows", [])
+        entry["nav_rows"].clear()
+        self._row_sink = entry["nav_rows"]
+        self._scroll_target = entry
+        try:
+            entry["render"](entry["frame"])
+        finally:
+            self._row_sink = None
+            self._scroll_target = None
 
     def _render_dream_subtab(self, parent):
         """Render the Dream Journal — every dream seen so far, re-readable."""
@@ -1425,6 +1544,7 @@ class InventoryScreen(BaseScreen):
         canvas.create_window((0, 0), window=inner, anchor="nw")
         inner.bind("<Configure>",
                    lambda e: canvas.config(scrollregion=canvas.bbox("all")))
+        self._remember_scroll_area(canvas, inner)
 
         total = sum(e["count"] for e in entries)
         self.styled_label(
@@ -1452,6 +1572,7 @@ class InventoryScreen(BaseScreen):
                 highlightbackground=Theme.BORDER,
             )
             frame.pack(fill=tk.X, pady=4, padx=4)
+            self._register_block_row(frame, Theme.BORDER)
             self.styled_label(
                 frame, text=entry["category"].title(), fg=Theme.TEXT_DIM,
             ).pack(anchor=tk.W, padx=6, pady=(2, 0))
@@ -1483,6 +1604,7 @@ class InventoryScreen(BaseScreen):
         canvas.create_window((0, 0), window=inner, anchor="nw")
         inner.bind("<Configure>",
                    lambda e: canvas.config(scrollregion=canvas.bbox("all")))
+        self._remember_scroll_area(canvas, inner)
 
         self.styled_label(
             inner,
@@ -1557,15 +1679,25 @@ class InventoryScreen(BaseScreen):
             btn_row = tk.Frame(frame, bg=Theme.BG_DARK)
             btn_row.pack(anchor=tk.W, padx=6, pady=(2, 4))
             if row["active"]:
-                self.styled_button(
-                    btn_row, text="Unequip", width=12,
+                wrap, btn = self._row_button(
+                    btn_row, side=tk.LEFT, padx=0,
+                    text="Unequip", width=12,
                     command=lambda: self._title_action(None),
-                ).pack(side=tk.LEFT)
+                )
+                self._register_row(frame, [(wrap, btn)])
             elif row["unlocked"] and row["available"]:
-                self.styled_button(
-                    btn_row, text="Equip", width=12,
+                wrap, btn = self._row_button(
+                    btn_row, side=tk.LEFT, padx=0,
+                    text="Equip", width=12,
                     command=lambda tid=row["id"]: self._title_action(tid),
-                ).pack(side=tk.LEFT)
+                )
+                self._register_row(frame, [(wrap, btn)])
+            else:
+                # Locked/unavailable title: the block itself is focusable.
+                self._register_block_row(
+                    frame,
+                    Theme.ACCENT if row["active"] else Theme.BORDER,
+                )
 
     def _title_action(self, title_id):
         """Equip (title_id) or unequip (None) from the Journal UI."""
@@ -1606,6 +1738,7 @@ class InventoryScreen(BaseScreen):
         inner = tk.Frame(canvas, bg=Theme.BG_DARK)
         canvas.create_window((0, 0), window=inner, anchor="nw")
         inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
+        self._remember_scroll_area(canvas, inner)
 
         current_day = self.player.get("day", 1)
 
@@ -1638,6 +1771,7 @@ class InventoryScreen(BaseScreen):
                 highlightbackground=frame_color,
             )
             frame.pack(fill=tk.X, pady=4, padx=4)
+            self._register_block_row(frame, frame_color)
 
             self.styled_label(
                 frame, text=f"Progress: {status_text}",
@@ -1679,6 +1813,7 @@ class InventoryScreen(BaseScreen):
         inner = tk.Frame(canvas, bg=Theme.BG_DARK)
         canvas.create_window((0, 0), window=inner, anchor="nw")
         inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
+        self._remember_scroll_area(canvas, inner)
 
         ordered = sorted(
             quests,
@@ -1700,6 +1835,7 @@ class InventoryScreen(BaseScreen):
                 highlightbackground=Theme.BORDER,
             )
             frame.pack(fill=tk.X, pady=4, padx=4)
+            self._register_block_row(frame, Theme.BORDER)
 
             # Status chip
             if completed:
@@ -1751,6 +1887,7 @@ class InventoryScreen(BaseScreen):
         inner = tk.Frame(canvas, bg=Theme.BG_DARK)
         canvas.create_window((0, 0), window=inner, anchor="nw")
         inner.bind("<Configure>", lambda e: canvas.config(scrollregion=canvas.bbox("all")))
+        self._remember_scroll_area(canvas, inner)
 
         # Show most recent events first
         for evt in reversed(events):
@@ -1773,6 +1910,7 @@ class InventoryScreen(BaseScreen):
                 highlightbackground=Theme.BORDER,
             )
             frame.pack(fill=tk.X, pady=4, padx=4)
+            self._register_block_row(frame, Theme.BORDER)
 
             self.styled_label(frame, text=evt.get("desc", "")).pack(
                 anchor=tk.W, padx=6, pady=2
@@ -2266,42 +2404,39 @@ class InventoryScreen(BaseScreen):
         actors = [self.player] + list(self.player.get("allies", []))
         locked = [a for a in actors if not a.get("acc3_unlocked")]
 
-        dlg = tk.Toplevel(self)
-        dlg.title("Beating Root")
-        dlg.configure(bg=Theme.BG_DARK)
-        dlg.geometry(f"420x{150 + 38 * max(1, len(locked))}")
-        dlg.transient(self)
-        dlg.grab_set()
+        panel = OverlayPanel(self, "Beating Root", width=420)
 
         tk.Label(
-            dlg, text="Whose third accessory slot should open?",
+            panel.body, text="Whose third accessory slot should open?",
             bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_BOLD,
             wraplength=380, justify=tk.CENTER,
-        ).pack(pady=(10, 4))
+        ).pack(padx=12, pady=(0, 4))
         tk.Label(
-            dlg, text=("The root is consumed — the chosen actor keeps the "
-                       "unlock forever, even at home in the house."),
+            panel.body, text=("The root is consumed — the chosen actor keeps the "
+                              "unlock forever, even at home in the house."),
             bg=Theme.BG_DARK, fg=Theme.TEXT_DIM, font=Theme.FONT_SMALL,
             wraplength=380, justify=tk.CENTER,
-        ).pack(pady=(0, 6))
+        ).pack(padx=12, pady=(0, 6))
 
         def choose(actor):
+            panel.close()
             self.sm.log(eh.consume_beating_root(self.player, actor))
-            dlg.destroy()
             self._refresh_all()
 
         if locked:
             for actor in locked:
                 name = "You" if actor is self.player else display_name(actor)
                 self.styled_button(
-                    dlg, text=name, width=30,
+                    panel.body, text=name, width=30,
                     command=lambda a=actor: choose(a),
                 ).pack(pady=2)
         else:
-            tk.Label(dlg, text="Every actor already carries the root.",
+            tk.Label(panel.body, text="Every actor already carries the root.",
                      bg=Theme.BG_DARK, fg=Theme.TEXT_DIM,
                      font=Theme.FONT_SMALL).pack(pady=8)
-        self.styled_button(dlg, text="Cancel", command=dlg.destroy).pack(pady=(8, 6))
+        self.styled_button(panel.body, text="Cancel",
+                           command=panel.close).pack(pady=(8, 6))
+        panel.finalize()
 
     def _use_item(self, item):
         """Use a consumable/utility item."""
@@ -2376,16 +2511,12 @@ class InventoryScreen(BaseScreen):
         acc2 = eq.get("accessory2")
         acc3 = eq.get("accessory3") if unlocked3 else None
 
-        dlg = tk.Toplevel(self)
-        dlg.title("Choose Accessory Slot")
-        dlg.configure(bg=Theme.BG_DARK)
-        dlg.transient(self)
-        dlg.grab_set()
+        panel = OverlayPanel(self, "Choose Accessory Slot", width=400)
 
         tk.Label(
-            dlg, text=f"All accessory slots occupied. Replace which?",
+            panel.body, text="All accessory slots occupied. Replace which?",
             bg=Theme.BG_DARK, fg=Theme.TEXT, font=Theme.FONT_BOLD,
-        ).pack(pady=8)
+        ).pack(padx=12, pady=(0, 8))
 
         def choose(slot):
             from pandemonium.inventory.core import equip_item
@@ -2409,36 +2540,21 @@ class InventoryScreen(BaseScreen):
                 result = equip_ally_item(ally, item, self.player, target_slot=slot)
                 self.sm.log(result if isinstance(result, str) else f"Equipped {item['name']} on {display_name(ally)}.")
 
-            dlg.destroy()
+            panel.close()
             if target == "player":
                 self._refresh_all()
             else:
                 self._show_character_page(ally)
-
         btn1_text = f"Replace {acc1['name']}" if acc1 else "Accessory 1"
         btn2_text = f"Replace {acc2['name']}" if acc2 else "Accessory 2"
 
-        self.styled_button(dlg, text=btn1_text, command=lambda: choose("accessory1")).pack(pady=4)
-        self.styled_button(dlg, text=btn2_text, command=lambda: choose("accessory2")).pack(pady=4)
+        self.styled_button(panel.body, text=btn1_text, command=lambda: choose("accessory1")).pack(pady=4)
+        self.styled_button(panel.body, text=btn2_text, command=lambda: choose("accessory2")).pack(pady=4)
         if unlocked3:
             btn3_text = f"Replace {acc3['name']}" if acc3 else "Accessory 3"
-            self.styled_button(dlg, text=btn3_text, command=lambda: choose("accessory3")).pack(pady=4)
-        self.styled_button(dlg, text="Cancel", command=dlg.destroy).pack(pady=4)
-
-        # Center over the app window — without explicit coordinates the window
-        # manager drops this dialog in the top-left corner.
-        dlg.update_idletasks()
-        width, height = 400, 240 if unlocked3 else 200
-        try:
-            parent = self.winfo_toplevel()
-            px, py = parent.winfo_rootx(), parent.winfo_rooty()
-            pw, ph = parent.winfo_width(), parent.winfo_height()
-        except tk.TclError:
-            px, py, pw, ph = 100, 100, 800, 600
-        dlg.geometry(
-            f"{width}x{height}"
-            f"+{px + (pw - width) // 2}+{py + (ph - height) // 2}"
-        )
+            self.styled_button(panel.body, text=btn3_text, command=lambda: choose("accessory3")).pack(pady=4)
+        self.styled_button(panel.body, text="Cancel", command=panel.close).pack(pady=4)
+        panel.finalize()
 
     # ═══════════════════════════════════════════════════════════════════════
     #  Navigation / Refresh
@@ -2462,7 +2578,12 @@ class InventoryScreen(BaseScreen):
             elif hasattr(self, "eh_frame") and selected == str(self.eh_frame) and self._eh_dirty:
                 self._refresh_eh_tab()
         except tk.TclError:
-            pass
+            return
+        if getattr(self, "_nav_ready", False):
+            self._main_focus_index = self._main_tab_index()
+            if self._nav_level == "content":
+                self._nav_level = "subtabs"
+            self.after_idle(self._paint_nav)
 
     def _remember_character(self, char):
         """Keep *char*'s Characters sub-tab selected (you, or an ally in the party)."""
@@ -2524,6 +2645,433 @@ class InventoryScreen(BaseScreen):
             self._refresh_journal_tab()
         elif hasattr(self, "eh_frame") and selected == str(self.eh_frame):
             self._refresh_eh_tab()
+
+    # ═══════════════════════════════════════════════════════════════════
+    #  Keyboard navigation (2026-11-18)
+    #
+    #  main (tab bar) ⇄ buttons (bottom bar)
+    #  main → subtabs (character/bag/journal tabs) → content (cards)
+    #
+    #  Content cards own horizontal button rows: Left/Right picks a button
+    #  inside the card, Up/Down moves to another card.
+    # ═══════════════════════════════════════════════════════════════════
+
+    def _setup_inventory_keys(self):
+        """Bind the navigation/shortcut keys on the screen frame."""
+        self.bind("<KeyPress>", self._on_inventory_key)
+        for sequence in (
+            "<Up>", "<Down>", "<Left>", "<Right>",
+            "<Tab>", "<Shift-Tab>", "<ISO_Left_Tab>",
+            "<Home>", "<End>",
+            "<Return>", "<KP_Enter>", "<space>",
+        ):
+            self.bind(sequence, self._on_inventory_nav)
+        self.focus_set()
+
+    def _share_keys(self, widget):
+        """Route key events from a notebook to this screen's bindings.
+
+        ttk.Notebook takes keyboard focus when clicked, and its bindtags do
+        not include the screen frame — without this, nav keys would be lost.
+        """
+        try:
+            tags = list(widget.bindtags())
+            mine = str(self)
+            if mine not in tags:
+                # Before the TNotebook class tag: ttk.Notebook's class binding
+                # switches tabs on Left/Right, which swallowed content-level
+                # button cycling when a tab was clicked (focus on the notebook).
+                tags.insert(1, mine)
+                widget.bindtags(tuple(tags))
+        except tk.TclError:
+            pass
+
+    def _on_inventory_key(self, event):
+        """Screen-level letters: R refreshes."""
+        if (event.char or "").lower() == "r":
+            self._refresh_all()
+            self.after_idle(self._paint_nav)
+            return "break"
+        return None
+
+    def _main_tab_index(self):
+        try:
+            sel = self.notebook.select()
+            return self.notebook.index(sel) if sel else 0
+        except (tk.TclError, ValueError):
+            return 0
+
+    def _active_sub_notebook(self):
+        tab = self._main_tab_index()
+        if tab == 0:
+            return self.char_notebook
+        if tab == 1:
+            return getattr(self, "bag_sub", None)
+        if tab == 2:
+            return getattr(self, "journal_notebook", None)
+        return None
+
+    def _active_sub_wrap(self):
+        tab = self._main_tab_index()
+        if tab == 0:
+            return self._char_nb_wrap
+        if tab == 1:
+            return self._bag_nb_wrap
+        if tab == 2:
+            return self._journal_nb_wrap
+        return None
+
+    def _main_count(self):
+        try:
+            return len(self.notebook.tabs())
+        except tk.TclError:
+            return 0
+
+    def _move_main_focus(self, delta):
+        """Move along the main row: tabs, then the Back/Close button."""
+        total = self._main_count() + 1
+        self._main_focus_index = (self._main_focus_index + delta) % total
+        if self._main_focus_index < self._main_count():
+            try:
+                self.notebook.select(self._main_focus_index)
+            except tk.TclError:
+                pass
+        self.focus_set()
+        self._paint_nav()
+
+    def _move_sub_tab(self, delta):
+        nb = self._active_sub_notebook()
+        if nb is None:
+            return
+        try:
+            count = len(nb.tabs())
+            if count:
+                index = nb.index(nb.select())
+                nb.select((index + delta) % count)
+                self.focus_set()
+        except (tk.TclError, ValueError):
+            pass
+
+    def _enter_main_focus(self):
+        if self._main_focus_index >= self._main_count():
+            self._on_back()
+            return
+        try:
+            self.notebook.select(self._main_focus_index)
+        except tk.TclError:
+            pass
+        self._enter_main_tab()
+
+    def _enter_main_tab(self):
+        if self._active_sub_notebook() is not None:
+            self._set_nav_level("subtabs")
+        else:
+            self._enter_content()
+
+    def _enter_content(self):
+        rows, _c, _i = self._content_context()
+        if not rows:
+            return
+        self._content_index = 0
+        self._content_button_index = 0
+        self._set_nav_level("content")
+
+    def _content_context(self):
+        """Return (rows, canvas, inner) for the active main tab / sub-tab."""
+        tab = self._main_tab_index()
+        if tab == 0 and self._char_pages:
+            index = min(self._current_char_index(), len(self._char_pages) - 1)
+            page = self._char_pages[max(0, index)]
+            return page.get("nav_rows", []), page.get("canvas"), page.get("inner")
+        if tab == 1 and self._bag_lazy:
+            try:
+                index = self.bag_sub.index(self.bag_sub.select())
+            except (tk.TclError, ValueError):
+                index = 0
+            if 0 <= index < len(self._bag_lazy):
+                entry = self._bag_lazy[index]
+                return (entry.get("nav_rows", []), entry.get("canvas"),
+                        entry.get("inner"))
+        if tab == 2 and self._journal_lazy:
+            try:
+                index = self.journal_notebook.index(self.journal_notebook.select())
+            except (tk.TclError, ValueError):
+                index = 0
+            if 0 <= index < len(self._journal_lazy):
+                entry = self._journal_lazy[index]
+                return (entry.get("nav_rows", []), entry.get("canvas"),
+                        entry.get("inner"))
+        return [], None, None
+
+    def _set_nav_level(self, level):
+        self._nav_level = level
+        self._paint_nav()
+
+    def _paint_nav(self):
+        """Repaint the focus indicator for the current navigation level."""
+        if not getattr(self, "_nav_ready", False):
+            return
+        try:
+            if not self.winfo_exists():
+                return
+        except tk.TclError:
+            return
+
+        # Main row: tabs share the arrow row with the Back/Close button.
+        self._main_focus_index %= (self._main_count() + 1)
+        on_tab = (self._nav_level == "main"
+                  and self._main_focus_index < self._main_count())
+        try:
+            if self._notebook_wrap is not None and self._notebook_wrap.winfo_exists():
+                self._notebook_wrap.configure(
+                    highlightbackground=(Theme.TEXT_HEADER if on_tab
+                                         else Theme.BG_DARK)
+                )
+            if self._back_wrap is not None and self._back_wrap.winfo_exists():
+                self._back_wrap.configure(
+                    highlightbackground=(Theme.TEXT_HEADER
+                                         if (self._nav_level == "main" and not on_tab)
+                                         else Theme.BG_DARK)
+                )
+        except tk.TclError:
+            pass
+
+        # Sub-tab notebook ring
+        for wrap in (self._char_nb_wrap, self._bag_nb_wrap, self._journal_nb_wrap):
+            try:
+                if wrap is not None and wrap.winfo_exists():
+                    wrap.configure(highlightbackground=Theme.BG_DARK)
+            except tk.TclError:
+                pass
+        if self._nav_level == "subtabs":
+            wrap = self._active_sub_wrap()
+            try:
+                if wrap is not None and wrap.winfo_exists():
+                    wrap.configure(highlightbackground=Theme.TEXT_HEADER)
+            except tk.TclError:
+                pass
+
+        # Content cards
+        if self._nav_level == "content":
+            self._paint_content_focus()
+        else:
+            self._clear_content_outline()
+
+    def _register_row(self, frame, buttons):
+        """Register one focusable card/row with horizontal buttons."""
+        sink = self._row_sink
+        if sink is None or not buttons:
+            return
+        sink.append({
+            "frame": frame,
+            "buttons": list(buttons),
+            "ring": None,
+            "idle_ring": Theme.BG_DARK,
+        })
+
+    def _register_block_row(self, frame, idle_ring=Theme.BORDER):
+        """Register a button-less block whose own border carries the outline.
+
+        Used for Journal quest/bounty/event/dream cards: ↑/↓ moves the white
+        outline from block to block; there is nothing to press inside.
+        """
+        sink = self._row_sink
+        if sink is None:
+            return
+        sink.append({
+            "frame": frame,
+            "buttons": [],
+            "ring": frame,
+            "idle_ring": idle_ring,
+        })
+
+    def _row_button(self, parent, *, side=tk.LEFT, padx=2, pady=0, **kwargs):
+        """Create a Button in an outline wrapper; returns (wrap, btn)."""
+        wrap = tk.Frame(
+            parent, bg=Theme.BG_DARK,
+            highlightthickness=1, highlightbackground=Theme.BG_DARK,
+        )
+        btn = self.styled_button(wrap, **kwargs)
+        btn.pack(padx=1, pady=1)
+        wrap.pack(side=side, padx=padx, pady=pady)
+        return wrap, btn
+
+    def _remember_scroll_area(self, canvas, inner):
+        target = self._scroll_target
+        if target is not None:
+            target["canvas"] = canvas
+            target["inner"] = inner
+
+    def _clear_content_outline(self):
+        rows, _c, _i = self._content_context()
+        for row in rows:
+            for wrap, _btn in row["buttons"]:
+                try:
+                    wrap.configure(highlightbackground=Theme.BG_DARK)
+                except tk.TclError:
+                    pass
+            if row.get("ring") is not None:
+                try:
+                    row["ring"].configure(
+                        highlightbackground=row.get("idle_ring", Theme.BORDER)
+                    )
+                except tk.TclError:
+                    pass
+
+    def _paint_content_focus(self):
+        rows, canvas, inner = self._content_context()
+        if not rows:
+            self._nav_level = "subtabs"
+            self._paint_nav()
+            return
+        self._content_canvas, self._content_inner = canvas, inner
+        self._content_index %= len(rows)
+        row = rows[self._content_index]
+        buttons = row["buttons"]
+        if buttons:
+            self._content_button_index %= len(buttons)
+        else:
+            self._content_button_index = 0
+        for r in rows:
+            for wrap, _btn in r["buttons"]:
+                try:
+                    wrap.configure(highlightbackground=Theme.BG_DARK)
+                except tk.TclError:
+                    pass
+            if r.get("ring") is not None:
+                try:
+                    r["ring"].configure(
+                        highlightbackground=r.get("idle_ring", Theme.BORDER)
+                    )
+                except tk.TclError:
+                    pass
+        if buttons:
+            wrap, _btn = buttons[self._content_button_index]
+            target = wrap
+        else:
+            target = row.get("ring")
+        if target is None:
+            return
+        try:
+            target.configure(highlightbackground=Theme.TEXT_HEADER)
+        except tk.TclError:
+            return
+        self._scroll_content_into_view(row["frame"])
+
+    def _scroll_content_into_view(self, frame):
+        canvas, inner = self._content_canvas, self._content_inner
+        if canvas is None or inner is None:
+            return
+        try:
+            if not canvas.winfo_ismapped():
+                return
+            inner.update_idletasks()
+            total = inner.winfo_height()
+            view_h = canvas.winfo_height()
+            if total <= 0 or view_h <= 1:
+                return
+            top = canvas.canvasy(0)
+            y = frame.winfo_rooty() - inner.winfo_rooty()
+            h = frame.winfo_height()
+            if y < top:
+                canvas.yview_moveto(max(0.0, y / total))
+            elif y + h > top + view_h:
+                canvas.yview_moveto((y + h - view_h) / total)
+        except tk.TclError:
+            pass
+
+    def _content_move_row(self, delta):
+        rows, _c, _i = self._content_context()
+        if not rows:
+            return
+        self._content_index = (self._content_index + delta) % len(rows)
+        self._content_button_index = 0
+        self._paint_content_focus()
+
+    def _content_move_button(self, delta):
+        rows, _c, _i = self._content_context()
+        if not rows:
+            return
+        self._content_index %= len(rows)
+        buttons = rows[self._content_index]["buttons"]
+        if not buttons:
+            return  # button-less block: the outline stays on the card
+        self._content_button_index = (self._content_button_index + delta) % len(buttons)
+        self._paint_content_focus()
+
+    def _content_activate(self):
+        rows, _c, _i = self._content_context()
+        if not rows:
+            return
+        self._content_index %= len(rows)
+        buttons = rows[self._content_index]["buttons"]
+        if not buttons:
+            return
+        _wrap, btn = buttons[self._content_button_index]
+        try:
+            btn.invoke()
+        except tk.TclError:
+            return
+        # Actions may rebuild the page (view toggle, equip...). Re-clamp
+        # the focus indices once the rebuild settles.
+        self.after_idle(self._paint_nav)
+
+    def _on_inventory_nav(self, event):
+        """Level-aware keyboard navigation."""
+        key = event.keysym
+        level = self._nav_level
+
+        # Tab always exits one level (content → subtabs → main).
+        if key in ("Tab", "ISO_Left_Tab"):
+            if level == "content":
+                self._set_nav_level("subtabs")
+            elif level == "subtabs":
+                self._set_nav_level("main")
+            return "break"
+
+        if level == "main":
+            if key == "Left":
+                self._move_main_focus(-1)
+            elif key == "Right":
+                self._move_main_focus(1)
+            elif key in ("Return", "KP_Enter", "space"):
+                self._enter_main_focus()
+            return "break"
+
+        if level == "subtabs":
+            if key == "Left":
+                self._move_sub_tab(-1)
+            elif key == "Right":
+                self._move_sub_tab(1)
+            elif key == "Up":
+                self._set_nav_level("main")
+            elif key in ("Return", "KP_Enter", "space"):
+                # Only Enter enters the content; Tab/↓ no longer do.
+                self._enter_content()
+            return "break"
+
+        # content level — locked to this sub-tab until Tab is pressed.
+        if key == "Left":
+            self._content_move_button(-1)
+        elif key == "Right":
+            self._content_move_button(1)
+        elif key == "Up":
+            self._content_move_row(-1)
+        elif key == "Down":
+            self._content_move_row(1)
+        elif key == "Home":
+            self._content_index = 0
+            self._content_button_index = 0
+            self._paint_content_focus()
+        elif key == "End":
+            rows, _c, _i = self._content_context()
+            if rows:
+                self._content_index = len(rows) - 1
+                self._content_button_index = 0
+                self._paint_content_focus()
+        elif key in ("Return", "KP_Enter", "space"):
+            self._content_activate()
+        return "break"
 
     def _on_back(self):
         """Return to the previous screen — dismiss overlay or go back in history."""

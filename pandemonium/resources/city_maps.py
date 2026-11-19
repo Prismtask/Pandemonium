@@ -120,8 +120,8 @@ CITY_MAPS["solmere"] = r"""
 """
 
 CITY_MAPS["greyharbor"] = r"""
-       ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
-        ~   N O R T H   R I V E R   (wide, slow-moving)                            ~
+       ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+       ~                       N O R T H   R I V E R                                     ~
        ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
    ┌────────────────────────────────────────────────────────────────────────────────────────┐
    │  ┌──────┐  ┌──────┐     ┌──────────────────┐     ┌──────┐  ┌──────────┐  ┌──────────┐  │
@@ -138,7 +138,7 @@ CITY_MAPS["greyharbor"] = r"""
    │  └──────┘ └───────┘     └────────────────┘     └───────┘   └─────────┘  └──────────┘   │
    └────────────────────────────────────────────────────────────────────────────────────────┘
        ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
-        ~   S O U T H   R I V E R   (joins main channel east of town)                  ~
+        ~                          S O U T H   R I V E R                                 ~
        ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
          ╔══ DUNGEON ══╗
 """
@@ -592,175 +592,181 @@ def verify_all_cities_mapped(cities_dict: dict) -> list:
 # Used by the GUI CityMapWidget to create clickable regions.
 
 CITY_SERVICE_POSITIONS: dict[str, dict[str, tuple[int, int, int]]] = {
+    # Each entry covers the facility's *label text only* — no box borders and
+    # no neighbouring words.  Border-spanning or overlapping ranges make the
+    # hover/focus tags paint across the wrong glyphs (Greyharbor's TRADE HALL
+    # used to bleed into Warehouse), so keep these exact.
+    # tests/test_city_service_positions.py enforces label coverage + no overlap.
 
     # ── NORTH REGION ───────────────────────────────────────────────────
     "stormhold": {
-        "barracks":   (3, 40, 53),
-        "arcane_tower": (3, 56, 72),
-        "shop":       (7, 53, 63),
-        "inn":        (7, 42, 50),
-        "gift_shop":  (8, 75, 85),
-        "dungeon":    (11, 13, 24),
+        "barracks":     (3, 40, 48),
+        "arcane_tower": (3, 52, 64),
+        "inn":          (7, 42, 45),
+        "shop":         (7, 53, 57),
+        "gift_shop":    (8, 75, 79),
+        "dungeon":      (11, 13, 20),
     },
     "thornwall": {
-        "barracks":   (4, 49, 64),
-        "shop":       (11, 49, 57),
-        "inn":        (11, 40, 47),
-        "dungeon":    (14, 13, 24),
+        "barracks": (4, 49, 57),
+        "inn":      (11, 40, 43),
+        "shop":     (11, 49, 53),
+        "dungeon":  (14, 13, 20),
     },
     "celestia": {
-        "shop":       (6, 8, 12),
-        "temple":     (6, 54, 60),
-        "inn":        (11, 8, 11),
-        "gift_shop":  (11, 54, 63),
-        "dungeon":    (17, 26, 50),
+        "shop":      (6, 8, 12),
+        "temple":    (6, 54, 60),
+        "inn":       (11, 8, 11),
+        "gift_shop": (11, 54, 63),
+        "dungeon":   (17, 34, 41),
     },
 
     # ── CENTRAL REGION ──────────────────────────────────────────────────
     "solmere": {
-        "guild":      (4, 19, 30),
-        "temple":     (4, 37, 49),
-        "trade_hall": (4, 64, 78),
-        "shop":       (12, 64, 73),
-        "inn":        (12, 37, 44),
-        "blacksmith": (12, 47, 63),
-        "dungeon":    (16, 13, 24),
+        "guild":      (4, 19, 24),
+        "temple":     (4, 37, 43),
+        "trade_hall": (4, 64, 69),
+        "inn":        (12, 37, 40),
+        "blacksmith": (12, 47, 57),
+        "shop":       (12, 64, 68),
+        "dungeon":    (16, 13, 20),
     },
     "greyharbor": {
-        "shop":       (6, 17, 26),
-        "guild":      (6, 56, 67),
-        "trade_hall": (6, 65, 81),
-        "inn":        (14, 35, 42),
-        "dungeon":    (21, 13, 24),
+        "shop":       (6, 17, 21),
+        "guild":      (6, 56, 61),
+        "trade_hall": (6, 65, 75),
+        "inn":        (14, 35, 38),
+        "dungeon":    (21, 13, 20),
     },
     "elderfen": {
-        "shop":       (6, 51, 57),
-        "herbalist":  (6, 9, 15),
-        "inn":        (19, 9, 16),
-        "dungeon":    (24, 9, 18),
+        "herbalist": (6, 10, 14),   # box reads "HERB" / "IST" on two lines
+        "shop":      (6, 52, 56),
+        "inn":       (19, 11, 14),
+        "dungeon":   (24, 10, 17),
     },
 
     # ── EAST REGION ─────────────────────────────────────────────────────
     "irondeep": {
-        "shop":       (14, 32, 40),
-        "inn":        (22, 14, 22),
-        "barracks":   (14, 44, 56),
-        "blacksmith": (14, 13, 27),
-        "guild":      (22, 28, 38),
-        "dungeon":    (26, 13, 24),
+        "blacksmith": (14, 13, 23),
+        "shop":       (14, 32, 36),
+        "barracks":   (14, 44, 52),
+        "inn":        (22, 14, 17),
+        "guild":      (22, 28, 33),
+        "dungeon":    (26, 13, 20),
     },
     "skylume": {
-        "arcane_tower": (6, 35, 41),   # middle tower at top
-        "star_tower":   (6, 61, 65),   # rightmost tower at top
-        "shop":         (12, 24, 33),
-        "gift_shop":    (12, 65, 78),
-        "inn":          (17, 10, 18),
-        "dungeon":      (22, 13, 24),
+        "arcane_tower": (6, 36, 42),   # "Arcane" — middle tower at top
+        "star_tower":   (6, 62, 66),   # "Star" — rightmost tower at top
+        "shop":         (12, 24, 28),
+        "gift_shop":    (12, 65, 69),  # "GIFT" (SHOP on the next line)
+        "inn":          (17, 10, 13),
+        "dungeon":      (22, 13, 20),
     },
     "cinderpeak": {
-        "blacksmith":   (15, 14, 32),
-        "shop":         (15, 56, 64),
-        "inn":          (15, 70, 77),
-        "dungeon":      (20, 13, 24),
+        "blacksmith": (15, 14, 24),
+        "shop":       (15, 56, 60),
+        "inn":        (15, 70, 73),
+        "dungeon":    (20, 13, 20),
     },
     "veilholt": {
-        "herbalist":    (8, 8, 21),
-        "arcane_tower": (8, 23, 39),
-        "guild":        (8, 37, 50),
-        "black_market": (8, 51, 64),
-        "shop":         (8, 65, 73),
-        "inn":          (17, 10, 17),
-        "dungeon":      (22, 13, 24),
+        "herbalist":    (8, 8, 17),
+        "arcane_tower": (8, 23, 29),   # "ARCANE" (TOWER on the next line)
+        "guild":        (8, 37, 42),   # "GUILD" (HALL on the next line)
+        "black_market": (8, 51, 56),   # "BLACK" (MARKET on the next line)
+        "shop":         (8, 65, 69),
+        "inn":          (17, 10, 13),
+        "dungeon":      (22, 13, 20),
     },
 
     "wonderland": {
-        "shop":          (14, 9, 28),
-        "inn":           (4, 41, 52),
-        "herbalist":     (10, 83, 105),
-        "arcane_tower":  (14, 53, 64),
-        "black_market":  (4, 58, 73),
-        "temple":        (14, 42, 53),
-        "gift_shop":     (14, 64, 76),
-        "dungeon":       (18, 43, 72),
+        "inn":          (4, 45, 48),
+        "black_market": (4, 61, 66),   # "BLACK" (MARKET on the next line)
+        "herbalist":    (10, 85, 94),
+        "shop":         (14, 11, 15),
+        "temple":       (14, 44, 50),
+        "arcane_tower": (14, 55, 61),  # "ARCANE" (TOWER on the next line)
+        "gift_shop":    (14, 66, 70),  # "GIFT" (SHOP on the next line)
+        "dungeon":      (18, 47, 54),
     },
 
     # ── SOUTH REGION ────────────────────────────────────────────────────
     "sunreach": {
-        "shop":       (8, 10, 18),
-        "trade_hall": (8, 72, 85),
-        "temple":     (10, 33, 57),
-        "inn":        (22, 11, 19),
-        "dungeon":    (26, 13, 24),
+        "shop":       (8, 10, 14),
+        "trade_hall": (8, 72, 77),    # "TRADE" (HALL on the next line)
+        "temple":     (10, 33, 54),
+        "inn":        (22, 11, 14),
+        "dungeon":    (26, 13, 20),
     },
     "brinewatch": {
-        "shop":       (13, 6, 15),
-        "blacksmith": (13, 51, 67),
-        "shipyard":   (13, 33, 47),
-        "trade_hall": (13, 64, 80),
-        "port":       (22, 32, 47),
-        "inn":        (22, 7, 16),
-        "guild":      (22, 65, 75),
-        "dungeon":    (25, 13, 24),
+        "shop":       (13, 6, 10),
+        "shipyard":   (13, 33, 41),
+        "blacksmith": (13, 51, 61),
+        "trade_hall": (13, 64, 74),
+        "port":       (22, 32, 43),
+        "inn":        (22, 7, 10),
+        "guild":      (22, 65, 70),   # Guild Hall is drawn on the map
+        "dungeon":    (25, 13, 20),
     },
     "mirefall": {
-        "herbalist":    (9, 20, 34),
-        "shop":         (9, 38, 46),
-        "inn":          (9, 55, 63),
-        "black_market": (18, 32, 50),
-        "dungeon":      (22, 10, 21),
+        "herbalist":    (9, 20, 29),
+        "shop":         (9, 38, 42),
+        "inn":          (9, 55, 58),
+        "black_market": (18, 32, 45),
+        "dungeon":      (22, 10, 17),
     },
     "ashkara": {
-        "shop":         (7, 9, 18),
-        "blacksmith":   (7, 52, 68),
-        "inn":          (16, 10, 18),
-        "black_market": (16, 26, 44),
-        "guild":        (16, 54, 65),
-        "dungeon":      (25, 9, 22),
+        "shop":         (7, 9, 13),
+        "blacksmith":   (7, 52, 62),
+        "inn":          (16, 10, 13),
+        "black_market": (16, 26, 39),
+        "guild":        (16, 54, 59),
+        "dungeon":      (25, 9, 16),
     },
     "dunemar": {
-        "shop":         (16, 7, 16),
-        "trade_hall":   (16, 16, 31),
-        "black_market": (16, 36, 53),
-        "inn":          (16, 57, 65),
-        "arcane_tower": (7, 57, 66),
-        "dungeon":      (24, 9, 22),
+        "arcane_tower": (7, 58, 64),   # "ARCANE" (TOWER on the next line)
+        "port":         (9, 33, 46),   # no dock drawn — sea access via the caravan yard
+        "shop":         (16, 7, 11),
+        "trade_hall":   (16, 16, 21),  # "TRADE" (HALL on the next line)
+        "black_market": (16, 36, 41),  # "BLACK" (MARKET on the next line)
+        "inn":          (16, 57, 60),
+        "dungeon":      (24, 9, 16),
     },
     "saltmarsh": {
-        "shop":    (7, 37, 45),
-        "port":    (7, 47, 55),
-        "inn":     (7, 56, 63),
-        "dungeon": (18, 9, 22),
+        "shop":    (7, 37, 41),
+        "port":    (7, 47, 51),
+        "inn":     (7, 56, 59),
+        "dungeon": (18, 9, 16),
     },
 
     # ── FAR REACHES / ISLANDS ───────────────────────────────────────────
     "tidebreak": {
-        "shop":       (16, 7, 16),
-        "port":       (16, 16, 30),
-        "trade_hall": (16, 26, 41),
-        "guild":      (16, 56, 67),
-        "inn":        (16, 68, 75),
-        "shipyard":   (8, 47, 58),
-        "dungeon":    (22, 13, 24),
+        "shipyard":   (8, 47, 52),    # "Ship-" pier label
+        "shop":       (16, 7, 11),
+        "port":       (16, 16, 20),   # "PORT" (OFFICE on the next line)
+        "trade_hall": (16, 26, 31),   # "TRADE" (HALL on the next line)
+        "guild":      (16, 56, 61),   # Guild Hall is drawn on the map
+        "inn":        (16, 68, 71),
+        "dungeon":    (22, 13, 20),
     },
     "coralhaven": {
-        "temple":     (6, 5, 17),
-        "shop":       (6, 25, 38),   # Islet B
-        "inn":        (6, 49, 62),   # Islet C
-        "guild":      (6, 68, 80),
-        "herbalist":  (7, 7, 16),    # main islet
-        "gift_shop":  (7, 24, 32),   # main islet
-        "port":       (7, 51, 60),   # main islet
-        "dungeon":    (22, 13, 24),
+        "temple":     (6, 5, 11),     # Islet A
+        "shop":       (6, 27, 31),    # Islet B
+        "inn":        (6, 50, 53),    # Islet C
+        "guild":      (6, 68, 73),    # Islet D
+        "herbalist":  (17, 7, 16),    # main islet
+        "gift_shop":  (17, 23, 27),   # "GIFT" (SHOP on the next line)
+        "port":       (17, 51, 55),   # "PORT" (OFFICE on the next line)
+        "dungeon":    (22, 13, 20),
     },
     "blackwake": {
-        "inn":          (15, 13, 21),
-        "port":         (15, 26, 38),
-        "black_market": (15, 40, 57),
-        "dungeon":      (29, 10, 23),
+        "inn":          (15, 13, 16),
+        "port":         (15, 26, 30),  # "PORT" (OFFICE on the next line)
+        "black_market": (16, 40, 46),  # "MARKET" (BLACK on the previous line)
+        "dungeon":      (29, 10, 17),
     },
     "isle_of_glass": {
-        "arcane_tower": (12, 40, 60),
-        "port":         (20, 57, 72),
-        "dungeon":      (2, 22, 43),  # PANDEMONIUM
+        "arcane_tower": (12, 40, 46),  # "ARCANE" (TOWER on the next line)
+        "port":         (20, 57, 63),  # Portal Room — the island's travel point
+        "dungeon":      (2, 28, 49),   # spaced-out "PANDEMONIUM" banner
     },
 }

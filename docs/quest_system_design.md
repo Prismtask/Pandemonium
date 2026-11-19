@@ -326,7 +326,7 @@ Scripted beats (draft copy — tune in implementation):
 - ✅ `gui/screens/char_create_screen.py` — chain is now `TutorialScreen → StoryScreen(archivist_intro) → CityScreen`.
 - ✅ `gui/screens/city_screen.py` — `_check_story_beats()` on every city entry: quest sync pass, then the intro (flag-gated) or the next queued beat, opened as a StoryScreen overlay over the city.
 - ✅ `facilities/star_tower.py` — Star Tower service: `visit_service` hook; audience scene (Lumen greets you; kit granted; MQ1 completes; MQ2 starts); archive menu (Resonance Ledger, Field Studies, flavor, kit re-claim if the bag was full).
-- ✅ Registration: `city.SERVICE_HANDLERS["star_tower"]`; `CITY_SERVICE_POSITIONS["skylume"]["star_tower"] = (6, 61, 65)`; Skylume `services` updated; `service_colors` entry (`#f7d794`) in `gui/widgets/city_map.py`.
+- ✅ Registration: `city.SERVICE_HANDLERS["star_tower"]`; `CITY_SERVICE_POSITIONS["skylume"]["star_tower"] = (6, 62, 66)`; Skylume `services` updated; `service_colors` entry (`#f7d794`) in `gui/widgets/city_map.py`.
 - ✅ Hooks: `visit_city` (both embark paths in `facilities/travel.py`), `visit_service` (Star Tower entry), `talk_npc` (audience scene).
 - ✅ `gui/terminal.py` — added thread-safe `term.toast()` (generic utility; quest flows deliberately do not use it).
 - ✅ **Ahead of schedule:** `mq_archivist_02` "A Place to Belong" is registered with state-based checks (`own_house`, `capture_girl`) — completing it grants the **Pitch** grade (cosmetic until the Phase 3 cap refactor). Old saves that already own a house + a girl auto-resolve it on the next sync pass.

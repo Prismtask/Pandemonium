@@ -26,7 +26,19 @@ import random
 
 from pandemonium.resources import map_boss_data as data
 from pandemonium.resources.cities import CITIES
-from pandemonium.resources.world_layout import city_node_centers, map_bounds
+from pandemonium.resources.world_layout import (
+    EVENT_HORIZON_MARKER_H,
+    EVENT_HORIZON_MARKER_W,
+    MAP_BOSS_MARKER_H,
+    MAP_BOSS_MARKER_W,
+    NODE_H,
+    NODE_W,
+    WILD_MARKER_H,
+    WILD_MARKER_W,
+    city_node_centers,
+    map_bounds,
+    markers_clear,
+)
 from pandemonium.core.events import get_season
 from pandemonium.core.events import next_season_day
 from pandemonium.resources.item_generation import pick_equipment_id
@@ -52,6 +64,12 @@ SITE_INSET_Y = 20
 
 # Realms that never host a Warden (special-entry cities, not overworld).
 _EXCLUDED_SEED_BIOMES = frozenset({"celestial", "pandemonium", "wonderland"})
+
+# Deterministic nudges tried, in order, when a transient marker (a wild ruin)
+# currently sits on an authored arena position.
+_LOCKED_NUDGES = ((0, 0), (40, 0), (-40, 0), (0, 40), (0, -40),
+                  (40, 40), (-40, 40), (40, -40), (-40, -40),
+                  (80, 0), (-80, 0), (0, 80), (0, -80))
 
 _SITE_KEYS = ("biome", "seed_city", "nearest_city", "position", "expire_day")
 
@@ -242,31 +260,96 @@ def _available_seed_cities(player):
 
 
 def _occupied_positions(player):
-    """Positions the Warden's marker must stay clear of."""
+    """Marker rects the Warden must stay clear of: ``(x, y, w, h)``.
+
+    Rectangles (not bare centre points) so the 116x30 Warden marker cannot
+    overlap a 96x30 ruin marker or the 150x30 Event Horizon marker — the old
+    70px centre rule still allowed a mostly-horizontal overlap.
+    """
     taken = []
     wild = player.get("wild_dungeons")
     if isinstance(wild, dict):
         for site in wild.get("active", []) or []:
             pos = site.get("position") if isinstance(site, dict) else None
             if pos:
-                taken.append((pos[0], pos[1]))
+                taken.append((pos[0], pos[1],
+                              WILD_MARKER_W, WILD_MARKER_H))
     try:
         from pandemonium.world.event_horizon import EVENT_HORIZON_POSITION
-        taken.append(tuple(EVENT_HORIZON_POSITION))
+        taken.append((EVENT_HORIZON_POSITION[0], EVENT_HORIZON_POSITION[1],
+                      EVENT_HORIZON_MARKER_W, EVENT_HORIZON_MARKER_H))
     except Exception:
         pass
     return taken
 
 
+def _locked_spot_is_clear(x, y, centers, taken):
+    """Marker-only clearance for an authored site.
+
+    Authored arenas sit deliberately near their anchor city, so the 90px
+    centre rule used by random ring rolls does not apply — the drawn marker
+    rectangles are the real requirement. Also keeps the whole Warden marker
+    on the canvas.
+    """
+    x_min, y_min, x_max, y_max = map_bounds()
+    x_min += SITE_INSET_X
+    x_max -= SITE_INSET_X
+    y_min += SITE_INSET_Y
+    y_max -= SITE_INSET_Y
+    if not (x_min <= x <= x_max and y_min <= y <= y_max):
+        return False
+    for cx, cy in centers.values():
+        if not markers_clear(x, y, MAP_BOSS_MARKER_W, MAP_BOSS_MARKER_H,
+                             cx, cy, NODE_W, NODE_H):
+            return False
+    for tx, ty, tw, th in taken:
+        if not markers_clear(x, y, MAP_BOSS_MARKER_W, MAP_BOSS_MARKER_H,
+                             tx, ty, tw, th):
+            return False
+    return True
+
+
+def _locked_position(player, base):
+    """The authored position, nudged when a wild marker occupies it.
+
+    Only transient occupants matter here: wild spawns reserve the Warden's
+    site, so a ruin can sit on it only when it spawned before this season's
+    site appeared. All nudges stay a short hop from the authored spot.
+    """
+    centers = city_node_centers()
+    taken = _occupied_positions(player)
+    x0, y0 = base
+    for dx, dy in _LOCKED_NUDGES:
+        x, y = x0 + dx, y0 + dy
+        if _locked_spot_is_clear(x, y, centers, taken):
+            return [x, y]
+    return [x0, y0]
+
+
+def _spot_is_clear(x, y, centers, taken):
+    """Random-roll clearance: centre-distance minima + marker rectangles."""
+    for cx, cy in centers.values():
+        if (x - cx) ** 2 + (y - cy) ** 2 < MIN_CITY_DIST ** 2:
+            return False
+    for tx, ty, _tw, _th in taken:
+        if (x - tx) ** 2 + (y - ty) ** 2 < MIN_SITE_DIST ** 2:
+            return False
+    return _locked_spot_is_clear(x, y, centers, taken)
+
+
 def _pick_position(rng, taken, near_city=None):
-    """A point on an off-road ring around ``near_city``, clear of markers."""
+    """A point on an off-road ring around ``near_city``, clear of markers.
+
+    ``taken`` entries are ``(x, y, width, height)`` marker rectangles. A
+    deterministic grid sweep backs the random attempts so a densely packed
+    map can never fall back to an overlapping point.
+    """
     x_min, y_min, x_max, y_max = map_bounds()
     x_min += SITE_INSET_X
     x_max -= SITE_INSET_X
     y_min += SITE_INSET_Y
     y_max -= SITE_INSET_Y
     centers = city_node_centers()
-    fallback = [x_min, y_min]
     for _ in range(POSITION_ATTEMPTS):
         if near_city and near_city in centers:
             cx0, cy0 = centers[near_city]
@@ -277,21 +360,28 @@ def _pick_position(rng, taken, near_city=None):
         else:
             x = rng.randint(x_min, x_max)
             y = rng.randint(y_min, y_max)
-        x = max(x_min, min(x, x_max))
-        y = max(y_min, min(y, y_max))
-        fallback = [x, y]
-        if any((x - cx) ** 2 + (y - cy) ** 2 < MIN_CITY_DIST ** 2
-               for cx, cy in centers.values()):
+        # Reject off-canvas proposals. Clamping used to pile every site whose
+        # ring fell off the west/south edge onto the canvas border.
+        if not (x_min <= x <= x_max and y_min <= y <= y_max):
             continue
-        if any((x - px) ** 2 + (y - py) ** 2 < MIN_SITE_DIST ** 2
-               for px, py in taken):
-            continue
-        return [x, y]
-    return fallback
+        if _spot_is_clear(x, y, centers, taken):
+            return [x, y]
+    # Deterministic fallback: sweep a coarse grid for any clear point.
+    for gy in range(y_min, y_max + 1, 20):
+        for gx in range(x_min, x_max + 1, 20):
+            if _spot_is_clear(gx, gy, centers, taken):
+                return [gx, gy]
+    return [x_min, y_min]
 
 
 def _season_site(player, season_id, day):
-    """Roll the season's arena site — deterministic for a given season.
+    """The season's arena site — locked to the Warden's authored location.
+
+    Each season has a ``site_city`` / ``site_position`` in
+    ``resources/map_boss_data.py`` (docs/map_boss_design.md §5.2), so the
+    Warden always surfaces at its most suited location (Winter → Stormhold,
+    Spring → Veilholt, …). The seeded ring roll remains as a fallback for
+    restricted worlds where the anchor city is inaccessible.
 
     Every Echo in the season reuses this site (position, biome, gateway).
     Returns None when no overworld city can currently seed a site.
@@ -300,17 +390,27 @@ def _season_site(player, season_id, day):
     from pandemonium.world.wild_dungeons import find_nearest_city
 
     warden = data.get_warden(season_id)
-    rng = random.Random(20260101 + season_start_day(day) * 7919)
 
     available = _available_seed_cities(player)
     if not available:
         return None
-    preferred = [cid for cid in sorted(available)
-                 if CITIES.get(cid, {}).get("biome") in warden["biomes"]]
-    pool = preferred or sorted(available)
-    seed_city = pool[rng.randrange(len(pool))]
+
+    anchor = warden.get("site_city")
+    locked = warden.get("site_position")
+    if anchor in available and locked:
+        seed_city = anchor
+        position = _locked_position(player, locked)
+    else:
+        # Fallback: seeded ring roll around a biome-preferred city.
+        rng = random.Random(20260101 + season_start_day(day) * 7919)
+        preferred = [cid for cid in sorted(available)
+                     if CITIES.get(cid, {}).get("biome") in warden["biomes"]]
+        pool = preferred or sorted(available)
+        seed_city = pool[rng.randrange(len(pool))]
+        position = _pick_position(rng, _occupied_positions(player),
+                                  near_city=seed_city)
+
     biome = CITIES.get(seed_city, {}).get("biome", "temperate")
-    position = _pick_position(rng, _occupied_positions(player), near_city=seed_city)
     return {
         "biome": biome,
         "seed_city": seed_city,
@@ -691,6 +791,40 @@ def _site_from_active(active):
     return site
 
 
+def _repair_site(player, state):
+    """Move a stored site that does not match the authored arena layout.
+
+    Saves that predate the locked anchors (or a site whose authored spot is
+    currently occupied by a wild ruin) are re-rolled to the season's authored
+    location. Only the geography moves: the season's Echo, HP and pre-rolled
+    spoils are kept. Idempotent — an authored site left in place.
+    """
+    active = state.get("active")
+    if not isinstance(active, dict):
+        return
+    season_id = state.get("season")
+    if not season_id:
+        return
+    warden = data.get_warden(season_id)
+    locked = warden.get("site_position")
+    pos = active.get("position")
+    centers = city_node_centers()
+    if locked:
+        if (pos and list(pos) == list(locked)
+                and _locked_spot_is_clear(pos[0], pos[1], centers,
+                                          _occupied_positions(player))):
+            return
+    elif pos and _locked_spot_is_clear(
+            pos[0], pos[1], centers, _occupied_positions(player)):
+        return
+    fresh = _season_site(player, season_id, _day(player))
+    if fresh is None:
+        return
+    for key in _SITE_KEYS:
+        if key in fresh:
+            active[key] = fresh[key]
+
+
 def maybe_spawn(player):
     """Ensure the current season's Warden exists. Idempotent.
 
@@ -706,6 +840,9 @@ def maybe_spawn(player):
     season_id, _season_name = current_season(player)
     active = state.get("active")
     if isinstance(active, dict) and state.get("season") == season_id:
+        # Same-season sites persist across Echoes, but repair one saved
+        # before (or since overlapped by) marker-rectangle placement.
+        _repair_site(player, state)
         return None
 
     first_unlock = state.get("unlocked_day") is None

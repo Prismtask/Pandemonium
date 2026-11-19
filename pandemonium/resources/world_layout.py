@@ -48,6 +48,20 @@ REGIONS = {
 NODE_W = 120
 NODE_H = 38
 
+# Map-marker rectangles (px). Runtime placement (wild_dungeons.py, map_boss.py)
+# draws these markers centred on their site, so spawn checks reason in real
+# marker rectangles — a centre-distance rule alone lets 96px-wide ruins
+# overlap at 70px apart. The GUI aliases these numbers so drawn and reserved
+# areas can never drift apart.
+WILD_MARKER_W = 96
+WILD_MARKER_H = 30
+MAP_BOSS_MARKER_W = 116
+MAP_BOSS_MARKER_H = 30
+EVENT_HORIZON_MARKER_W = 150
+EVENT_HORIZON_MARKER_H = 30
+
+MARKER_GAP = 6   # minimum px between the edges of two markers
+
 
 def city_node_centers():
     """Return {city_id: (center_x, center_y)} for every mapped city."""
@@ -55,6 +69,16 @@ def city_node_centers():
         cid: (x + NODE_W // 2, y + NODE_H // 2)
         for cid, (x, y) in CITY_POSITIONS.items()
     }
+
+
+def markers_clear(ax, ay, a_w, a_h, bx, by, b_w, b_h, gap=MARKER_GAP):
+    """True when two centred marker rectangles share no pixel.
+
+    Rectangles are disjoint once their centres are a full half-width (x) or
+    a full half-height (y) apart, plus *gap* between the edges.
+    """
+    return (abs(ax - bx) >= (a_w + b_w) // 2 + gap
+            or abs(ay - by) >= (a_h + b_h) // 2 + gap)
 
 
 def map_bounds(padding=30):

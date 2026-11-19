@@ -14,6 +14,8 @@ from pandemonium.progression.karma_dialogue import service_line
 from pandemonium.gui.screens.base_screen import BaseScreen
 from pandemonium.gui.theme import Theme
 from pandemonium.gui.widgets.confirm_dialog import choice_dialog, confirm_dialog, ok_dialog
+from pandemonium.gui.widgets.keyboard_nav import NavGroup
+from pandemonium.gui.widgets.overlay_panel import OverlayPanel
 from pandemonium.gui.widgets.hp_bar import HPBar
 
 from pandemonium.resources.cities import CITIES
@@ -168,6 +170,9 @@ class CityScreen(BaseScreen):
         )
         self.city_map.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
+        # Keyboard nav targets: house button (if any) + bottom action bar.
+        self._button_entries = []
+
         # House button (below the map, if player owns a house in this city)
         has_house = self.city_id in self.player.get("houses", {})
         if has_house:
@@ -178,14 +183,21 @@ class CityScreen(BaseScreen):
             if pending > 0:
                 house_text += f" [{pending}g]"
 
+            house_wrap = tk.Frame(
+                self.content, bg=Theme.BG_DARK,
+                highlightthickness=1, highlightbackground=Theme.BG_DARK,
+            )
+            house_wrap.pack(pady=(4, 0))
+            self._house_wrap = house_wrap
             self._house_btn = self.styled_button(
-                self.content,
+                house_wrap,
                 text=house_text,
                 command=self._open_house,
                 width=28,
                 bg=Theme.BG_LIGHT,
             )
-            self._house_btn.pack(pady=(4, 0))
+            self._house_btn.pack(padx=2, pady=2)
+            self._button_entries.append((house_wrap, self._house_btn))
 
         # ── Bottom action bar ──────────────────────────────────────────────────
         self._action_frame = tk.Frame(self.content, bg=Theme.BG_DARK)
@@ -202,8 +214,24 @@ class CityScreen(BaseScreen):
         ]
 
         for text, cmd in actions:
-            btn = self.styled_button(action_frame, text=text, command=cmd, width=16)
-            btn.pack(side=tk.LEFT, padx=4, expand=True)
+            wrap = tk.Frame(
+                action_frame, bg=Theme.BG_DARK,
+                highlightthickness=1, highlightbackground=Theme.BG_DARK,
+            )
+            wrap.pack(side=tk.LEFT, padx=4, expand=True)
+            btn = self.styled_button(wrap, text=text, command=cmd, width=16)
+            btn.pack(padx=2, pady=2)
+            self._button_entries.append((wrap, btn))
+
+        # ── Keyboard navigation ────────────────────────────────────────────
+        # Two focus zones: the city map (facilities) and the button bar.
+        # Tab switches zones; arrows move within the active zone.  Facilities
+        # are highlighted in the ASCII art itself (Text tag), buttons use the
+        # thin white ring used by the main menu and save browser.
+        self._nav_buttons = NavGroup(self, self._button_entries)
+        self._nav_buttons.clear_outline()
+        self._zone = "map"
+        self._set_zone("map")
 
         # ── Keyboard shortcuts ─────────────────────────────────────────────
         self._setup_city_keys()
@@ -214,19 +242,85 @@ class CityScreen(BaseScreen):
         self.after(50, self._begin_arrival)
 
     def _setup_city_keys(self):
-        """Bind keyboard shortcuts for city services and actions."""
+        """Bind keyboard shortcuts and outline-navigation keys."""
         self.bind("<KeyPress>", self._on_city_key)
+        # Specific bindings win over the generic <KeyPress> handler above.
+        for sequence in (
+            "<Up>", "<Down>", "<Left>", "<Right>",
+            "<Tab>", "<Shift-Tab>", "<ISO_Left_Tab>",
+            "<Home>", "<End>",
+            "<Return>", "<KP_Enter>", "<space>",
+        ):
+            self.bind(sequence, self._on_city_nav)
         self.focus_set()
+
+    def _set_zone(self, zone):
+        """Switch keyboard focus between map/floors and the button bar."""
+        self._zone = zone
+        floor_nav = getattr(self, "_floor_nav", None)
+        if zone == "map":
+            self._nav_buttons.clear_outline()
+            if floor_nav is not None:
+                floor_nav.clear_outline()
+            self.city_map.select_facility(self.city_map.facility_index)
+            self._map_frame.configure(highlightbackground=Theme.TEXT_HEADER)
+        elif zone == "floors":
+            self._nav_buttons.clear_outline()
+            if floor_nav is not None:
+                floor_nav.select(floor_nav.index)
+        else:  # "buttons"
+            if floor_nav is not None:
+                floor_nav.clear_outline()
+            self.city_map.clear_facility_focus()
+            self._map_frame.configure(highlightbackground=Theme.BORDER)
+            self._nav_buttons.select(self._nav_buttons.index)
+
+    def _on_city_nav(self, event):
+        """Tab switches zones; arrows/Enter act inside the active zone."""
+        key = event.keysym
+        if key in ("Tab", "ISO_Left_Tab"):
+            self._set_zone("buttons" if self._zone == "map" else "map")
+            return "break"
+
+        if self._zone == "map":
+            if key in ("Up", "Left"):
+                self.city_map.move_facility(-1)
+            elif key in ("Down", "Right"):
+                self.city_map.move_facility(1)
+            elif key == "Home":
+                self.city_map.select_facility(0)
+            elif key == "End":
+                self.city_map.select_facility(self.city_map.facility_count() - 1)
+            elif key in ("Return", "KP_Enter", "space"):
+                self._activate_facility()
+            return "break"
+
+        return self._nav_buttons.on_key(event)
+
+    def _activate_facility(self):
+        """Open the facility highlighted on the map."""
+        service = self.city_map.current_facility()
+        if not service:
+            return
+        if service == "dungeon":
+            self._enter_dungeon()
+        else:
+            self._open_service(service)
 
     def _on_city_key(self, event):
         """Handle keyboard shortcuts in the city screen."""
         key = event.char
+        if key == "?":
+            self._show_help()
+            return
         # Number keys 1-9 → services (cycle through position keys)
         if key and key in "123456789":
             positions = CITY_SERVICE_POSITIONS.get(self.city_id, {})
             svc_keys = [k for k in positions.keys() if k != "dungeon"]
             idx = int(key) - 1
             if idx < len(svc_keys):
+                # Keep the map highlight in sync with the shortcut jump.
+                self.city_map.select_facility_key(svc_keys[idx])
                 self._open_service(svc_keys[idx])
             return
         # Letter keys → bottom actions
@@ -240,6 +334,8 @@ class CityScreen(BaseScreen):
         }
         action = key_map.get(key.lower())
         if action:
+            if key.lower() == "d":
+                self.city_map.select_facility_key("dungeon")
             action()
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -1214,13 +1310,19 @@ class CityScreen(BaseScreen):
         Pressing Escape or clicking Cancel restores the original layout.
         """
 
+        # The picker takes over the map zone; Tab still reaches the action
+        # bar (the generic options stay visible above the panel).
+        self._floor_nav = None
+        self.city_map.clear_facility_focus()
+        self._set_zone("floors")
+
         # ── Hide city UI elements to free up space ────────────────────────
         self._map_frame.pack_forget()
         if hasattr(self, '_hero_card') and self._hero_card.winfo_exists():
             self._hero_card.pack_forget()
-        # Also hide the house button if visible
-        if hasattr(self, '_house_btn') and self._house_btn.winfo_exists():
-            self._house_btn.pack_forget()
+        # Hide the house row (the wrapper owns the pack geometry).
+        if hasattr(self, '_house_wrap') and self._house_wrap.winfo_exists():
+            self._house_wrap.pack_forget()
 
         # ── Floor-selection panel ─────────────────────────────────────────
         sel_frame = tk.Frame(
@@ -1239,7 +1341,8 @@ class CityScreen(BaseScreen):
 
         tk.Label(
             sel_frame,
-            text=f"Click a floor to descend  ({min_floor} – {max_unlocked}):",
+            text=(f"Select a floor to descend  ({min_floor} – {max_unlocked})"
+                  "  — arrows + Enter · Tab: buttons:"),
             bg=Theme.BG_DARK, fg=Theme.TEXT_DIM, font=Theme.FONT,
         ).pack(pady=(0, 6))
 
@@ -1290,16 +1393,21 @@ class CityScreen(BaseScreen):
             """Destroy the selection panel, restore hidden widgets, launch dungeon."""
             canvas.unbind_all("<MouseWheel>")
             sel_frame.destroy()
+            self._floor_nav = None
             self._restore_city_widgets()
+            self._set_zone("map")
             self._launch_dungeon(floor)
 
         def _restore_and_cancel():
             """Destroy the selection panel, restore hidden widgets, do nothing."""
             canvas.unbind_all("<MouseWheel>")
             sel_frame.destroy()
+            self._floor_nav = None
             self._restore_city_widgets()
+            self._set_zone("map")
             self.focus_set()
 
+        floor_entries = []   # (floor, wrapper, button) for selectable floors
         for f in range(min_floor, max_unlocked + 1):
             row = (f - min_floor) // COLS
             col = (f - min_floor) % COLS
@@ -1312,8 +1420,11 @@ class CityScreen(BaseScreen):
                 txt = f"🔒 Floor {f}"
                 state = tk.DISABLED
             elif is_current:
-                bg = Theme.ACCENT
-                fg = Theme.BG_DARK
+                # Current floor: star + accent text only.  The red fill was
+                # replaced by the white keyboard outline (NavGroup) so the
+                # two indicators never fight over the same button.
+                bg = Theme.BG_MID
+                fg = Theme.ACCENT
                 txt = f"★ Floor {f}"
                 state = tk.NORMAL
             else:
@@ -1322,24 +1433,105 @@ class CityScreen(BaseScreen):
                 txt = f"Floor {f}"
                 state = tk.NORMAL
 
+            # Wrapper frames carry the 1px keyboard outline (tk.Buttons ignore
+            # highlight rings on Windows).
+            wrap = tk.Frame(
+                grid_inner, bg=Theme.BG_DARK,
+                highlightthickness=1, highlightbackground=Theme.BG_DARK,
+            )
+            wrap.grid(row=row, column=col, padx=3, pady=3, sticky="ew")
+
             btn = tk.Button(
-                grid_inner, text=txt,
+                wrap, text=txt,
                 command=lambda floor=f: _restore_and_go(floor),
                 bg=bg, fg=fg,
                 font=Theme.FONT_BOLD,
                 width=BTN_W,
-                relief=tk.RAISED if is_current else tk.FLAT,
-                bd=3 if is_current else 1,
+                relief=tk.FLAT,
+                bd=1,
                 state=state,
                 disabledforeground="#6a5a6a",
                 activebackground=Theme.ACCENT,
                 activeforeground=Theme.BG_DARK,
             )
-            btn.grid(row=row, column=col, padx=3, pady=3, sticky="ew")
+            btn.pack(fill=tk.X, padx=1, pady=1)
+            if not is_locked:
+                floor_entries.append((f, wrap, btn))
 
         # Make columns equally wide
         for c in range(COLS):
             grid_inner.grid_columnconfigure(c, weight=1, uniform="floor_col")
+
+        # ── Keyboard navigation over the floor grid ───────────────────────
+        def _ensure_floor_visible(wrap):
+            """Scroll the canvas so the outlined floor stays visible."""
+            try:
+                grid_inner.update_idletasks()
+                total = grid_inner.winfo_height()
+                view_h = canvas.winfo_height()
+                if total <= 0 or view_h <= 0:
+                    return
+                top = canvas.canvasy(0)
+                y = wrap.winfo_y()
+                h = wrap.winfo_height()
+                if y < top:
+                    canvas.yview_moveto(max(0.0, y / total))
+                elif y + h > top + view_h:
+                    canvas.yview_moveto((y + h - view_h) / total)
+            except tk.TclError:
+                pass
+
+        start_index = 0
+        for i, (floor, _wrap, _btn) in enumerate(floor_entries):
+            if floor == current_floor:
+                start_index = i
+                break
+
+        floor_nav = NavGroup(
+            sel_frame,
+            [(wrap, btn) for _f, wrap, btn in floor_entries],
+            start=start_index,
+            on_change=lambda i: (
+                _ensure_floor_visible(floor_entries[i][1])
+                if 0 <= i < len(floor_entries) else None
+            ),
+        )
+        self._floor_nav = floor_nav
+
+        def _on_floor_key(event):
+            """Floors zone: grid movement; Tab switches to the button bar."""
+            key = event.keysym
+            if key in ("Tab", "ISO_Left_Tab"):
+                self._set_zone("buttons" if self._zone == "floors" else "floors")
+                return "break"
+            if self._zone == "buttons":
+                return self._nav_buttons.on_key(event)
+
+            if key == "Left":
+                floor_nav.move(-1)
+            elif key == "Right":
+                floor_nav.move(1)
+            elif key == "Up":
+                floor_nav.move(-COLS)
+            elif key == "Down":
+                floor_nav.move(COLS)
+            elif key == "Home":
+                floor_nav.select(0)
+            elif key == "End":
+                floor_nav.select(len(floor_nav.widgets) - 1)
+            elif key in ("Return", "KP_Enter", "space"):
+                floor_nav.activate()
+            else:
+                return None
+            return "break"
+
+        for sequence in (
+            "<Left>", "<Right>", "<Up>", "<Down>",
+            "<Tab>", "<Shift-Tab>", "<ISO_Left_Tab>",
+            "<Home>", "<End>",
+            "<Return>", "<KP_Enter>", "<space>",
+        ):
+            canvas.bind(sequence, _on_floor_key)
 
         # ── Cancel button at the bottom of the grid ───────────────────────
         cancel_btn = tk.Button(
@@ -1371,8 +1563,8 @@ class CityScreen(BaseScreen):
                 fill=tk.X, pady=(0, 10), padx=20,
                 before=self._map_frame,
             )
-        if hasattr(self, '_house_btn') and self._house_btn.winfo_exists():
-            self._house_btn.pack(pady=(4, 0), before=self._action_frame)
+        if hasattr(self, '_house_wrap') and self._house_wrap.winfo_exists():
+            self._house_wrap.pack(pady=(4, 0), before=self._action_frame)
 
     def _cleanup_dungeon_exit(self):
         """Clear all dungeon-specific state when leaving a dungeon.
@@ -1429,35 +1621,12 @@ class CityScreen(BaseScreen):
         city_prog = p["city_floors"].get(self.city_id, {"floor": 1})
         cleared_floor = city_prog["floor"] - 1
 
-        root = self.sm.root if self.sm else self.winfo_toplevel()
-        dialog = tk.Toplevel(root)
-        dialog.title("Floor Cleared!")
-        dialog.transient(root)
-        dialog.withdraw()   # build offscreen to avoid a blank flash
-        dialog.resizable(False, False)
-        dialog.configure(bg=Theme.BG_DARK)
-
-        # Center
-        dialog.update_idletasks()
-        root = self.sm.root if self.sm else self.winfo_toplevel()
-        px = root.winfo_x()
-        py = root.winfo_y()
-        pw = root.winfo_width()
-        ph = root.winfo_height()
-        dw = 360
-        dh = 260
-        dialog.geometry(f"{dw}x{dh}+{px + (pw - dw)//2}+{py + (ph - dh)//2}")
-
-        # Header
-        tk.Label(
-            dialog,
-            text=f"=== FLOOR {cleared_floor} CLEARED ===",
-            bg=Theme.BG_DARK, fg=Theme.ACCENT,
-            font=Theme.FONT_LARGE,
-        ).pack(pady=(14, 4))
+        panel = OverlayPanel(
+            self, f"=== FLOOR {cleared_floor} CLEARED ===", width=400,
+        )
 
         tk.Label(
-            dialog,
+            panel.body,
             text=f"Now entering Floor {city_prog['floor']}",
             bg=Theme.BG_DARK, fg=Theme.TEXT,
             font=Theme.FONT,
@@ -1472,7 +1641,7 @@ class CityScreen(BaseScreen):
         if _track:
             stats_text += f"\nTime: {_track}"
         tk.Label(
-            dialog,
+            panel.body,
             text=stats_text,
             bg=Theme.BG_DARK, fg=Theme.TEXT_DIM,
             font=Theme.FONT_SMALL,
@@ -1480,13 +1649,15 @@ class CityScreen(BaseScreen):
         ).pack(pady=(0, 10))
 
         choice = [None]  # Mutable container
+        done = tk.IntVar(self, 0)
 
         def _choose(opt):
             choice[0] = opt
-            dialog.destroy()
+            panel.close()
+            done.set(1)
 
-        btn_frame = tk.Frame(dialog, bg=Theme.BG_DARK)
-        btn_frame.pack(pady=5)
+        btn_frame = tk.Frame(panel.body, bg=Theme.BG_DARK)
+        btn_frame.pack(pady=(0, 12))
 
         tk.Button(
             btn_frame, text="1. Continue to next floor",
@@ -1509,13 +1680,9 @@ class CityScreen(BaseScreen):
             font=Theme.FONT_BOLD, width=26, anchor=tk.W,
         ).pack(pady=3)
 
-        dialog.protocol("WM_DELETE_WINDOW", lambda: _choose("city"))
-
-        # Show only once the content is built (prevents a blank window flash)
-        dialog.deiconify()
-        dialog.lift()
-        dialog.grab_set()
-        dialog.wait_window()
+        panel.finalize(on_escape=lambda _e: _choose("city"))
+        # Blocks like the old wait_window(), but inside the game window.
+        self.wait_variable(done)
 
         opt = choice[0]
         if opt == "continue":
@@ -1582,12 +1749,17 @@ class CityScreen(BaseScreen):
         help_text = (
             "Keyboard Shortcuts:\n\n"
             "City Screen:\n"
-            "  1–9  — Open city service\n"
-            "  I    — Inventory\n"
-            "  M    — World Map / Travel\n"
-            "  D    — Enter Dungeon\n"
-            "  S    — Settings\n"
-            "  Q    — Save & Quit\n\n"
+            "  ↑/↓      — Previous / next facility\n"
+            "  Tab      — Switch map/floors ↔ button bar\n"
+            "  ←/→      — Move in the button bar\n"
+            "  Enter    — Open facility / press button\n"
+            "  1–9      — Open city service\n"
+            "  I        — Inventory\n"
+            "  M        — World Map / Travel\n"
+            "  D        — Enter Dungeon\n"
+            "  S        — Settings\n"
+            "  Q        — Save & Quit\n"
+            "  ?        — This help\n\n"
             "Combat:\n"
             "  A    — Attack\n"
             "  D    — Defend\n"

@@ -264,10 +264,12 @@ UNIQUE_FORM_TAGS = {
     "vorpal_blade": "blade",
     "woodcutters_broken_axe": "axe",
     "grandmothers_axe": "axe",
+    "long_day": "sword",
     # armor
     "tarnished_jade": "runic_plate",
     "blank_canvas_shawl": "robes",
     "chronoweave_mantle": "elven_mail",
+    "echo_mantle": "robes",
     "decaying_aegis": "runic_plate",
     "old_dopo_robe": "robes",
     # engagement rings + wedding accessories (noun-based)
@@ -340,6 +342,7 @@ UNIQUE_FORM_TAGS = {
     "wedding_sylvana": "amulet",
     # special / story accessories (description-based)
     "sky_piercer": "talisman",
+    "admin_staff": "staff",
     "prescript_ledger": "tome",
     "vileheart_pendant": "pendant",
     "perception_blocking_mask": "eye",
@@ -350,6 +353,8 @@ UNIQUE_FORM_TAGS = {
     "ruby_slippers": "boots",
     "rose_tinted_crown": "crown",
     "witch_hat": "crown",
+    "sundial_crown": "crown",
+    "warden_signet": "signet",
     "authors_pen": "tome",
     "no_place_charm": "talisman",
 }

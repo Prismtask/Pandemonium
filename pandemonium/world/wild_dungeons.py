@@ -19,7 +19,19 @@ import math
 import random
 
 from pandemonium.resources.cities import CITIES
-from pandemonium.resources.world_layout import city_node_centers, map_bounds
+from pandemonium.resources.world_layout import (
+    EVENT_HORIZON_MARKER_H,
+    EVENT_HORIZON_MARKER_W,
+    MAP_BOSS_MARKER_H,
+    MAP_BOSS_MARKER_W,
+    NODE_H,
+    NODE_W,
+    WILD_MARKER_H,
+    WILD_MARKER_W,
+    city_node_centers,
+    map_bounds,
+    markers_clear,
+)
 from pandemonium.resources.wild_dungeon_themes import get_theme
 
 # ── Spawn tuning (docs/wild_dungeon_design.md §0, §2) ──────────────────────
@@ -172,16 +184,79 @@ def _roll_name(biome):
     return f"{random.choice(theme['adjectives'])} {random.choice(theme['ruins'])}"
 
 
-def _pick_position(existing_positions, near_city=None):
-    """Pick a random canvas point inside the map bounds, clear of city nodes
-    and other same-cycle dungeon markers.
+def _reserved_sites(player):
+    """Non-wild markers the spawn must not stack on: ``(x, y, w, h)`` rects.
+
+    The Event Horizon is a permanent site — reserved even before the player
+    unlocks it, so a ruin lying on the spot cannot vanish *under* the marker
+    the moment the rift is revealed. The seasonal Warden re-rolls its arena
+    every season, so wilds spawned afterwards must clear it too (the reverse
+    direction is handled by ``map_boss._occupied_positions``).
+    """
+    sites = []
+    # Local import: keep this module import-light (event_horizon pulls in
+    # the combat hubs); weekly spawn cycles are the only caller.
+    from pandemonium.world.event_horizon import EVENT_HORIZON_POSITION
+    sites.append((EVENT_HORIZON_POSITION[0], EVENT_HORIZON_POSITION[1],
+                  EVENT_HORIZON_MARKER_W, EVENT_HORIZON_MARKER_H))
+    # Local import: map_boss sits on top of core.events; read it lazily so
+    # importing this module stays cheap and cycle-free.
+    from pandemonium.world.map_boss import get_active_boss
+    warden = get_active_boss(player)
+    if isinstance(warden, dict):
+        pos = warden.get("position")
+        if pos:
+            sites.append((pos[0], pos[1],
+                          MAP_BOSS_MARKER_W, MAP_BOSS_MARKER_H))
+    return sites
+
+
+def _spot_is_clear(x, y, centers, existing_positions, reserved):
+    """True when a wild marker centred at (x, y) clears every obstacle.
+
+    Checks the historical centre-distance rules *and* the actual marker
+    rectangles: wild ruins are 96x30, the Warden 116x30 and the Event
+    Horizon 150x30, so a 70px centre rule alone would still let two ruin
+    markers overlap (e.g. a mostly-horizontal pair).
+    """
+    for cx, cy in centers.values():
+        if (x - cx) ** 2 + (y - cy) ** 2 < MIN_CITY_DIST ** 2:
+            return False
+        if not markers_clear(x, y, WILD_MARKER_W, WILD_MARKER_H,
+                             cx, cy, NODE_W, NODE_H):
+            return False
+    for px, py in existing_positions:
+        if (x - px) ** 2 + (y - py) ** 2 < MIN_DUNGEON_DIST ** 2:
+            return False
+        if not markers_clear(x, y, WILD_MARKER_W, WILD_MARKER_H,
+                             px, py, WILD_MARKER_W, WILD_MARKER_H):
+            return False
+    for rx, ry, rw, rh in reserved:
+        if not markers_clear(x, y, WILD_MARKER_W, WILD_MARKER_H,
+                             rx, ry, rw, rh):
+            return False
+    return True
+
+
+def _pick_position(existing_positions, near_city=None, reserved=()):
+    """Pick a random canvas point inside the map bounds, clear of city nodes,
+    other active dungeon markers and *reserved* sites (the Event Horizon and
+    the seasonal Warden).
 
     When *near_city* is given, the point is drawn from a ring around that
     city's node center so the dungeon's biome matches its surroundings.
+
+    ``reserved`` entries are ``(x, y, width, height)`` marker rectangles.
+    A deterministic grid sweep backs the random attempts so a densely packed
+    map can never fall back to an overlapping point.
     """
     x_min, y_min, x_max, y_max = map_bounds()
+    # Keep the whole marker on the canvas (it is drawn centred on the point).
+    x_min += WILD_MARKER_W // 2
+    x_max -= WILD_MARKER_W // 2
+    y_min += WILD_MARKER_H // 2
+    y_max -= WILD_MARKER_H // 2
     centers = city_node_centers()
-    fallback = [x_min, y_min]
     for _ in range(_POSITION_ATTEMPTS):
         if near_city and near_city in centers:
             cx0, cy0 = centers[near_city]
@@ -192,18 +267,18 @@ def _pick_position(existing_positions, near_city=None):
         else:
             x = random.randint(x_min, x_max)
             y = random.randint(y_min, y_max)
-        # Clamp to the canvas bounds
-        x = max(x_min, min(x, x_max))
-        y = max(y_min, min(y, y_max))
-        fallback = [x, y]
-        if any((x - cx) ** 2 + (y - cy) ** 2 < MIN_CITY_DIST ** 2
-               for cx, cy in centers.values()):
+        # Reject off-canvas proposals. Clamping used to pile every ruin whose
+        # ring fell off the west/south edge onto the canvas border.
+        if not (x_min <= x <= x_max and y_min <= y <= y_max):
             continue
-        if any((x - px) ** 2 + (y - py) ** 2 < MIN_DUNGEON_DIST ** 2
-               for px, py in existing_positions):
-            continue
-        return [x, y]
-    return fallback
+        if _spot_is_clear(x, y, centers, existing_positions, reserved):
+            return [x, y]
+    # Deterministic fallback: sweep a coarse grid for any clear point.
+    for gy in range(y_min, y_max + 1, 20):
+        for gx in range(x_min, x_max + 1, 20):
+            if _spot_is_clear(gx, gy, centers, existing_positions, reserved):
+                return [gx, gy]
+    return [x_min, y_min]
 
 
 def generate_reward_pool(level, total_floors, biome=None):
@@ -260,7 +335,8 @@ def expire_dungeons(player):
     return expired
 
 
-def _spawn_one(player, state, seed_city, taken_positions, available_cities=None):
+def _spawn_one(player, state, seed_city, taken_positions, available_cities=None,
+               reserved=()):
     """Create one dungeon dict (does not append to state)."""
     dungeon_id = f"wild_{state['next_id']}"
     state["next_id"] += 1
@@ -268,7 +344,8 @@ def _spawn_one(player, state, seed_city, taken_positions, available_cities=None)
     biome = CITIES.get(seed_city, {}).get("biome", "temperate")
     level = roll_dungeon_level(player)
     total_floors = random.randint(MIN_FLOORS, MAX_FLOORS)
-    position = _pick_position(taken_positions, near_city=seed_city)
+    position = _pick_position(taken_positions, near_city=seed_city,
+                              reserved=reserved)
     day = int(player.get("day", 1) or 1)
     lifespan = random.randint(MIN_LIFESPAN_DAYS, MAX_LIFESPAN_DAYS)
     allowed = available_cities or _available_seed_cities(player)
@@ -319,10 +396,12 @@ def maybe_spawn_cycle(player):
     seed_cities = random.sample(city_ids, k=min(count, len(city_ids)))
 
     taken = [tuple(d.get("position", (0, 0))) for d in state["active"]]
+    reserved = _reserved_sites(player)
     spawned = []
     for seed_city in seed_cities:
         dungeon = _spawn_one(player, state, seed_city, taken,
-                             available_cities=available_cities)
+                             available_cities=available_cities,
+                             reserved=reserved)
         taken.append(tuple(dungeon["position"]))
         state["active"].append(dungeon)
         spawned.append(dungeon)
