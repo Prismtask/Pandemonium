@@ -723,14 +723,26 @@ def normalize_unique_mods(base_mods, slot):
     keys = list(scaled)
     diff = target_total - sum(scaled.values())
     i = 0
+    misses = 0
     while diff != 0 and keys:
         key = keys[i % len(keys)]
         if diff > 0:
             scaled[key] += 1
             diff -= 1
+            misses = 0
         elif scaled[key] > 1:
             scaled[key] -= 1
             diff += 1
+            misses = 0
+        else:
+            # Every stat is already floored at 1 and the target is still
+            # lower (more stats than the budget allows).  The difference is
+            # unreachable — break instead of spinning forever (this hung
+            # module import when a unique had too many stats, e.g. the
+            # 6-stat Admin Staff).
+            misses += 1
+            if misses >= len(keys):
+                break
         i += 1
     result = dict(base_mods or {})
     result.update(scaled)
@@ -741,6 +753,10 @@ def normalize_unique_stats(items):
     """Apply slot budgets to every unique equipment definition at install."""
     for data in items.values():
         if data.get("type") != "equipment" or not data.get("unique"):
+            continue
+        # Dev-only items (e.g. the Admin Staff cheat weapon) keep their
+        # authored stats — the budget would crush them to 1s.
+        if data.get("dev_only"):
             continue
         slot = data.get("slot")
         if slot in UNIQUE_STAT_BUDGET and data.get("base_mods"):

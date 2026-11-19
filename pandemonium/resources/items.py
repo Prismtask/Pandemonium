@@ -395,6 +395,7 @@ ITEMS = {
         "type": "equipment",
         "slot": "weapon",
         "unique": True,
+        "dev_only": True,
         "base_mods": {"Wisdom": 50, "Dexterity": 50, "Strength": 50, "Constitution": 50, "Learning": 50, "Charisma": 50},
         "scaling_stat": "Wisdom",
         "form": "staff",
