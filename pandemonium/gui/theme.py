@@ -84,6 +84,7 @@ class Theme:
     HP_BAR_FILL = "#4ecca3"
     HP_BAR_EMPTY = "#2d3436"
     MP_BAR_FILL = "#3498db"
+    GOLD = "#f1c40f"
     MP_BAR_EMPTY = "#2d3436"
     XP_BAR_FILL = "#f1c40f"
     XP_BAR_EMPTY = "#2d3436"

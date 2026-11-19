@@ -434,8 +434,15 @@ class InventoryScreen(BaseScreen):
         if is_player:
             self._render_personal_box(inner)
             hp = f"{char.get('current_hp', 0)}/{player_max_hp(char)}"
-            info = f"HP: {hp}  |  Gold: {char.get('gold', 0)}"
-            self.styled_label(inner, text=info).pack(anchor=tk.W, padx=4, pady=(0, 8))
+            vitals = tk.Frame(inner, bg=Theme.BG_DARK)
+            vitals.pack(anchor=tk.W, padx=4, pady=(0, 8))
+            self.styled_label(
+                vitals, text=f"HP: {hp}", fg=Theme.HP_BAR_FILL,
+            ).pack(side=tk.LEFT)
+            self.styled_label(vitals, text="  |  ").pack(side=tk.LEFT)
+            self.styled_label(
+                vitals, text=f"Gold: {char.get('gold', 0)}", fg=Theme.GOLD,
+            ).pack(side=tk.LEFT)
         else:
             self._render_ally_header(inner, char)
 

@@ -17,6 +17,14 @@ RARITY_ORDER = {
     "unique": 5,
 }
 
+def _name_key(item):
+    """Case-insensitive display-name sort key."""
+    return str(item.get("name", "")).lower()
+
+def _type_name_key(item):
+    """Sort key: item type alphabetically, then display name alphabetically."""
+    return (str(item.get("type", "")).lower(), _name_key(item))
+
 def _items_stackable(a, b):
     """Check if two non-equipment items can stack."""
     if a.get("type") == "equipment" or b.get("type") == "equipment":
@@ -95,30 +103,31 @@ def add_item_to_inventory(player, item):
         return True
 
 def get_sorted_equipment(player):
-    """Return inventory equipment sorted by slot then rarity descending."""
+    """Return inventory equipment sorted by rarity descending, then slot
+    (weapon → armor → accessory), then by name."""
     inv = player.get("inventory", [])
     slot_order = {"weapon": 0, "armor": 1, "accessory": 2}
     equip = [i for i in inv if i.get("type") == "equipment"]
     equip.sort(key=lambda x: (
+        -RARITY_ORDER.get(x.get("rarity", "common"), 0),
         slot_order.get(x.get("slot", ""), 99),
-        -RARITY_ORDER.get(x.get("rarity", "common"), 0)
+        _name_key(x),
     ))
     return equip
 
 def get_sorted_items(player):
-    """Return non-equipment, non-key, non-cargo items sorted by rarity descending, then by name."""
+    """Return non-equipment, non-key, non-cargo items sorted by type alphabetically, then by name."""
     inv = player.get("inventory", [])
     items = [i for i in inv if i.get("type") not in ("equipment", "key_item", "crafting_material", "cargo")]
-    items.sort(key=lambda x: (
-        -RARITY_ORDER.get(x.get("rarity", "common"), 0),
-        x.get("name", "")
-    ))
+    items.sort(key=_type_name_key)
     return items
 
 def get_cargo_items(player):
-    """Return cargo goods from inventory (excluded from normal sell lists)."""
+    """Return cargo goods from inventory (excluded from normal sell lists), by name."""
     inv = player.get("inventory", [])
-    return [i for i in inv if i.get("type") == "cargo"]
+    cargo = [i for i in inv if i.get("type") == "cargo"]
+    cargo.sort(key=_name_key)
+    return cargo
 
 def has_item(player, item_id):
     """True if the player carries an item with the given id."""
@@ -126,13 +135,10 @@ def has_item(player, item_id):
 
 
 def get_key_items(player):
-    """Return key items and crafting materials from inventory."""
+    """Return key items and crafting materials sorted by type alphabetically, then by name."""
     inv = player.get("inventory", [])
     key_items = [i for i in inv if i.get("type") in ("key_item", "crafting_material")]
-    key_items.sort(key=lambda x: (
-        -RARITY_ORDER.get(x.get("rarity", "common"), 0),
-        x.get("name", "")
-    ))
+    key_items.sort(key=_type_name_key)
     return key_items
 
 
