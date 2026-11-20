@@ -10,6 +10,7 @@ import tkinter as tk
 
 import pandemonium.progression.karma as karma
 from pandemonium.gui.theme import Theme
+from pandemonium.gui.widgets.keyboard_nav import NavGroup
 from pandemonium.combat.action_menu import get_action_menu
 from pandemonium.combat.ally import _ally_action_menu
 from pandemonium.combat.weapon.black_silence_gloves import _actor_has_black_silence_gloves
@@ -66,8 +67,14 @@ class ActionPanel(tk.Frame):
         super().__init__(parent, bg=Theme.BG_DARK, **kwargs)
         self.on_action = on_action
         self._buttons = {}
+        self._button_wraps = {}  # action key -> outline wrapper frame
         self._entries = []    # [(key, text, category, enabled)] in engine order
         self._submenu = None  # None | "attack" | "skill"
+        # Thin-outline keyboard navigation (same NavGroup style as the
+        # other screens). Rebuilt whenever the menu changes.
+        self._nav = None
+        self._nav_keys = []       # action key per nav entry, menu order
+        self._nav_positions = []  # (row, col) per nav entry, for Up/Down
         self._build_layout()
 
     def _build_layout(self):
@@ -248,12 +255,14 @@ class ActionPanel(tk.Frame):
             # Instruction label is always packed (slot reserved) — set text only
             target_type = "ally" if is_ally_target else "enemy"
             self.target_instruction.config(
-                text=f"▶ Press 1–9 or click a {target_type} to select target  (Esc to cancel)",
+                text=(f"▶ Press 1–9 or ←/→ to pick a {target_type}"
+                      "  (Enter confirm · Esc cancel)"),
             )
             # Disable non-target actions, keep Cancel implicit
             for key, btn in self._buttons.items():
                 if key not in ("0", "cancel"):
                     btn.config(state=tk.DISABLED)
+            self._clear_nav()
         else:
             self.section_label.config(text="ACTIONS", fg=Theme.TEXT_DIM)
             self.target_instruction.config(text="")
@@ -261,16 +270,112 @@ class ActionPanel(tk.Frame):
             self.btn_container.config(bg=Theme.BG_DARK)
             for btn in self._buttons.values():
                 btn.config(state=tk.NORMAL)
+            self._refresh_nav()
 
     def enable_all(self):
         """Enable all buttons."""
         for btn in self._buttons.values():
             btn.config(state=tk.NORMAL)
+        self._refresh_nav()
+
+    # ── Outline keyboard navigation (arrows + Enter) ─────────────────────────
+
+    def on_nav_key(self, event):
+        """Handle a navigation key press; returns 'break' when consumed.
+
+        The combat screen owns keyboard focus, so it forwards key events
+        here instead of relying on widget focus (which would draw Tk's own
+        dotted focus rectangle inside a button).
+        """
+        if self._nav is None or not self._nav.widgets:
+            return None
+        key = event.keysym
+        if key == "Left":
+            self._nav.move(-1)
+            return "break"
+        if key == "Right":
+            self._nav.move(1)
+            return "break"
+        if key in ("Up", "Down"):
+            self._move_nav_vertical(-1 if key == "Up" else 1)
+            return "break"
+        if key == "ISO_Left_Tab":
+            self._nav.move(-1)
+            return "break"
+        if key == "Tab":
+            self._nav.move(-1 if event.state & 0x1 else 1)
+            return "break"
+        if key == "Home":
+            self._nav.select(0)
+            return "break"
+        if key == "End":
+            self._nav.select(len(self._nav.widgets) - 1)
+            return "break"
+        if key in ("Return", "KP_Enter", "space"):
+            self._nav.activate()
+            return "break"
+        return None
+
+    def select_action(self, key):
+        """Sync the outline to `key` (used when a hotkey is pressed)."""
+        if self._nav is None:
+            return
+        try:
+            index = self._nav_keys.index(key)
+        except ValueError:
+            return
+        self._nav.select(index)
+
+    def _refresh_nav(self):
+        """Rebuild the outline entries over the enabled buttons."""
+        self._clear_nav()
+        entries = []
+        keys = []
+        positions = []
+        for i, (key, btn) in enumerate(self._buttons.items()):
+            wrap = self._button_wraps.get(key)
+            if wrap is None or str(btn.cget("state")) == "disabled":
+                continue
+            entries.append((wrap, btn))
+            keys.append(key)
+            positions.append((i // self.MAX_PER_ROW, i % self.MAX_PER_ROW))
+        if not entries:
+            return
+        self._nav = NavGroup(
+            self, entries,
+            idle_color=self.btn_container["bg"],
+            focus_color=Theme.TEXT_HEADER,
+        )
+        self._nav_keys = keys
+        self._nav_positions = positions
+
+    def _clear_nav(self):
+        """Remove the outline and forget the entries."""
+        if self._nav is not None:
+            self._nav.clear_outline()
+        self._nav = None
+        self._nav_keys = []
+        self._nav_positions = []
+
+    def _move_nav_vertical(self, delta):
+        """Move to the nearest button on the row above/below."""
+        if self._nav is None or not self._nav_positions:
+            return
+        rows = {}
+        for i, (row, col) in enumerate(self._nav_positions):
+            rows.setdefault(row, []).append((i, col))
+        row, col = self._nav_positions[self._nav.index]
+        candidates = rows.get(row + delta)
+        if not candidates:
+            return
+        best = min(candidates, key=lambda pair: abs(pair[1] - col))
+        self._nav.select(best[0])
 
     def disable_all(self):
         """Disable all buttons (e.g. during enemy turns)."""
         for btn in self._buttons.values():
             btn.config(state=tk.DISABLED)
+        self._clear_nav()
 
     # ── Two-tier navigation (GUI-only — never sends a key) ───────────────────
 
@@ -373,14 +478,17 @@ class ActionPanel(tk.Frame):
         ellipsis, keeping any trailing value tag (`[STR]`, `(−5 Karma)`)
         visible so the grid never goes ragged or hides the numbers.
         """
+        self._button_wraps = {}
+        self._clear_nav()
         if not specs:
             self._reserve_rows([])
             return
 
         rows = []
+        panel_bg = self.btn_container["bg"]
         for i, (key, text, enabled) in enumerate(specs):
             if i % self.MAX_PER_ROW == 0:
-                row_frame = tk.Frame(self.btn_container, bg=self.btn_container["bg"])
+                row_frame = tk.Frame(self.btn_container, bg=panel_bg)
                 row_frame.pack(fill=tk.X, pady=1)
                 rows.append(row_frame)
             row_frame = rows[-1]
@@ -388,9 +496,23 @@ class ActionPanel(tk.Frame):
             # Keep the key prefix intact; shorten only the label's middle.
             text = self._fit_label(text)
 
+            # The keyboard-focus outline lives on a wrapper frame — Windows
+            # Tk buttons ignore the highlight ring entirely (same wrapper
+            # pattern as the other screens). Inner pad 1 + ring 1 + outer
+            # pad 2 keeps the exact former footprint of padx=4/pady=2.
+            wrap = tk.Frame(
+                row_frame,
+                bg=panel_bg,
+                highlightthickness=1,
+                highlightbackground=panel_bg,
+                highlightcolor=Theme.TEXT_HEADER,
+                takefocus=0,
+            )
+            wrap.pack(side=tk.LEFT, padx=2)
+
             if enabled:
                 btn = tk.Button(
-                    row_frame,
+                    wrap,
                     text=text,
                     width=self.BTN_WIDTH,
                     bg=Theme.BUTTON_BG,
@@ -407,7 +529,7 @@ class ActionPanel(tk.Frame):
                 btn.bind("<Leave>", lambda e=None, b=btn: b.config(bg=Theme.BUTTON_BG))
             else:
                 btn = tk.Button(
-                    row_frame,
+                    wrap,
                     text=text,
                     width=self.BTN_WIDTH,
                     bg=Theme.BG_MID,
@@ -417,12 +539,14 @@ class ActionPanel(tk.Frame):
                     borderwidth=2,
                     state=tk.DISABLED,
                 )
-            btn.pack(side=tk.LEFT, padx=4, pady=2)
+            btn.pack(padx=1, pady=1)
             self._buttons[key] = btn
+            self._button_wraps[key] = wrap
 
         # Pad a short menu with invisible spacer rows so every menu keeps the
         # same panel height (constant panel size).
         self._reserve_rows(rows)
+        self._refresh_nav()
 
     def _fit_label(self, text):
         """Fit `text` into BTN_WIDTH, keeping a trailing value tag.
@@ -462,6 +586,8 @@ class ActionPanel(tk.Frame):
 
     def _click(self, key):
         """Handle button click with brief visual flash (or submenu navigation)."""
+        # Keep the keyboard outline in sync with mouse clicks.
+        self.select_action(key)
         # Two-tier navigation is GUI-only — these keys never reach the engine.
         if key == self.KEY_ATTACK_MENU:
             self._open_submenu("attack")

@@ -183,6 +183,7 @@ class CombatScreen(BaseScreen):
         self._capture_context = False  # Set when recent output suggests capture target selection
         self._target_index_map = {}  # Maps frame index → target number for target selection
         self._ally_engine_count = 0  # Size of the engine's ally list for the current prompt
+        self._target_focus = 0       # Position in _target_index_map held by the outline
 
         # Create enemy instances up-front so GUI can reference them
         self.enemies = []
@@ -562,6 +563,11 @@ class CombatScreen(BaseScreen):
     def _setup_key_binds(self):
         """Bind combat action keys to this screen."""
         self.bind("<KeyPress>", self._on_key)
+        # The item lists take focus when clicked; route their keys through
+        # the same handler so arrows/Enter keep working without clicking
+        # the action bar first.
+        for box in (self.item_listbox, self.item_listbox2):
+            box.bind("<KeyPress>", self._on_key)
         self.focus_set()
 
     def _on_key(self, event):
@@ -579,15 +585,22 @@ class CombatScreen(BaseScreen):
                     self.action_panel.pack(fill=tk.X, padx=10, pady=(0, 10))
             return
 
-        # If item selection is visible, handle Enter/Esc there
+        # If item selection is visible, handle its own keyboard navigation.
         if self.item_frame.winfo_ismapped():
-            if event.keysym == "Return" or event.keysym == "KP_Enter":
+            if event.keysym in ("Up", "Down", "Left", "Right",
+                                "Home", "End", "Tab", "ISO_Left_Tab"):
+                self._move_item_focus(event.keysym, bool(event.state & 0x1))
+                return "break"
+            if event.keysym in ("Return", "KP_Enter"):
                 self._on_item_confirmed()
-            elif event.keysym == "Escape":
+                return "break"
+            if event.keysym == "Escape":
                 self._on_item_cancelled()
+                return "break"
             return
 
-        # If in target mode, number keys select targets, Esc cancels, Enter confirms first
+        # If in target mode, arrows move the target outline, 1-9 picks a
+        # badge directly, Enter confirms the outlined target, Esc cancels.
         if self._pending_input_mode in ("enemy_target", "capture_target", "ally_target", "ally_switch"):
             if event.keysym == "Escape":
                 self.io.send_input("0")
@@ -596,22 +609,25 @@ class CombatScreen(BaseScreen):
                 self.action_panel.set_target_mode(False)
                 self.action_panel.enable_all()
                 self._pending_input_mode = None
+                self._target_focus = 0
                 if self.player:
                     self.player["_ally_switch_mode"] = False
                 return
+            if event.keysym in ("Left", "Up"):
+                self._move_target_focus(-1)
+                return "break"
+            if event.keysym in ("Right", "Down", "Tab"):
+                self._move_target_focus(1)
+                return "break"
+            if event.keysym == "Home":
+                self._set_target_focus(0)
+                return "break"
+            if event.keysym == "End":
+                self._set_target_focus(-1)
+                return "break"
             if event.keysym in ("Return", "KP_Enter"):
-                # Enter/Return → select the first available target (badge #1)
-                frame_idx = None
-                for fi, bn in self._target_index_map.items():
-                    if bn == 1:
-                        frame_idx = fi
-                        break
-                if frame_idx is not None:
-                    if self._pending_input_mode == "ally_target":
-                        self._on_party_click(frame_idx)
-                    else:
-                        self._on_enemy_click(frame_idx)
-                return
+                self._confirm_target_focus()
+                return "break"
             if key and key in "123456789":
                 badge_num = int(key)
                 # Find the frame index that corresponds to this badge number
@@ -648,6 +664,14 @@ class CombatScreen(BaseScreen):
         if key == "k" and self.action_panel.open_skill_submenu():
             return
 
+        # Thin-outline navigation over the action buttons (same style as the
+        # other screens): arrows move, Enter activates. The panel owns two
+        # enabled buttons.
+        if self.action_panel.winfo_ismapped():
+            handled = self.action_panel.on_nav_key(event)
+            if handled:
+                return handled
+
         # Map keys to action keys
         key_map = {
             "a": "a",      # Attack
@@ -675,6 +699,7 @@ class CombatScreen(BaseScreen):
         # else's turn) must be ignored instead of queueing a stray action.
         button = self.action_panel._buttons.get(mapped)
         if button is not None and str(button.cget("state")) != "disabled":
+            self.action_panel.select_action(mapped)
             self._on_action_click(mapped)
 
     def handle_escape(self):
@@ -874,6 +899,9 @@ class CombatScreen(BaseScreen):
     def _handle_input_needed(self, prompt: str):
         """Combat thread is waiting for input — show appropriate UI."""
         from pandemonium.combat.ally import get_all_active_allies_including_defeated
+        # Keep keyboard focus on the screen: clicking a listbox or a dialog
+        # must not leave shortcut and outline navigation dead afterwards.
+        self.focus_set()
         self._hud_dirty = True
         from pandemonium.combat.ally import get_reserve_allies
         mode, context = self._parse_prompt(prompt)
@@ -945,6 +973,8 @@ class CombatScreen(BaseScreen):
             self.renderer.show_target_indicators(alive_indices)
             for i in alive_indices:
                 self.renderer.highlight_enemy(i)
+            self._target_focus = 0
+            self._paint_target_focus()
 
         elif self._pending_input_mode == "capture_target":
             # Refresh HUD first to ensure frames match the current enemy list
@@ -961,6 +991,8 @@ class CombatScreen(BaseScreen):
             self.renderer.show_target_indicators(mg_indices)
             for i in mg_indices:
                 self.renderer.highlight_enemy(i)
+            self._target_focus = 0
+            self._paint_target_focus()
 
         elif self._pending_input_mode == "ally_target":
             # Refresh HUD to ensure party frames are up-to-date
@@ -994,6 +1026,8 @@ class CombatScreen(BaseScreen):
             self.renderer.show_ally_target_indicators(self._target_index_map)
             for i in self._target_index_map:
                 self.renderer.highlight_ally(i)
+            self._target_focus = 0
+            self._paint_target_focus()
 
         elif self._pending_input_mode == "ally_switch":
             # Ally is switching with a reserve party member.
@@ -1007,6 +1041,8 @@ class CombatScreen(BaseScreen):
             self.action_panel.set_target_mode(True, "Select a reserve ally to swap with")
             for i in range(len(reserve)):
                 self.renderer.highlight_enemy(i)
+            self._target_focus = 0
+            self._paint_target_focus()
 
         elif self._pending_input_mode == "item":
             # Show item selection UI (uses player inventory; ally turns use same items)
@@ -1592,9 +1628,66 @@ class CombatScreen(BaseScreen):
             self.renderer.hide_target_indicators()
             self.action_panel.set_target_mode(False)
             self.action_panel.disable_all()
+            self._target_focus = 0
             # Clear switch mode flag on next refresh
             if self._pending_input_mode == "ally_switch" and self.player:
                 self.player["_ally_switch_mode"] = False
+
+    # ── Target outline navigation ────────────────────────────────────────────
+
+    def _target_frame_order(self):
+        """Frame indices that can be picked, in badge order."""
+        return sorted(self._target_index_map)
+
+    def _set_target_focus(self, index: int):
+        """Outline the target at `index` (-1 = last) without confirming it."""
+        frames = self._target_frame_order()
+        if not frames:
+            return
+        self._target_focus = index % len(frames)
+        self._paint_target_focus()
+
+    def _move_target_focus(self, delta: int):
+        """Move the target outline by `delta`, wrapping around."""
+        self._set_target_focus((self._target_focus or 0) + delta)
+
+    def _paint_target_focus(self):
+        """Draw the thin focus ring on the outlined target.
+
+        All selectable cards keep their red target ring; the one Enter would
+        confirm gets the same white 1px-style outline as the other screens
+        (3px here so it reads against the red ring).
+        """
+        frames = self._target_frame_order()
+        if not frames:
+            return
+        self._target_focus = (self._target_focus or 0) % len(frames)
+        use_party = self._pending_input_mode == "ally_target"
+        for pos, index in enumerate(frames):
+            frame = (self.renderer.get_party_frame(index) if use_party
+                     else self.renderer.get_enemy_frame(index))
+            if frame is None:
+                continue
+            focused = pos == self._target_focus
+            try:
+                frame.config(
+                    highlightbackground=(Theme.TEXT_HEADER if focused
+                                         else Theme.ACCENT),
+                    highlightthickness=(3 if focused else 2),
+                )
+            except tk.TclError:
+                pass
+
+    def _confirm_target_focus(self):
+        """Pick the outlined target (same path as clicking it)."""
+        frames = self._target_frame_order()
+        if not frames:
+            return
+        index = frames[self._target_focus % len(frames)]
+        if self._pending_input_mode == "ally_target":
+            self._on_party_click(index)
+        else:
+            self._on_enemy_click(index)
 
     def _on_party_click(self, index: int):
         """Player clicked a party member (ally target selection).
@@ -1609,6 +1702,7 @@ class CombatScreen(BaseScreen):
             self.renderer.hide_target_indicators()
             self.action_panel.set_target_mode(False)
             self.action_panel.disable_all()
+            self._target_focus = 0
 
     def _get_party_snapshot(self):
         """Return list of party member dicts: [player, ...allies]."""
@@ -1643,6 +1737,8 @@ class CombatScreen(BaseScreen):
         """Pack the item slot at the action panel's reserved height."""
         self.item_frame.config(height=self.action_panel.reserved_height)
         self.item_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        # Preselect the first item so arrows/Enter work without a click.
+        self._select_item_display(0)
 
     def _show_item_selection(self):
         """Populate and show the item selection columns."""
@@ -1736,6 +1832,55 @@ class CombatScreen(BaseScreen):
         """Player cancelled item selection."""
         self.io.send_input("0")
         self.item_frame.pack_forget()
+
+    # ── Item list keyboard navigation ────────────────────────────────────────
+
+    def _item_selected_display(self):
+        """(row, column) of the current item selection, else (0, 0)."""
+        for col, box in enumerate((self.item_listbox, self.item_listbox2)):
+            sel = box.curselection()
+            if sel:
+                return sel[0], col
+        return 0, 0
+
+    def _select_item_display(self, display_idx: int):
+        """Select and reveal one entry by its row-major display index."""
+        count = getattr(self, "_item_entry_count", 0)
+        if count <= 0 or not (0 <= display_idx < count):
+            return
+        row, col = divmod(display_idx, 2)
+        boxes = (self.item_listbox, self.item_listbox2)
+        for index, box in enumerate(boxes):
+            box.selection_clear(0, tk.END)
+            if index == col:
+                box.selection_set(row)
+                box.activate(row)
+                box.see(row)
+        self.item_listbox.see(row)
+        self.item_listbox2.see(row)
+
+    def _move_item_focus(self, keysym: str, shift: bool = False):
+        """Move the item selection with arrows/Tab (columns read 1,2 / 3,4)."""
+        count = getattr(self, "_item_entry_count", 0)
+        if count <= 0:
+            return
+        row, col = self._item_selected_display()
+        display = row * 2 + col
+        if keysym in ("Up", "ISO_Left_Tab"):
+            display -= 2
+        elif keysym == "Down":
+            display += 2
+        elif keysym == "Left":
+            display -= 1
+        elif keysym == "Right":
+            display += 1
+        elif keysym == "Tab":
+            display += -1 if shift else 1
+        elif keysym == "Home":
+            display = 0
+        elif keysym == "End":
+            display = count - 1
+        self._select_item_display(max(0, min(display, count - 1)))
 
     # ── HUD refresh ───────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@ A text-based dungeon crawler RPG built in Python with a tkinter GUI.
 
 ## Overview
 
-**Pandemonium** is a text RPG where you explore dangerous dungeons, manage a growing adventuring party, build relationships with cities, and face increasingly powerful foes — including 15 epic superbosses that change the battlefield with unique mechanics. The ultimate endgame challenge awaits in the **Pandemonium** dungeon itself: a crystalline hell where every floor curses you with escalating corruption.
+**Pandemonium** is a text RPG where you explore dangerous dungeons, manage a growing adventuring party, build relationships with cities, and face increasingly powerful foes — including 16 epic superbosses that change the battlefield with unique mechanics. The ultimate endgame challenge awaits in the **Pandemonium** dungeon itself: a crystalline hell where every floor curses you with escalating corruption.
 
 You start as a fresh adventurer in the city of **Solmere** and gradually unlock more cities, better gear, a house, monster-girl companions, and powerful abilities. Time passes realistically, affecting travel danger, encounter rates, and inn prices. Every choice matters.
 
@@ -288,36 +288,35 @@ Each city has its own **themed dungeon** with biome-appropriate enemies.
 
 ## Superboss System
 
-Pandemonium features **15 mechanically unique superbosses** across three encounter pools. Every superboss is a multi-phase fight with signature gimmicks, custom HUD effects, and unique drops.
+Pandemonium features **16 mechanically unique superbosses** across three encounter pools. Every superboss is a multi-phase fight with signature gimmicks, custom HUD effects, and unique drops. Each boss's **enemy page** carries its full phase rules, action patterns, tactics and drop list.
 
-### Global Pool (8 Superbosses)
+### Global Pool (9 Superbosses)
 
-Every **20th floor** in standard dungeons pits you against one of 8 superbosses drawn from a shuffled pool:
+Every **20th floor** in standard dungeons pits you against one of 9 superbosses drawn from a shuffled pool:
 
 | # | Superboss | Theme | Signature Mechanic | Unique Drop |
 |---|-----------|-------|--------------------|----------------|
-| 1 | **Broodmother Vileheart** | Toxic lair | Spawns swarms of spiderlings; applies poison & web | Vileheart Pendant (poison-on-hit accessory) |
-| 2 | **Dream-Devouring Slitcurrent** | Dream distortion | Phases between Dream and Nightmare forms | **Abyss Fang** (dark damage weapon) |
-| 3 | **Sylvana** | Mirror dimension | Creates mirror clones of your party; reflective damage | — |
-| 4 | **Ignis** | Molten forge | Alternates between Heat Shield and Overheat phases; fire-elemental colossus | — |
-| 5 | **Yinglong** | Celestial dragon | Multi-element dragon with storm, wind, and light attacks; pin-stacking mechanic | **Tarnished Jade** (pin-stack armor) |
-| 6 | **Rientrante** | Reality glitch | Breaks the fourth wall; distorts the combat HUD; "Frostbound" / "Truth Unveiled" phases | — |
-| 7 | **The Everlong Ship** | Ghostly vessel | Spectral pirate crew; phases between spectral and corporeal | **Captain's Cutlass** (water damage weapon) |
-| 8 | **The Black Silence** | Silent workshop | Three-phase fight; 9 workshop attack patterns; Furioso ultimate; revives at 55% HP | **Certain Someone Black Gloves** (replaces all class skills) + Perception-Blocking Mask |
+| 1 | **Broodmother Vileheart** | Toxic lair | Spiderling swarms, poison/web, a ceiling phase and a one-time Heart Pulse interrupt | Vileheart Pendant (poison-on-hit accessory) |
+| 2 | **Dream-Devouring Slitcurrent** | Dream distortion | Dream Floatsam, Devour Focus → Nightmare Overload, Nightmarish Tide | **Abyss Fang** (dark damage weapon) |
+| 3 | **Sylvana** | Mirror dimension | Mirror copies with scrambled names; hitting one enrages her | **Decaying Aegis** (regrowing shield armor) + Cracked Mirror (key item) |
+| 4 | **Ignis** | Molten forge | Heat engine → Slag Purge, then Forge Intensifies → Final Form | — |
+| 5 | **Yinglong** | Celestial dragon | Heaven Pillars, a swallowed inner fight, and a Pinning Wedge in the final phase | **Tarnished Jade** (pin-stack armor) |
+| 6 | **Rientrante** | Reality glitch | Frozen Shell, Frost Shards, Truth Shield, and a five-round parley | — |
+| 7 | **The Everlong Ship** | Ghostly vessel | Ghostly Hull, parrot-marked cannon, ripostes, and a crew-death phase change | **Captain's Cutlass** (water damage weapon) |
+| 8 | **The Black Silence** | Silent workshop | 9 workshop attack patterns, revive at 55% HP, Furioso | **Certain Someone Black Gloves** (replaces all class skills) + Perception-Blocking Mask |
+| 9 | **Palette, the Chromatic Artisan** | Living canvas | Seven color stances, Paint bursts, Dual Palette, Signature at 10% HP | **Palette's Brush** + **Blank Canvas Shawl** |
 
 ### Pool Mechanics
-- Superbosses are drawn from a **shuffled pool** of all 8 so each one appears once before repeating.
+- Superbosses are drawn from a **shuffled pool** of all 9 so each one appears once before repeating.
 - The pool is seeded per character to ensure consistency across runs.
 - Superboss EXP reward: **500 + (floor × 50)**.
 - You **cannot flee** from superboss encounters.
 
 ### Pandemonium Exclusive
-- **Chrysalis, the Entangled One** — appears on Pandemonium Floor 20.
-- Three Temporal Aspects (Past/Present/Future) share an immortal health pool. Only the Present Aspect can be damaged — and only during **Paradox Fracture** windows.
+
+- **Chrysalis, the Entangled One** — appears on Pandemonium Floor 20. Three Temporal Aspects (Past/Present/Future), immortal shards and Paradox Fracture; full phase rules are on the **Chrysalis** enemy page.
 - Drops **Chronoweave Mantle** (temporal defense armor) and **Fractured Hourglass** (reusable consumable — reduces all your cooldowns by 1 as a free action; recharges in 3 turns).
-- **The White Knight of the Fallen Empire** — appears on Pandemonium Floor 40 (first visit only).
-- An Undead paladin of holy light with three phases of accuracy denial: a 55% passive dodge, telegraphed **Oathguard** states (70% dodge, up to 2 ripostes per round that brand attackers with **Expose**), then a 50% **skill dodge** in **Last Vigil**. States warn a turn ahead and end in a negative-dodge window — hold your burst for it.
-- Each Expose stack makes the Knight's attacks ignore 10% CON; 6 stacks on one hero triggers a sure-hit **Judgment Burst** (Defend halves), and three heroes carrying stacks flares a +25% damage oath. Phase bars are sealed at 65% / 30% HP so no burst can skip a phase.
+- **The White Knight of the Fallen Empire** — appears on Pandemonium Floor 40 (first visit only). Three phases of dodge, telegraphed Oathguard states and Expose; full rules are on the **White Knight** enemy page.
 - Drops **Last Oath** (unique rapier — basic attacks apply Expose, doubled on crits) on first victory.
 
 ### Wonderland Superbosses
@@ -327,10 +326,10 @@ Every **10th floor** in the Wonderland dungeon features its own unique superboss
 | Floor | Superboss | Theme | Unique Drop |
 |-------|-----------|-------|----------------|
 | 10 | **Queen of Hearts** | Royal Decrees, Card Soldiers, Temper Tantrum, Mercy Rule | Rose-Tinted Crown |
-| 20 | **Big Bad Wolf** | Swallow mechanic (removes allies), Huff and Puff AoE, 15% Enrage | Woodcutter's Broken Axe |
-| 30 | **Wicked Witch of the West** | 3-phase (Emerald Flame → Flying Fury with Monkeys → I'm Melting!), 2× water weakness | Wicked Witch's Hat, Broomstick |
-| 40 | **The Jabberwock** | 4-phase (Bewilderbeast → Manxome → Frabjous → Narrative Collapse), Alice-linked quest | Vorpal Blade Fragment |
-| 50 | **Mary Sue** | **Six-phase final boss** with Plot Armor (5 stacks stripped by damage variety), summons 4 shadow superbosses, Author's Wrath | **The Author's Pen** (+4 all stats in Wonderland) |
+| 20 | **Big Bad Wolf** | Swallow mechanic (removes allies), Huff and Puff AoE, 15% Enrage | Woodcutter's Broken Axe + Crimson Hood Scrap + Wolf's Tooth |
+| 30 | **Wicked Witch of the West** | 3-phase (Emerald Flame → Flying Fury with Monkeys → I'm Melting!), 2× water weakness | Wicked Witch's Hat, Broomstick, Emerald Flame Crystal, Monkey Wing |
+| 40 | **The Jabberwock** | 4-phase (Bewilderbeast → Manxome → Frabjous → Narrative Collapse), Alice-linked quest | Vorpal Blade (+ Fragment) + Frabjous Page (key) |
+| 50 | **Mary Sue** | **Six-phase final boss** with Plot Armor (5 stacks stripped by damage variety), summons 4 shadow superbosses, Author's Wrath | **The Author's Pen** (+4 all stats in Wonderland) + Mary Sue's Teardrop + Plot Hole Scrap |
 
 ---
 
@@ -493,14 +492,14 @@ Clear **Floor 20** once and the calendar itself becomes an opponent. One **Warde
 | 🍂 Autumn | **Warden of the Falling Crown** | Wind | Thunder | **Harvest** | Huskling | Savanna / Forest / Temperate |
 | ❄ Winter | **Warden of the Last Light** | Water | Fire | **Frostbite** | Frostling | Tundra / Mountain |
 
-The **weakness never scales** (always ×0.70 damage taken): a water party hits Summer hard at every Echo. Every other resistance climbs with the Echo and stops at a cap.
+The **weakness never scales**: the seasonal weakness is always a **0.70 resistance rating**, which is **×1.30 damage taken**. A water party hits Summer hard at every Echo. Every other resistance climbs with the Echo and stops at a cap. (Resistance ratings convert to damage taken as **2 − rating**; 1.00 is neutral.)
 
 ### The four mechanics
-Each Warden runs a ten-effect ladder — **Echo N unlocks effect N+1**, so every kill hands you a visibly new problem. Past Echo 10 the ladder is complete and the numbers keep scaling.
+Each Warden runs a ten-effect ladder — **effect 1 at Echo 0, effect 2 at Echo 1, … effect 10 at Echo 9**. Every kill hands you a visibly new problem; from Echo 9 the ladder is complete and only the numbers keep scaling. Full per-Echo ladders are on each Warden's enemy page.
 
-- **Bloom (Spring)** — Bloom stacks buff the Warden (+damage, +armor); at the cap it consumes them to heal and, from Echo 2, to **Poison** you. Later tiers poison the whole party, summon Bloomlings and finally turn the cap-heal into an AoE Overbloom.
-- **Heat (Summer)** — Heat stacks raise damage and initiative; at the cap the Warden vents them as **Solar Flare**, AoE fire that later ignores armour and eventually fires **twice** (Second Sun). From Echo 2 its attacks **Burn**.
-- **Harvest (Autumn)** — attacks apply **Bleed**, and each bleeding hero who acts feeds the Warden. At cap it spends the stacks on **Reap** (heavy single-target, lifesteal) — and the final tier turns Reap into a party-wide **Final Harvest**.
+- **Bloom (Spring)** — Bloom stacks buff the Warden (+damage, +armor); at the cap it consumes them to heal and, from the second effect, to **Poison** you. Later tiers poison the whole party, summon Bloomlings and finally turn the cap-heal into an AoE Overbloom.
+- **Heat (Summer)** — Heat stacks raise damage and initiative; at the cap the Warden vents them as **Solar Flare**, AoE fire that later ignores armour and eventually fires **twice** (Second Sun). From the second effect its attacks **Burn**.
+- **Harvest (Autumn)** — attacks apply **Bleed**, and each bleeding hero feeds the Warden. At cap it spends the stacks on **Reap** (heavy single-target, lifesteal) — and the final tier turns Reap into a party-wide **Final Harvest**.
 - **Frostbite (Winter)** — Frostbite is applied to a random hero every round (−DEX, water damage); three stacks **Freeze**. It also builds **Ice Armor**: fire damage strips a layer, so a fire party is doing two jobs at once (and later **Shatter** punishes the hero who melts a layer).
 
 ### The arena clock
@@ -508,10 +507,10 @@ Every round = 1 block, and the Warden's behaviour follows the projected hour:
 
 | Phase | Blocks | Behaviour |
 |---|---|---|
-| ☀ **Morning** | 0–7 | **Dormant** — reduced damage, no extra actions |
-| 🌤 **Noon** | 8–15 | **Stirs** — ×1.10 damage, and **2 adds** join the fight |
-| 🌙 **Night** | 16–23 | **Rampages** — ×1.30 damage, **2 actions per round**, **4 adds** |
-| 🌅 **Dawn** | rolling to 0 | **Dawn Lull** — ×0.85 damage and −20% armour for 2 rounds, adds cleared |
+| ☀ **Morning** | 0–7 | **Dormant** — ×1.00 damage, no extra actions, no bonus initiative |
+| 🌤 **Noon** | 8–15 | **Stirs** — ×1.10 damage, +10% initiative, and **2 adds** join the fight |
+| 🌙 **Night** | 16–23 | **Rampages** — ×1.30 damage, +20% initiative, **2 actions per round**, **4 adds**, **+25% mechanic status chance** |
+| 🌅 **Dawn** | rolling to 0 | **Dawn Lull** — ×0.85 damage and −20% armour for 2 rounds, adds cleared; the Morning ×1.00 profile resumes after it |
 
 Standard enemy rules apply: two accessory slots per actor, elemental weakness is worth more than raw stats, and the unique trophies below work for **allies** as well as your character.
 
@@ -527,7 +526,7 @@ Standard enemy rules apply: two accessory slots per actor, elemental weakness is
 | 10 | 80 | 10,120 | 109 | 26 | 10 effects (max) | 2,900 | 4,500 |
 | 20 | 80 | 17,480 | 134 | 31 | ranks only | 3,900 | 6,000 |
 
-Levels stop at 80; HP, damage, armour and mechanic rank keep climbing, so deep Echoes are a pure endurance test.
+Levels stop at 80; HP, damage, armour and mechanic rank keep climbing, so deep Echoes are a pure endurance test. Echo 9 completes the mechanic ladder; after that only the numbers scale.
 
 ### Loot — every kill
 - **Gold** — `400 + 25 × (level − 20) + 100 × Echo`, plus your daily gold bonus and title gold-find. **+25% if the killing blow lands at Night.**
@@ -1278,7 +1277,7 @@ Unique weapons and gear drop from specific superbosses:
 | **Chronoweave Mantle** | Chrysalis (Pandemonium Floor 20 only) | Temporal armor |
 | **The Author's Pen** | Mary Sue (Wonderland Floor 50) | +4 all stats accessory |
 
-Superbosses are drawn from a shuffled pool of 8 — you'll face each one eventually as you clear more 20th floors across different cities. See the [Superboss System](#superboss-system) for the full roster.
+Superbosses are drawn from a shuffled pool of 9 — you'll face each one eventually as you clear more 20th floors across different cities. See the [Superboss System](#superboss-system) for the full roster.
 
 ### "How do I unlock the Pandemonium dungeon?"
 Clear **Floor 40** in dungeons across at least **4 unique biomes** (e.g., Temperate, Swamp, Desert, Mountain). Once unlocked, travel to the **Isle of Glass** and enter Pandemonium from there.
