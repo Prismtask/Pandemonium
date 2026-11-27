@@ -3824,8 +3824,10 @@ class WorldMapScreen(BaseScreen):
         if prev_floor is not None:
             self.player["floor"] = prev_floor
         self.player.pop("_combat_floor_label", None)
-        for key in ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index"):
+        for key in ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index",
+                    "saved_wild_graph"):
             self.player.pop(key, None)
+        self.player.pop("_pdg_multipliers", None)
         self.player.pop("pandemonium_mode", None)
         self.player["cutlass_high_tide_stacks"] = 0
         self.player.pop("cutlass_high_tide_floor", None)

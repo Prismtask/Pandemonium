@@ -637,17 +637,31 @@ class DungeonScreen(FacilityScreen):
         """Override to intercept render_ascii_map and render_party_status.
 
         render_ascii_map → updates the Map panel.
+        dungeon_graph.render_map → updates the same Map panel for PDG floors.
         render_party_status → updates the Party Status panel.
         prompt_acquire_item → intercepted for full-backpack GUI dialog.
         """
         import pandemonium.world.dungeon_rooms as dungeon_rooms
+        # Local import: patched on this thread; keeps the PDG module out of
+        # the startup fast path until a dungeon actually runs.
+        import pandemonium.world.dungeon_graph as dungeon_graph
         import pandemonium.inventory.legacy_ui as legacy_ui
         _orig_render = dungeon_rooms.render_ascii_map
         _orig_party = dungeon_rooms.render_party_status
         _orig_eh_status = dungeon_rooms.render_event_horizon_status
+        _orig_graph_render = dungeon_graph.render_map
 
         def _gui_render(rooms, explored, current_room_idx, floor, player=None):
             map_str = _orig_render(rooms, explored, current_room_idx, floor, player=player)
+            if map_str:
+                self._update_map(map_str)
+            return ""  # panel shows it — suppress duplicate log output
+
+        def _gui_graph_map(graph, player=None, force_reveal=False):
+            # PDG floors share the same Map panel (section 10.1 is not
+            # implemented yet — the current screen is the demo target).
+            map_str = _orig_graph_render(
+                graph, player=player, force_reveal=force_reveal)
             if map_str:
                 self._update_map(map_str)
             return ""  # panel shows it — suppress duplicate log output
@@ -667,6 +681,7 @@ class DungeonScreen(FacilityScreen):
         dungeon_rooms.render_ascii_map = _gui_render
         dungeon_rooms.render_party_status = _gui_party
         dungeon_rooms.render_event_horizon_status = _gui_eh_status
+        dungeon_graph.render_map = _gui_graph_map
 
         # ── Intercept full-backpack prompt ───────────────────────────────
         _orig_acquire = legacy_ui.prompt_acquire_item
@@ -712,6 +727,7 @@ class DungeonScreen(FacilityScreen):
             dungeon_rooms.render_ascii_map = _orig_render
             dungeon_rooms.render_party_status = _orig_party
             dungeon_rooms.render_event_horizon_status = _orig_eh_status
+            dungeon_graph.render_map = _orig_graph_render
             legacy_ui.prompt_acquire_item = _orig_acquire
 
     def _show_acquire_dialog(self, player, item):

@@ -1278,8 +1278,10 @@ class CityScreen(BaseScreen):
         # A stale wild-dungeon id must never hijack a city-floor run
         self.player.pop("wild_dungeon_id", None)
         self.player.pop("_combat_floor_label", None)
-        for key in ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index"):
+        for key in ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index",
+                    "saved_wild_graph"):
             self.player.pop(key, None)
+        self.player.pop("_pdg_multipliers", None)
         # A stale Event Horizon gate must never hijack a city-floor run
         # (the suspended run state itself is preserved).
         self.player.pop("_eh_in_run", None)

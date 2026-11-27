@@ -145,8 +145,10 @@ def apply_death_penalty(player):
     player.pop("wild_dungeon_id", None)
     player.pop("_wild_prev_floor", None)
     player.pop("_combat_floor_label", None)
-    for key in ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index"):
+    for key in ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index",
+                "saved_wild_graph"):
         player.pop(key, None)
+    player.pop("_pdg_multipliers", None)
 
     # Seasonal map boss: transients only — the Warden (and its Echo HP)
     # survives a death (docs/map_boss_design.md §11).

@@ -42,6 +42,7 @@ from pandemonium.progression.leveling import (gain_exp, gain_exp_ally, get_share
 from pandemonium.world.wild_dungeons import (get_wild_dungeon, complete_wild_dungeon,
                            record_completion_event)
 import pandemonium.world.dungeon_rooms as dungeon_rooms
+import pandemonium.world.dungeon_graph as dungeon_graph
 from pandemonium.world.enemy_suffixes import roll_room_suffix
 from pandemonium.world.dungeon_rooms import (
     pick_non_combat_type,
@@ -1227,6 +1228,21 @@ def _explore_wild_dungeon(player, combat_override=None, superboss_override=None,
     _tprint("=" * 50)
     _tpause("Press Enter to descend...")
 
+    # PDG demo: temperate wild ruins run the procedural graph floor
+    # (docs/dungeon_graph_design.md). Every other biome keeps the linear loop.
+    pdg_profile = dungeon_graph.pdg_profile_for_wild(region)
+    if pdg_profile:
+        saved_graph = player.get("saved_wild_graph")
+        has_resume = (isinstance(saved_graph, dict)
+                      and saved_graph.get("dungeon_id") == dungeon_id)
+        if not has_resume:
+            player.pop("saved_wild_graph", None)
+            player["_pdg_multipliers"] = []
+        elif not isinstance(player.get("_pdg_multipliers"), list):
+            player["_pdg_multipliers"] = []
+    else:
+        player.pop("_pdg_multipliers", None)
+
     while True:
         # Re-fetch each floor — the ruin can expire mid-run on day rollover
         dungeon = get_wild_dungeon(player, dungeon_id)
@@ -1241,6 +1257,21 @@ def _explore_wild_dungeon(player, combat_override=None, superboss_override=None,
         # (combat() receives floor=level for scaling). Cleared on exit by
         # _wild_restore_floor().
         player["_combat_floor_label"] = f"{floor_num}/{total_floors}"
+
+        # ── PDG demo floor (temperate wild ruins) ───────────────────────
+        if pdg_profile:
+            result = _run_wild_pdg_floor(
+                player, dungeon_id, level, region, name,
+                floor_num, total_floors, combat_override, pdg_profile)
+            if result != "floor_clear":
+                return result
+            result = _wild_finish_floor(
+                player, dungeon_id, floor_num, total_floors, name,
+                pdg_profile=pdg_profile,
+                floor_clear_override=floor_clear_override)
+            if result == "continue":
+                continue
+            return result
 
         # ── Room set (with per-floor resume support) ────────────────────
         saved_floor = player.get("saved_wild_floor")
@@ -1418,84 +1449,155 @@ def _explore_wild_dungeon(player, combat_override=None, superboss_override=None,
                             _tprint(f"  {display_name(ally)}'s sleep buff wears off.")
 
         # ── Floor cleared ────────────────────────────────────────────────
-        dungeon = get_wild_dungeon(player, dungeon_id)
-        if dungeon is None:
-            return _wild_crumble_exit(player)
-        dungeon["highest_floor_cleared"] = max(
-            int(dungeon.get("highest_floor_cleared", 0)), floor_num)
-        _clear_wild_save(player)
-
-        # Floor-based buffs + blessings expire on the transition (parity)
-        for buff in player.get("active_buffs", [])[:]:
-            if buff.get("type") == "floor_buff":
-                buff["remaining"] -= 1
-                if buff["remaining"] <= 0:
-                    player["active_buffs"].remove(buff)
-                    _tprint(f"\nYour {buff.get('stat', 'floor')} floor buff wears off.")
-        for ally in player.get("allies", []):
-            for buff in ally.get("active_buffs", [])[:]:
-                if buff.get("type") == "floor_buff":
-                    buff["remaining"] -= 1
-                    if buff["remaining"] <= 0:
-                        ally["active_buffs"].remove(buff)
-                        _tprint(f"  {display_name(ally)}'s "
-                                f"{buff.get('stat', 'floor')} buff wears off.")
-        orig_len = len(player.get("active_buffs", []))
-        player["active_buffs"] = [
-            b for b in player.get("active_buffs", []) if b.get("type") != "blessing"]
-        if len(player["active_buffs"]) < orig_len:
-            _tprint("\nYour divine temple blessing has worn off as you "
-                    "transition floors.")
-        if player.get("training_buff"):
-            player["training_buff"]["expires_after"] -= 1
-            if player["training_buff"]["expires_after"] <= 0:
-                del player["training_buff"]
-                _tprint("\nYour barracks training exhaustion catches up to you. "
-                        "The strength buff has worn off.")
-
-        advance_time(player, 60)
-        player["current_hp"] = player_max_hp(player)
-        for ally in player.get("allies", []):
-            ally["current_hp"] = ally["max_hp"]
-        save_game(player)
-
-        if floor_num >= total_floors:
-            return _wild_victory(player, dungeon_id, dungeon)
-
-        _tprint(f"\n  Floor {floor_num} cleared! Fully healed. "
-                f"{total_floors - floor_num} floor(s) remain...")
-
-        # Floor-clear window (GUI) with Continue / Return to city / Save &
-        # quit. Without a GUI override (headless tests) the run simply continues.
-        if floor_clear_override is not None:
-            try:
-                choice = floor_clear_override(
-                    player, floor_num=floor_num,
-                    total_floors=total_floors, name=name) or "continue"
-            except Exception:
-                choice = "continue"  # a UI failure must never block the run
-            if choice == "city":
-                return _wild_exit_flee(
-                    player, dungeon_id,
-                    message="You leave the ruin and return to the nearest city.")
-            if choice == "save_exit":
-                _wild_restore_floor(player)
-                save_game(player)
-                _tprint("Game saved. Exiting to menu.")
-                return "save_exit"
-        else:
-            _tpause("Press Enter to descend to the next floor...")
+        result = _wild_finish_floor(
+            player, dungeon_id, floor_num, total_floors, name,
+            pdg_profile=pdg_profile,
+            floor_clear_override=floor_clear_override)
+        if result == "continue":
+            continue
+        return result
 
 
 # ── Wild dungeon exit/victory helpers ────────────────────────────────────────
 
-_WILD_SAVE_KEYS = ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index")
+_WILD_SAVE_KEYS = ("saved_wild_floor", "saved_wild_rooms", "saved_wild_room_index",
+                   "saved_wild_graph")
 
 
 def _clear_wild_save(player):
     """Wipe wild-dungeon resume state (per-floor room checkpoints)."""
     for key in _WILD_SAVE_KEYS:
         player.pop(key, None)
+
+
+def _run_wild_pdg_floor(player, dungeon_id, level, region, name, floor_num,
+                        total_floors, combat_override, profile_id):
+    """Run one PDG floor and translate its result into wild-run statuses."""
+    saved = player.get("saved_wild_graph")
+    resume_graph = None
+    if (isinstance(saved, dict)
+            and saved.get("dungeon_id") == dungeon_id
+            and int(saved.get("floor", 0) or 0) == floor_num):
+        resume_graph = saved.get("graph")
+    elif "saved_wild_graph" in player:
+        player.pop("saved_wild_graph", None)  # stale floor checkpoint
+
+    status = dungeon_graph.run_pdg_floor(
+        player,
+        level=level,
+        region=region,
+        name=name,
+        floor_num=floor_num,
+        total_floors=total_floors,
+        combat_override=combat_override,
+        saved_graph=resume_graph,
+        room_reward_fn=_wild_room_victory_rewards,
+        profile_id=profile_id,
+        dungeon_id=dungeon_id,
+    )
+
+    if status == "dead":
+        return _wild_exit_dead(player, dungeon_id)
+    if status == "fled":
+        return _wild_exit_flee(
+            player, dungeon_id,
+            message="You leave the ruin and return to the nearest city.")
+    if status == "timeout":
+        return _wild_exit_interrupted(player, dungeon_id, "timeout")
+    if status == "save_exit":
+        _wild_restore_floor(player)
+        save_game(player)
+        _tprint("Game saved. Exiting to menu.")
+        return "save_exit"
+    if status != "floor_clear":
+        return _wild_exit_interrupted(player, dungeon_id, status)
+    return "floor_clear"
+
+
+def _wild_finish_floor(player, dungeon_id, floor_num, total_floors, name,
+                       pdg_profile=None, floor_clear_override=None):
+    """Shared floor-clear transition for linear and PDG wild floors."""
+    dungeon = get_wild_dungeon(player, dungeon_id)
+    if dungeon is None:
+        return _wild_crumble_exit(player)
+    dungeon["highest_floor_cleared"] = max(
+        int(dungeon.get("highest_floor_cleared", 0)), floor_num)
+    _clear_wild_save(player)
+
+    # Floor-based buffs + blessings expire on the transition (parity)
+    for buff in player.get("active_buffs", [])[:]:
+        if buff.get("type") == "floor_buff":
+            buff["remaining"] -= 1
+            if buff["remaining"] <= 0:
+                player["active_buffs"].remove(buff)
+                _tprint(f"\nYour {buff.get('stat', 'floor')} floor buff wears off.")
+    for ally in player.get("allies", []):
+        for buff in ally.get("active_buffs", [])[:]:
+            if buff.get("type") == "floor_buff":
+                buff["remaining"] -= 1
+                if buff["remaining"] <= 0:
+                    ally["active_buffs"].remove(buff)
+                    _tprint(f"  {display_name(ally)}'s "
+                            f"{buff.get('stat', 'floor')} buff wears off.")
+    orig_len = len(player.get("active_buffs", []))
+    player["active_buffs"] = [
+        b for b in player.get("active_buffs", []) if b.get("type") != "blessing"]
+    if len(player["active_buffs"]) < orig_len:
+        _tprint("\nYour divine temple blessing has worn off as you "
+                "transition floors.")
+    if player.get("training_buff"):
+        player["training_buff"]["expires_after"] -= 1
+        if player["training_buff"]["expires_after"] <= 0:
+            del player["training_buff"]
+            _tprint("\nYour barracks training exhaustion catches up to you. "
+                    "The strength buff has worn off.")
+
+    advance_time(player, 60)
+    if not pdg_profile:
+        # Linear floors keep the old full heal. PDG floors already applied
+        # the cleared-ratio heal in dungeon_graph.
+        player["current_hp"] = player_max_hp(player)
+        for ally in player.get("allies", []):
+            ally["current_hp"] = ally["max_hp"]
+    save_game(player)
+
+    if floor_num >= total_floors:
+        reward_mult = 1.0
+        if pdg_profile:
+            multipliers = player.get("_pdg_multipliers") or []
+            if multipliers:
+                reward_mult = sum(multipliers) / len(multipliers)
+        return _wild_victory(player, dungeon_id, dungeon,
+                             reward_mult=reward_mult)
+
+    if pdg_profile:
+        _tprint(f"\n  Floor {floor_num} cleared! "
+                f"{total_floors - floor_num} floor(s) remain...")
+    else:
+        _tprint(f"\n  Floor {floor_num} cleared! Fully healed. "
+                f"{total_floors - floor_num} floor(s) remain...")
+
+    # Floor-clear window (GUI) with Continue / Return to city / Save &
+    # quit. Without a GUI override (headless tests) the run simply continues.
+    if floor_clear_override is not None:
+        try:
+            choice = floor_clear_override(
+                player, floor_num=floor_num,
+                total_floors=total_floors, name=name) or "continue"
+        except Exception:
+            choice = "continue"  # a UI failure must never block the run
+        if choice == "city":
+            return _wild_exit_flee(
+                player, dungeon_id,
+                message="You leave the ruin and return to the nearest city.")
+        if choice == "save_exit":
+            _wild_restore_floor(player)
+            save_game(player)
+            _tprint("Game saved. Exiting to menu.")
+            return "save_exit"
+    else:
+        _tpause("Press Enter to descend to the next floor...")
+    return "continue"
 
 
 def _wild_restore_floor(player):
@@ -1521,6 +1623,7 @@ def _wild_reset_combat_state(player):
     end_pandemonium_run(player)
     player["cutlass_high_tide_stacks"] = 0
     player.pop("cutlass_high_tide_floor", None)
+    player.pop("_pdg_multipliers", None)
 
 
 def _wild_mark_attempted(player, dungeon_id):
@@ -1618,7 +1721,7 @@ def _wild_crumble_exit(player):
     return "fled"
 
 
-def _wild_victory(player, dungeon_id, dungeon):
+def _wild_victory(player, dungeon_id, dungeon, reward_mult=1.0):
     """Grant gold/XP + the previewed reward pool; mark the ruin conquered."""
     from pandemonium.inventory.legacy_ui import prompt_acquire_item
     name = dungeon.get("name", "Wild Dungeon")
@@ -1631,15 +1734,19 @@ def _wild_victory(player, dungeon_id, dungeon):
 
     # ── Gold + XP (scaled to level × floors; daily gold bonus applies) ──
     gold = int(level * total_floors * 25
-               * get_daily_bonus_multiplier(player, "gold_bonus"))
+               * get_daily_bonus_multiplier(player, "gold_bonus")
+               * max(0.0, float(reward_mult or 1.0)))
     gold = apply_gold_find(player, gold)
-    exp = level * total_floors * 40
+    exp = int(level * total_floors * 40 * max(0.0, float(reward_mult or 1.0)))
     player["gold"] = player.get("gold", 0) + gold
     gain_exp(player, exp)
     for ally in player.get("allies", []):
         if ally.get("current_hp", 0) > 0:
             gain_exp_ally(ally, exp)
     _tprint(f"\n  +{gold} gold  |  +{exp} XP to you and your allies")
+    if abs(float(reward_mult) - 1.0) > 1e-6:
+        _tprint(f"  PDG reward multiplier: x{reward_mult:.2f} "
+                f"(average floor clear)")
 
     # ── Claim the previewed reward pool ─────────────────────────────────
     obtained = []

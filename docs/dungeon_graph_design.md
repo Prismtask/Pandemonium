@@ -1,5 +1,9 @@
-# Procedural Dungeon Graph (PDG) — Design Proposal (ON HOLD UNTIL FURTHER DISCUSSION)
-**Status:** Proposal — decisions 1–11 locked 2026-11-12; no code changes yet. 
+# Procedural Dungeon Graph (PDG) — Design Proposal
+**Status:** Demo implemented 2026-11-27 — temperate wild ruins run the graph loop
+(`world/dungeon_graph.py`, `resources/dungeon_graph_profiles.py`); the §10.1
+layout revision is intentionally not implemented yet and the existing
+DungeonScreen Map panel renders the ASCII graph. Decisions 1–11 locked
+2026-11-12.
 **Scope:** Replace the linear 10-room city-dungeon floor with a per-floor node graph
 (rooms = nodes, corridors = edges), so floors support route choice, skippable
 services, and per-dungeon topology flavor while preserving the existing block-time
