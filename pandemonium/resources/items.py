@@ -553,6 +553,10 @@ ITEMS = {
     # Stun Bomb is a pure control tool: no damage, so it can never
     # accidentally KO a low-HP monster girl the player is trying to net.
     "stun_bomb":         {"name": "Stun Bomb",         "type": "utility",    "stun_chance": 0.6},
+    # Sleep Bomb is pure control too: no damage, so it never wakes the
+    # target it just put down. Direct attacks still break the sleep, and
+    # every landed sleep hardens the target against the next one.
+    "sleep_bomb":        {"name": "Sleep Bomb",        "type": "utility",    "sleep_chance": 0.6, "sleep_duration": 2},
     "flash_powder":      {"name": "Flash Powder",      "type": "utility",    "escape_bonus": 12, "blind_enemy": True},
     "throwing_knife":    {"name": "Throwing Knife",    "type": "utility",    "base_power": 14, "armor_pierce": 2},
     "curse_cleansing_scroll": {"name": "Scroll of Cleansing", "type": "consumable", "cure_curse": True},

@@ -7,7 +7,9 @@ three immortal linked shards, Paradox Fracture vulnerability mechanic.
 
 import random
 from pandemonium.combat.stats import enemy_stats
-from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    clamp_phase_hp, get_boss, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import (
     apply_burn_to_player, apply_bleed, apply_momentum, clear_momentum, get_momentum_stacks,
     detonate_burn, detonate_bleed,
@@ -25,11 +27,16 @@ class _ParadoxFractureDict(dict):
     """Tiny dict wrapper: intercepts hp reductions to apply Paradox Fracture multiplier.
 
     When hp is set to a lower value, the decrease is amplified by the
-    current Paradox Fracture stacks from the context.
+    current Paradox Fracture stacks from the context. HP is then clamped to
+    the current phase floor so the 66% / 33% transitions cannot be skipped.
     """
+    PHASE_GATES = {1: 0.66, 2: 0.33}
+
     def __init__(self, base_dict, ctx_ref):
         super().__init__(base_dict)
         self._ctx = ctx_ref  # Reference to mutable context dict
+        self._phase_gate_round = None
+        self._phase_gate_phase = None
 
     def __setitem__(self, key, value):
         if key == "hp" and value < self.get("hp", 0):
@@ -37,8 +44,12 @@ class _ParadoxFractureDict(dict):
             if pf > 0:
                 diff = self.get("hp", 0) - value
                 amplified = int(diff * (1.0 + pf * 0.10))
-                super().__setitem__(key, self.get("hp", 0) - amplified)
-                return
+                value = self.get("hp", 0) - amplified
+        if key == "hp":
+            value = clamp_phase_hp(
+                value, boss=self, context=self._ctx,
+                gates=self.PHASE_GATES, label="Chrysalis", state=self,
+            )
         super().__setitem__(key, value)
 
 

@@ -3,10 +3,13 @@
 # MECHANIC OVERVIEW:
 # ─────────────────
 # Phase 1 (Crew Endures)
-#   • Captain + 4 random crew members. Captain takes heavily reduced damage
-#     via a Ghostly Hull that scales with remaining crew morale.
+#   • Captain + 3 random crew + 1 Chaplain (support), the 5-enemy arena cap.
+#     The Captain takes heavily reduced damage via a Ghostly Hull that scales
+#     with remaining crew morale.
 #   • Each defeated crew member reduces the Captain's damage reduction by 10%.
 #   • When a crew member falls, a new one immediately boards.
+#   • The Chaplain mends the most wounded crew member (WIS-scaled) or chants
+#     +1 STR / +1 DEX over the crew when nobody is hurt.
 #   • If the Captain is attacked, he ripostes (max 2/turn).
 #   • The Captain's Parrot marks one party member per round. If that target
 #     does not Defend on their turn, a cannon fires at round-end for heavy
@@ -20,24 +23,40 @@
 
 import random
 from pandemonium.combat.stats import enemy_stats
+from pandemonium.combat.enemy_scaling import debuff_chance, heal_multiplier
 from pandemonium.combat.combat_ui import print_combat_hud
 from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
 from pandemonium.combat.ally import get_active_allies
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
+from pandemonium.combat.status_effects import apply_healing
 from pandemonium.resources.items import build_item
 
 
 BOSS_KEY = "captain_everlong_ship"
+SUPPORT_CREW_KEY = "chaplain_everlong"
 CREW_KEYS = [
     "seaman_everlong",
     "gunner_everlong",
     "brawler_everlong",
     "boatswain_everlong",
     "lookout_everlong",
+    SUPPORT_CREW_KEY,
 ]
+# The initial boarding party always includes the chaplain; replacements may roll any
+# crew key (including a second chaplain). Three fighters + one support keeps the
+# room at the 5-enemy arena cap (Captain + 4 crew) — superboss_common culls any
+# sixth foe at round start.
+BOARDING_CREW_KEYS = [key for key in CREW_KEYS if key != SUPPORT_CREW_KEY]
+INITIAL_CREW = 3
 
 CANNON_BASE_DAMAGE = 28
+
+# Support crew tuning (Wisdom scales the heal through heal_multiplier).
+CHAPLAIN_HEAL_PCT = 0.16
+CHAPLAIN_HEAL_COOLDOWN = 3
+CHAPLAIN_CHANT_COOLDOWN = 5
+CHAPLAIN_CHANT_CHANCE = 0.35
 
 
 class CaptainDict(dict):
@@ -63,6 +82,13 @@ def _spawn_crew(player, pool=None):
     crew["key"] = key
     crew["max_hp"] = crew["hp"]
     return crew
+
+
+def _spawn_initial_crew(player, enemies):
+    """Captain's boarding party: three fighters plus one support chaplain."""
+    enemies.append(_spawn_crew(player, [SUPPORT_CREW_KEY]))
+    for _ in range(INITIAL_CREW):
+        enemies.append(_spawn_crew(player, BOARDING_CREW_KEYS))
 
 
 
@@ -101,9 +127,8 @@ def combat_everlong_ship(player, floor=None, enemies=None):
         boss["captain_damage_reduction"] = 1.0  # 100% reduction
         boss["base_str_mod"] = boss.get("str_mod", 0)
         enemies = [boss]
-        # Spawn initial crew
-        for _ in range(4):
-            enemies.append(_spawn_crew(player))
+        # Spawn initial crew (chaplain + four fighters)
+        _spawn_initial_crew(player, enemies)
     else:
         # GUI mode: enemies list is shared with the CombatScreen renderer.
         # Find the boss, wrap in CaptainDict, and spawn crew if needed.
@@ -125,9 +150,8 @@ def combat_everlong_ship(player, floor=None, enemies=None):
             boss["captain_damage_reduction"] = 1.0
             boss["base_str_mod"] = boss.get("str_mod", 0)
             enemies.append(boss)
-        # Spawn initial crew alongside the shared boss
-        for _ in range(4):
-            enemies.append(_spawn_crew(player))
+        # Spawn initial crew alongside the shared boss (chaplain + four fighters)
+        _spawn_initial_crew(player, enemies)
 
     c_print("\nThe air grows thick with salt and rot. Through the fog,")
     c_print("a ghostly vessel materializes — its sails tattered, its")
@@ -148,6 +172,7 @@ def combat_everlong_ship(player, floor=None, enemies=None):
         "rally_active": False,
         "rally_turns_remaining": 0,
         "captain_actions": 1,
+        "chaplain_chant_cd": 0,
     }
 
     # ── on_player_hit_hook: Riposte when Captain is attacked ──────────
@@ -241,6 +266,65 @@ def combat_everlong_ship(player, floor=None, enemies=None):
             c_print("  🦜 [PARROT] You brace for the cannon shot — the cannonball SPLASHES harmlessly!")
         return action
 
+    # ── Chaplain support AI: mend the crew, or bless it ───────────────
+    def _chaplain_wounded(elist):
+        """Most badly hurt living crew below 70% (never the Captain)."""
+        lowest = None
+        lowest_frac = 0.70
+        for mate in elist:
+            if mate.get("key") not in CREW_KEYS or mate.get("hp", 0) <= 0:
+                continue
+            max_hp = max(1, int(mate.get("max_hp", 1) or 1))
+            frac = mate["hp"] / max_hp
+            if frac < lowest_frac:
+                lowest = mate
+                lowest_frac = frac
+        return lowest
+
+    def _chaplain_turn(enemy, ctx):
+        """Saltwater Benediction (heal) → Chant of the Deep (buff) → attack."""
+        if ctx.get("chaplain_chant_cd", 0) > 0:
+            ctx["chaplain_chant_cd"] -= 1
+        heal_cd = int(enemy.get("_chaplain_heal_cd", 0) or 0)
+        if heal_cd > 0:
+            enemy["_chaplain_heal_cd"] = heal_cd - 1
+
+        if heal_cd <= 0:
+            wounded = _chaplain_wounded(enemies)
+            if wounded is not None:
+                heal_pct = CHAPLAIN_HEAL_PCT * heal_multiplier(enemy)
+                amount = max(1, int(wounded["max_hp"] * heal_pct))
+                healed = apply_healing(wounded, amount, source=enemy)
+                enemy["_chaplain_heal_cd"] = CHAPLAIN_HEAL_COOLDOWN
+                if healed > 0:
+                    c_print(f"\n  ⚓ [SALTWATER BENEDICTION] The Chaplain of the Everlong "
+                            f"Ship mends {wounded['name']} for {healed} HP.")
+                elif healed < 0:
+                    c_print(f"\n  ⚓ [SALTWATER BENEDICTION] The blessing curdles — "
+                            f"{wounded['name']} takes {-healed} damage!")
+                else:
+                    c_print(f"\n  ⚓ [SALTWATER BENEDICTION] The Chaplain's prayer washes "
+                            f"over {wounded['name']} with no effect.")
+                return 1, True, None, 1.0, 0
+
+        if ctx.get("chaplain_chant_cd", 0) <= 0 and random.random() < CHAPLAIN_CHANT_CHANCE:
+            blessed = 0
+            for mate in enemies:
+                if mate.get("key") not in CREW_KEYS or mate.get("hp", 0) <= 0:
+                    continue
+                mate.setdefault("active_buffs", []).extend([
+                    {"stat": "Strength", "value": 1, "remaining": 2, "source": "chaplain_chant"},
+                    {"stat": "Dexterity", "value": 1, "remaining": 2, "source": "chaplain_chant"},
+                ])
+                blessed += 1
+            if blessed:
+                ctx["chaplain_chant_cd"] = CHAPLAIN_CHANT_COOLDOWN
+                c_print(f"\n  ⚓ [CHANT OF THE DEEP] The Chaplain's hymn steels {blessed} "
+                        f"crew — +1 STR, +1 DEX for 2 turns!")
+                return 1, True, None, 1.0, 0
+
+        return 1, False, None, 1.0, 0
+
     # ── enemy_turn_hook: Captain rally + crew behavior ───────────────
     def enemy_turn_hook(enemy, ctx, pl, p_con, defending, **kwargs):
         if enemy.get("key") == BOSS_KEY:
@@ -273,7 +357,7 @@ def combat_everlong_ship(player, floor=None, enemies=None):
 
             actions = ctx.get("captain_actions", 1)
             extra = None
-            if random.random() < 0.35:
+            if random.random() < debuff_chance(enemy, 0.35):
                 def captain_curse(e, p, dmg):
                     from pandemonium.combat.status_effects import apply_curse
                     if dmg > 0:
@@ -283,6 +367,10 @@ def combat_everlong_ship(player, floor=None, enemies=None):
                         return None
                 extra = captain_curse
             return actions, False, extra, 1.0, 0
+
+        # Support crew: the Chaplain heals or blesses instead of swinging.
+        if enemy.get("key") == SUPPORT_CREW_KEY:
+            return _chaplain_turn(enemy, ctx)
 
         # Crew behavior: standard undead attacks
         return 1, False, None, 1.0, 0

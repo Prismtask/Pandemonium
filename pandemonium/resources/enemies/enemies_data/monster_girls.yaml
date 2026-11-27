@@ -2072,7 +2072,7 @@ vampire_matriarch:
     Strength: 4
     Constitution: 6
     Dexterity: 8
-    Wisdom: 4
+    Wisdom: 6
     Learning: 4
     Charisma: 7
   boss: false

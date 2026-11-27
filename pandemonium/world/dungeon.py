@@ -15,6 +15,8 @@ from pandemonium.combat.enemy_skills import (
     ROLE_ATTACKER, ROLE_SUPPORTER, ROLE_VALUES, get_enemy_role,
 )
 from pandemonium.combat.stats import player_con_mod
+from pandemonium.combat.boss_styles import is_solo_boss
+from pandemonium.combat.ally import get_active_limit
 from pandemonium.combat.combat_ui import take_deferred_dialogue
 from pandemonium.combat.superboss.broodmother import combat_broodmother 
 from pandemonium.combat.superboss.slitcurrent import combat_slitcurrent
@@ -40,6 +42,7 @@ from pandemonium.progression.leveling import (gain_exp, gain_exp_ally, get_share
 from pandemonium.world.wild_dungeons import (get_wild_dungeon, complete_wild_dungeon,
                            record_completion_event)
 import pandemonium.world.dungeon_rooms as dungeon_rooms
+from pandemonium.world.enemy_suffixes import roll_room_suffix
 from pandemonium.world.dungeon_rooms import (
     pick_non_combat_type,
     handle_fountain_room,
@@ -118,6 +121,12 @@ def get_random_enemy_key(floor, boss=False, region=None, player=None,
         # Skip shadow copies — internal combat helpers, not real enemies
         if data.get("_shadow", False):
             continue
+        # Skip AI-disabled templates (map-boss Wardens, scripted arena
+        # bosses). Outside their arena they only basic-attack and carry
+        # map-boss stats (Warden: 1,000 HP / STR 30 at L20), so a random
+        # floor boss roll must never pick one.
+        if data.get("ai_disabled", False):
+            continue
         # Skip heroines — they are recruited via quests, not fought in dungeons
         if data.get("_heroine"):
             continue
@@ -133,8 +142,10 @@ def get_random_enemy_key(floor, boss=False, region=None, player=None,
 
         # Level constraints
         if boss:
-            # Boss: 1–3 levels above current floor
-            if not (data["level"] >= floor + 1 and data["level"] <= floor + 3):
+            # Boss: current floor to +3. Including the floor's own level keeps
+            # the 60F ceiling (and bands with no floor+1 template) supplied by
+            # a real boss instead of the any-level fallback.
+            if not (data["level"] >= floor and data["level"] <= floor + 3):
                 continue
         else:
             # Normal: progressively wider band as floor increases.
@@ -169,6 +180,8 @@ def get_random_enemy_key(floor, boss=False, region=None, player=None,
                 continue
             if data.get("_shadow", False):
                 continue
+            if data.get("ai_disabled", False):
+                continue
             if data.get("secondary_race") == "Storybook" and region != "wonderland":
                 continue
             if data.get("super_boss", False):
@@ -176,7 +189,7 @@ def get_random_enemy_key(floor, boss=False, region=None, player=None,
             if boss != data.get("boss", False):
                 continue
             if boss:
-                if not (data["level"] >= floor + 1 and data["level"] <= floor + 3):
+                if not (data["level"] >= floor and data["level"] <= floor + 3):
                     continue
             else:
                 upper_offset = min(floor, 3)
@@ -194,6 +207,7 @@ def get_random_enemy_key(floor, boss=False, region=None, player=None,
                 and not d.get("city_only", False)
                 and not d.get("_heroine")
                 and not d.get("_shadow", False)
+                and not d.get("ai_disabled", False)
                 and not d.get("super_boss", False)
                 and not (d.get("secondary_race") == "Storybook" and region != "wonderland")]
     
@@ -203,6 +217,7 @@ def get_random_enemy_key(floor, boss=False, region=None, player=None,
         pool = [k for k, d in ENEMIES.items() if not d.get("city_only", False)
                 and not d.get("_heroine")
                 and not d.get("_shadow", False)
+                and not d.get("ai_disabled", False)
                 and not d.get("super_boss", False)
                 and not (d.get("secondary_race") == "Storybook" and region != "wonderland")]
     
@@ -262,6 +277,111 @@ def _supporter_chance_for_floor(floor, count):
     return min(0.55, chance)
 
 
+# ── Encounter size curve ─────────────────────────────────────────────────────
+# Group size is a slow-moving probability distribution, not a hard cap. Each
+# row is (floor, weights for 1..5 enemies); rows are linearly interpolated so
+# the curve changes gradually floor to floor. Low counts fade out as higher
+# counts fade in: a 2-enemy room is common on floors 2-6 and rare by floor 40,
+# while 5-enemy rooms only become common in the 20s/30s. Floor 2 starts at
+# 35% two-enemy rooms; that weight declines as 3/4/5-enemy rooms arrive.
+_ENCOUNTER_SIZE_BANDS = (
+    # floor, (1 enemy, 2 enemies, 3, 4, 5)
+    (1,   (1.00, 0.00, 0.00, 0.00, 0.00)),
+    (2,   (0.65, 0.35, 0.00, 0.00, 0.00)),
+    (3,   (0.55, 0.35, 0.10, 0.00, 0.00)),
+    (4,   (0.46, 0.36, 0.16, 0.02, 0.00)),
+    (6,   (0.34, 0.34, 0.22, 0.08, 0.02)),
+    (8,   (0.26, 0.31, 0.25, 0.13, 0.05)),
+    (10,  (0.20, 0.28, 0.26, 0.17, 0.09)),
+    (14,  (0.14, 0.23, 0.26, 0.21, 0.16)),
+    (20,  (0.09, 0.17, 0.24, 0.26, 0.24)),
+    (30,  (0.05, 0.11, 0.19, 0.27, 0.38)),
+    (40,  (0.03, 0.08, 0.15, 0.26, 0.48)),
+    (60,  (0.02, 0.05, 0.12, 0.24, 0.57)),
+    (999, (0.02, 0.05, 0.12, 0.24, 0.57)),
+)
+
+# Each extra fieldable party member advances the size curve by this many
+# floors. A solo player sees the floor's base curve; a 4-actor party
+# (player + 3 allies) sees the curve of a floor 9 deeper.
+_PARTY_FLOOR_ADVANCE = 3
+
+# Groups larger than (party_size + 1) are multiplied by this for each extra
+# enemy — a soft cap, not a hard one. A solo player can still meet a 4- or
+# 5-enemy room, just rarely; a full 4-actor party never sees the penalty.
+_ENCOUNTER_SOFT_CAP_DECAY = 0.20
+
+_ENCOUNTER_SIZE_MAX = 5
+
+
+def _encounter_size_weights(floor):
+    """Linearly interpolate the encounter-size table at *floor*."""
+    bands = _ENCOUNTER_SIZE_BANDS
+    floor = max(1, int(floor))
+    if floor <= bands[0][0]:
+        return bands[0][1]
+    for (f0, w0), (f1, w1) in zip(bands, bands[1:]):
+        if floor <= f1:
+            span = max(1, f1 - f0)
+            t = (floor - f0) / span
+            return tuple(a + (b - a) * t for a, b in zip(w0, w1))
+    return bands[-1][1]
+
+
+def _encounter_party_size(player):
+    """Return 1 + fieldable front allies (1 = solo)."""
+    if player is None:
+        return 1
+    owned = len(player.get("allies", []))
+    return 1 + min(get_active_limit(player), owned)
+
+
+def _attach_room_suffix(room, floor):
+    """Roll one spawn-time suffix for a normal combat room.
+
+    The roll is weighted by floor depth and room size; the suffix is applied
+    to the enemy instance in combat()/CombatScreen, never here (the room only
+    stores keys). Boss rooms never call this. Names are passed so the roll
+    skips enemies whose name already contains the label ("Ancient Golem") or
+    whose prefixed name would overflow the HUD column.
+    """
+    enemies = room.get("enemies") or []
+    names = [ENEMIES.get(key, {}).get("name", key) for key in enemies]
+    roll = roll_room_suffix(floor, len(enemies), names=names)
+    if roll:
+        room["suffixes"] = {roll["index"]: roll["id"]}
+    return room
+
+
+def _roll_encounter_size(floor, party_size=1, boss_room=False):
+    """Roll a room's enemy count from the slow encounter-size curve.
+
+    The result is always within ``1..min(5, floor)``. ``boss_room`` shifts
+    the curve one floor deeper so a boss plus its entourage still reads as a
+    full room instead of a boss standing alone.
+    """
+    size_floor = int(floor) + _PARTY_FLOOR_ADVANCE * max(0, int(party_size) - 1)
+    if boss_room:
+        size_floor += 1
+    weights = list(_encounter_size_weights(size_floor))
+
+    # Soft party cap: discourage (never forbid) crowds beyond party + 1.
+    soft_cap = max(2, int(party_size) + 1)
+    for idx in range(len(weights)):
+        count = idx + 1
+        if count > soft_cap:
+            weights[idx] *= _ENCOUNTER_SOFT_CAP_DECAY ** (count - soft_cap)
+
+    # Absolute floor gate: floor 1 is always a single enemy, floor 2
+    # unlocks 2-enemy rooms, and so on (the old min(5, floor) rule).
+    max_count = min(_ENCOUNTER_SIZE_MAX, max(1, int(floor)))
+    weights = weights[:max_count]
+    total = sum(weights)
+    if total <= 0:
+        return max_count
+    return random.choices(range(1, max_count + 1), weights=weights, k=1)[0]
+
+
 def build_enemy_group(floor, count, region=None, player=None, band_lo=None):
     """Roll a role-balanced normal-enemy group.
 
@@ -304,6 +424,68 @@ def build_enemy_group(floor, count, region=None, player=None, band_lo=None):
     return keys
 
 
+# ── Superboss floor brackets ─────────────────────────────────────────────────
+# The normal superboss roster is split by spawn floor. The order is still
+# randomized inside each bracket, but a Floor-40 boss can never appear at
+# Floor 20. Tiers: 0 Broodmother, 1 Slitcurrent, 2 Sylvana, 3 Ignis,
+# 4 Yinglong, 5 Rientrante, 6 Everlong, 7 Black Silence, 8 Palette.
+_SUPERBOSS_BRACKETS = {
+    20: (0, 1, 2, 3),
+    40: (4, 5, 6, 7, 8),
+}
+_SUPERBOSS_BRACKET_FOR_TIER = {
+    tier: bracket
+    for bracket, tiers in _SUPERBOSS_BRACKETS.items()
+    for tier in tiers
+}
+
+
+def _superboss_bracket_for_floor(floor):
+    """Floor 20 uses the early bracket; 40+ uses the late bracket."""
+    try:
+        floor = int(floor)
+    except (TypeError, ValueError):
+        floor = 20
+    return 20 if floor <= 20 else 40
+
+
+def _ensure_superboss_pool(player, floor):
+    """Return the randomized superboss pool for this floor's bracket.
+
+    Existing saves with the old flat ``superboss_pool`` list are migrated by
+    distributing their remaining tiers into the matching brackets, so a
+    partially-cleared pool keeps its undefeated bosses. A bracket reshuffles
+    only when its pool is empty.
+    """
+    bracket = _superboss_bracket_for_floor(floor)
+    pools = player.get("superboss_pools")
+    if not isinstance(pools, dict):
+        pools = {}
+        legacy = player.get("superboss_pool")
+        if isinstance(legacy, list):
+            for tier in legacy:
+                tier_bracket = _SUPERBOSS_BRACKET_FOR_TIER.get(tier)
+                if tier_bracket is not None:
+                    pools.setdefault(str(tier_bracket), []).append(tier)
+        player["superboss_pools"] = pools
+        player.pop("superboss_pool", None)
+
+    key = str(bracket)
+    pool = pools.get(key)
+    if not isinstance(pool, list):
+        pool = []
+    if not pool:
+        pool = list(_SUPERBOSS_BRACKETS[bracket])
+        try:
+            seed = int(player.get("superboss_seed"))
+        except (TypeError, ValueError):
+            seed = random.randint(1, 99999)
+        rng = random.Random(seed + bracket * 101 + int(floor))
+        rng.shuffle(pool)
+        pools[key] = pool
+    return pool
+
+
 def generate_floor(floor, region=None, player=None):
     """Generate a floor with 10 rooms: 9 mixed rooms + 1 boss room.
     
@@ -311,22 +493,13 @@ def generate_floor(floor, region=None, player=None):
     For each consecutive combat room, the chance increases by 5%.
     When a non-combat room appears, the chance resets to 10%.
     
-    If player is provided, bounty-target enemies receive extra spawn weight.
+    If player is provided, bounty-target enemies receive extra spawn weight
+    and the encounter-size curve advances with the number of fieldable
+    allies (party-sized rooms).
     """
-    from pandemonium.combat.ally import get_active_limit
     rooms = []
-    max_enemies = min(5, floor)
+    party_size = _encounter_party_size(player)
 
-    # Command Resonance: only when the new command caps reduce what this
-    # player could previously field do encounters scale down to match —
-    # a reduced company shouldn't face the same crowds as a full one.
-    if player is not None:
-        owned = len(player.get("allies", []))
-        fieldable_now = 1 + min(get_active_limit(player), owned)
-        fieldable_old = 1 + min(3, owned)          # historical fixed caps
-        if fieldable_now < fieldable_old:
-            max_enemies = min(max_enemies, fieldable_now + 1)
-    
     # Dynamic non-combat chance
     non_combat_chance = 0.10
     consecutive_combat = 0
@@ -355,43 +528,56 @@ def generate_floor(floor, region=None, player=None):
             non_combat_chance = 0.10
             consecutive_combat = 0
         else:
-            # Combat room
-            num_enemies = random.randint(1, max_enemies)
+            # Combat room — size comes from the slow floor/party curve
+            num_enemies = _roll_encounter_size(floor, party_size)
             # Daily events: Monster Surge — dungeon enemies are more numerous
             if player and player.get("daily_effects", {}).get("monster_surge"):
                 num_enemies = min(5, num_enemies + 1)
             enemy_keys = build_enemy_group(floor, num_enemies,
                                            region=region, player=player)
-            rooms.append({"type": "combat", "enemies": enemy_keys})
+            room = {"type": "combat", "enemies": enemy_keys}
+            _attach_room_suffix(room, floor)
+            rooms.append(room)
             consecutive_combat += 1
             non_combat_chance = min(0.10 + 0.05 * consecutive_combat, 0.80)
     
-    # Room 10: Boss room (always combat)
-    # ── Wonderland: every even floor that isn't a multiple of 10 is a boss floor ──
+    # Room 10: a true boss on every 5th floor, otherwise a guaranteed normal
+    # combat room. The old "Empowered" final-room buff is retired; normal
+    # rooms (including this one) can roll a spawn-time suffix instead.
     if region == "wonderland" and is_wl_boss_floor(floor):
-        is_true_boss_floor = True
-        # Use the specific floor boss instead of a random one
+        # Wonderland floor bosses are scripted; keep their escort curve.
         boss_info = get_wl_floor_boss(floor)
         if boss_info:
             _, boss_key, _ = boss_info
             boss_room = [boss_key]
         else:
             boss_room = [get_random_enemy_key(floor, boss=True, region=region, player=player)]
+        boss_total = _roll_encounter_size(floor, party_size, boss_room=True)
+        num_minions = min(max(0, boss_total - 1), min(4, floor - 1))
+        boss_room.extend(build_enemy_group(floor, num_minions,
+                                           region=region, player=player))
+        rooms.append({"type": "combat", "enemies": boss_room, "is_boss": True})
+    elif floor % 5 == 0:
+        boss_key = get_random_enemy_key(floor, boss=True, region=region, player=player)
+        boss_room = [boss_key]
+        if is_solo_boss(boss_key, ENEMIES[boss_key]):
+            # Solo bosses trade their escort for the solo budget applied in
+            # enemy_stats() (HP/stat multiplier, status_res, 2 actions).
+            num_minions = 0
+        else:
+            boss_total = _roll_encounter_size(floor, party_size, boss_room=True)
+            num_minions = min(3, max(1, boss_total - 1))
+            boss_room.extend(build_enemy_group(floor, num_minions,
+                                               region=region, player=player))
+        rooms.append({"type": "combat", "enemies": boss_room, "is_boss": True})
     else:
-        is_true_boss_floor = (floor % 5 == 0)
-        boss_room = [get_random_enemy_key(floor, boss=is_true_boss_floor, region=region, player=player)]
-    
-    num_minions = random.randint(0, min(4, floor - 1))
-    boss_room.extend(build_enemy_group(floor, num_minions,
-                                       region=region, player=player))
+        num_enemies = _roll_encounter_size(floor, party_size)
+        enemy_keys = build_enemy_group(floor, num_enemies,
+                                       region=region, player=player)
+        room = {"type": "combat", "enemies": enemy_keys}
+        _attach_room_suffix(room, floor)
+        rooms.append(room)
 
-    # Same crowd cap as regular rooms — a reduced company shouldn't face a
-    # full boss entourage (no-op for players at full command capacity).
-    if player is not None and len(boss_room) > max_enemies:
-        boss_room = boss_room[:max_enemies]
-
-    rooms.append({"type": "combat", "enemies": boss_room, "is_boss": True})
-    
     return rooms
 
 # ── Equipment drop pool (exclude uniques, consumables, scrolls, ascension, wonderland-only) ──
@@ -410,7 +596,7 @@ _CONSUMABLE_TIERS = {
         "elixir_of_vitality", "elixir_of_mind", "battle_drink",
         "iron_skin_potion", "curse_cleansing_scroll", "fire_bomb",
         "ice_bomb", "smoke_bomb", "throwing_knife", "flash_powder",
-        "poison_flask", "stun_bomb"],
+        "poison_flask", "stun_bomb", "sleep_bomb"],
     3: ["greater_healing_potion", "holy_water", "thunder_bomb",
         "acid_flask", "armor_shatter_flask"],
     4: ["superior_healing_potion", "recalled_scroll",
@@ -1136,11 +1322,13 @@ def _explore_wild_dungeon(player, combat_override=None, superboss_override=None,
                     if combat_override:
                         result = combat_override(
                             player, room["enemies"], floor=level,
-                            room_num=i + 1, total_rooms=total_rooms)
+                            room_num=i + 1, total_rooms=total_rooms,
+                            suffixes=room.get("suffixes"))
                     else:
                         result = combat(
                             player, room["enemies"], floor=level,
-                            room_num=i + 1, total_rooms=total_rooms)
+                            room_num=i + 1, total_rooms=total_rooms,
+                            suffixes=room.get("suffixes"))
 
                     if result == "victory":
                         _wild_room_victory_rewards(player, room)
@@ -2082,21 +2270,16 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                     save_game(player)
                     return True
 
-        # ── Normal superboss pool (tiers 0-7) ────────────────────────
+        # ── Normal superboss pool (floor brackets) ──────────────────
         _tprint("\n" + "="*50)
         _tprint("⚠️  A dark, suffocating energy fills the air...")
-        
-        # 1. Initialize or refill the superboss pool if it's empty or missing
-        if not player.get("superboss_pool"):
-            pool = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-            # Use seed + floor to keep the shuffle consistent per run/floor 
-            # but fall back to a random seed if missing to prevent crashes
-            rng = random.Random(player.get("superboss_seed", random.randint(1, 99999)) + floor)
-            rng.shuffle(pool)
-            player["superboss_pool"] = pool
-            
+
+        # 1. Floor 20 draws from tiers 0-3; floor 40+ draws from tiers 4-8.
+        # The order is randomized once per bracket and persists until empty.
+        pool = _ensure_superboss_pool(player, floor)
+
         # 2. Peek at the next boss in the pool (do not remove until defeated!)
-        tier = player["superboss_pool"][0]
+        tier = pool[0]
         
         if tier == 0:
             _tprint("The walls are covered in dense, toxic cobwebs.")
@@ -2156,8 +2339,9 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                 result = combat_palette(player)
                 
             if result == "victory":
-                # 3. Remove the defeated boss from the pool so it won't spawn again until reshuffled
-                player["superboss_pool"].pop(0)
+                # 3. Remove the defeated boss from the bracket pool so it won't
+                # spawn again until the bracket reshuffles.
+                pool.pop(0)
 
                 boss_id = {
                     0: "broodmother_vileheart",
@@ -2204,7 +2388,7 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                 return True   # floor cleared, outer loop will handle full heal
             elif result == "spared":
                 # Rientrante spared you — remove from pool but no kill reward
-                player["superboss_pool"].pop(0)
+                pool.pop(0)
                 _tprint("\n  Rientrante spared you. The encounter ends.")
                 # Full heal and save
                 player["current_hp"] = player_max_hp(player)
@@ -2468,9 +2652,13 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
 
             if room_type == "combat":
                 if combat_override:
-                    result = combat_override(player, room["enemies"], floor=floor, room_num=i+1, total_rooms=total_rooms)
+                    result = combat_override(player, room["enemies"], floor=floor,
+                                            room_num=i+1, total_rooms=total_rooms,
+                                            suffixes=room.get("suffixes"))
                 else:
-                    result = combat(player, room["enemies"], floor=floor, room_num=i+1, total_rooms=total_rooms)
+                    result = combat(player, room["enemies"], floor=floor,
+                                    room_num=i+1, total_rooms=total_rooms,
+                                    suffixes=room.get("suffixes"))
 
                 if result == "victory":
                     pandemonium = player.get("pandemonium_mode", False)
@@ -2617,6 +2805,19 @@ def explore_dungeon(player, combat_override=None, superboss_override=None,
                     clear_wonderland_quirk(player)
                     clear_all_shadows(player)
                     return "fled"
+                elif result == "timeout":
+                    # A stat-check / event fight was interrupted — end the run
+                    # instead of marking the room cleared and walking on
+                    # (2026-11-27: the timeout used to be swallowed here).
+                    _tprint("\n[ERROR: Combat was interrupted — returning to city.]")
+                    origin = player.get("origin_city", "solmere")
+                    player["location"] = origin
+                    end_pandemonium_run(player)
+                    player["cutlass_high_tide_stacks"] = 0
+                    player.pop("cutlass_high_tide_floor", None)
+                    clear_wonderland_quirk(player)
+                    clear_all_shadows(player)
+                    return "timeout"
                 
                 break
 

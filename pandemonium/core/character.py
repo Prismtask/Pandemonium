@@ -373,9 +373,9 @@ def _backfill_superboss_ledger(player):
       * ``boss_defeated_white_knight``
       * ``boss_defeated_palette`` (Chromatic Artisan)
       * ``awakening_shard_sources`` ``pool:<id>`` entries (shared ledger)
-    Deliberately does NOT infer from ``superboss_pool`` (tier list is lossy
-    across pool refills) and grants nothing itself — all currency grants are
-    gated by their own source ledgers.
+    Deliberately does NOT infer from ``superboss_pools`` (bracket lists are
+    lossy across pool refills) and grants nothing itself — all currency
+    grants are gated by their own source ledgers.
     """
     kills = player.setdefault("defeated_superbosses", [])
     for flag, boss_id in (

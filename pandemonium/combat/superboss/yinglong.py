@@ -36,7 +36,9 @@
 import random
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    clamp_phase_hp, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import apply_weaken
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat.combat_io import c_print, c_input
@@ -279,6 +281,13 @@ def combat_yinglong(player, floor=None, enemies=None):
     from pandemonium.inventory.legacy_ui import prompt_acquire_item
     # ── CUSTOM HOOKS & IMMORTALITY IMPLEMENTATION ───────────────
     class ImmortalDragonDict(dict):
+        # Phase 1 → 2 is HP-gated at 75%; Phase 3 → 4 is already locked at 20%
+        # by the immortality mechanic below, so it needs no extra gate.
+        PHASE_GATES = {1: 0.75, 3: 0.20}
+        _phase_context = None
+        _phase_gate_round = None
+        _phase_gate_phase = None
+
         def __setitem__(self, key, value):
             if key == "hp":
                 max_hp = self.get("max_hp_total")
@@ -300,6 +309,10 @@ def combat_yinglong(player, floor=None, enemies=None):
                         value = lock_threshold
                         self["phase_4_locked"] = True
                         self["hp_lock_threshold"] = lock_threshold
+                value = clamp_phase_hp(
+                    value, boss=self, context=self._phase_context,
+                    gates=self.PHASE_GATES, label="Yinglong", state=self,
+                )
             super().__setitem__(key, value)
 
     class OneHitWedgeDict(dict):
@@ -360,6 +373,7 @@ def combat_yinglong(player, floor=None, enemies=None):
         "defending_this_turn":  False,
         "bonus_dmg_next_turn":  False,
     }
+    boss._phase_context = context
 
     # ── Player Hit Hook (Immortality & Bonus Damage) ────────────────
     def on_player_hit_hook(target, elist, ctx, attacker=None):

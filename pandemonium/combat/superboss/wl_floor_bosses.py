@@ -24,7 +24,7 @@ from pandemonium.combat.status_effects import (
     apply_bleed, apply_blind, apply_curse,
     apply_dread, apply_freeze, apply_silence,
     apply_weaken, apply_drain,
-    apply_burn, has_fear_immunity,
+    apply_burn, apply_sleep, has_fear_immunity,
 )
 
 
@@ -57,11 +57,7 @@ def _apply_fear(player, duration=2, value=0.25):
     return "applied"
 
 
-def _apply_sleep(player, duration=2):
-    """Apply sleep to a player (skip turns)."""
-    player["asleep"] = True
-    player["sleep_duration"] = duration
-    return "applied"
+
 
 
 
@@ -193,12 +189,17 @@ def dormouse_captain_ai(enemy, player, dmg):
         player["current_hp"] -= max(0, dmg_val - player.get("con_mod", 0) // 2)
         return "The scalding tea burns!"
 
-    # Sleep-inducing murmur
+    # Sleep-inducing murmur — shared status system: the player loses their
+    # next action, direct damage wakes them, and every landed sleep builds
+    # sleep resistance so the lullaby cannot chain forever.
     if random.random() < 0.30:
-        result = _apply_sleep(player, duration=2)
+        result = apply_sleep(player, duration=2)
         if result == "applied":
             return (f"The {enemy['name']} murmurs about treacle and buttered toast..."
-                    f"\n  {player['name']} grows drowsy!")
+                    f"\n  {player['name']} falls fast asleep!")
+        if result == "sleep_resisted":
+            return (f"The {enemy['name']} murmurs about treacle, but "
+                    f"{player['name']}'s eyes stay open.")
 
     # Dormouse Rage — at low HP, wakes up angry
     if hp_pct < 0.30 and not enemy.get("_wl_enraged"):

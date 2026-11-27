@@ -27,6 +27,9 @@ import random
 
 from pandemonium.combat.combat_io import c_print
 from pandemonium.combat.enemy_ai import begin_enemy_turn, enemy_attack
+from pandemonium.combat.enemy_scaling import (
+    debuff_chance, heal_multiplier, skill_multiplier,
+)
 from pandemonium.resources.enemies import ENEMIES
 from pandemonium.core.character import player_max_hp
 from pandemonium.combat import status_effects as se
@@ -325,6 +328,7 @@ RACE_KITS = {
 _HEAL_KEYWORDS = (
     "shaman", "priest", "priestess", "healer", "witch", "cultist", "acolyte",
     "oracle", "druid", "cleric", "medic", "mender", "alchemist", "potion",
+    "chaplain",
 )
 _AOE_HEAL_KEYWORDS = (
     "high priest", "priest", "priestess", "oracle", "druid", "cleric",
@@ -575,6 +579,9 @@ def choose_enemy_action(enemy, kit, all_enemies=None, party_members=None):
     role = get_enemy_role(enemy)
     is_supporter = role == ROLE_SUPPORTER
     tier = get_ai_tier(enemy.get("level", 1))
+    # Learning: veteran enemies reach for their kit more often. Capped at
+    # +35% so a high-LER outlier cannot make every turn a skill.
+    ler_mult = skill_multiplier(enemy)
 
     allies = [e for e in (all_enemies or []) if _enemy_alive(e)]
     if not any(e is enemy for e in allies):
@@ -611,7 +618,7 @@ def choose_enemy_action(enemy, kit, all_enemies=None, party_members=None):
     aoe = kit.get("aoe")
     if (_usable(enemy, aoe) and tier["aoe_mult"] > 0
             and len(alive_party) >= AOE_MIN_TARGETS):
-        chance = float(aoe.get("chance", 0.30)) * tier["aoe_mult"]
+        chance = float(aoe.get("chance", 0.30)) * tier["aoe_mult"] * ler_mult
         chance += tier["party_bonus"] * max(0, len(alive_party) - AOE_MIN_TARGETS)
         # Tactical+ enemies notice when the whole party is already hurt and
         # lean into a sweep. This is group-state awareness, not target choice.
@@ -629,7 +636,7 @@ def choose_enemy_action(enemy, kit, all_enemies=None, party_members=None):
     if is_supporter:
         skill_mult *= SUPPORTER_SKILL_MULT
     if _usable(enemy, skill) and skill_mult > 0:
-        chance = min(0.85, float(skill.get("chance", 0.45)) * skill_mult)
+        chance = min(0.85, float(skill.get("chance", 0.45)) * skill_mult * ler_mult)
         if random.random() < chance:
             return ("skill", skill, None)
     return None
@@ -694,7 +701,8 @@ def _apply_skill_status(enemy, target, action):
     status = action.get("status")
     if not status:
         return False
-    if random.random() >= float(status.get("chance", 0.35)):
+    # Charisma: how reliably the enemy lands its rider debuff.
+    if random.random() >= debuff_chance(enemy, status.get("chance", 0.35)):
         return False
 
 
@@ -727,6 +735,11 @@ def _apply_skill_status(enemy, target, action):
         result = se.apply_dread(target, duration=duration)
     elif kind == "slow":
         result = se.apply_slow_to_player(target, duration=duration)
+    elif kind == "sleep":
+        result = se.apply_sleep(target, duration=duration)
+        if result == "sleep_resisted":
+            c_print(f"  {target['name']}'s sleep resistance holds!")
+            return False
 
     if result in ("applied", "refreshed", "upgraded", "intensified", "stacked"):
         label = {
@@ -740,6 +753,7 @@ def _apply_skill_status(enemy, target, action):
             "confusion": "is confused",
             "dread": "is filled with dread",
             "slow": "is slowed",
+            "sleep": "falls fast asleep",
         }.get(kind)
         if label:
             c_print(f"  {target['name']} {label}!")
@@ -763,7 +777,9 @@ def _run_heal(enemy, action, target):
     from pandemonium.combat.status_effects import apply_healing
     _announce(enemy, action)
     _start_cooldown(enemy, action)
-    amount = max(1, int(_target_max_hp(target) * float(action.get("heal_pct", 0.18))))
+    # Wisdom: the healer's spell power (capped at ×2).
+    heal_pct = float(action.get("heal_pct", 0.18)) * heal_multiplier(enemy)
+    amount = max(1, int(_target_max_hp(target) * heal_pct))
     healed = apply_healing(target, amount, source=enemy)
     if healed > 0:
         c_print(f"  {target['name']} recovers {healed} HP.")
@@ -779,8 +795,9 @@ def _run_aoe_heal(enemy, action, all_enemies):
     _announce(enemy, action)
     _start_cooldown(enemy, action)
     targets = [e for e in (all_enemies or [enemy]) if _enemy_alive(e)]
+    heal_pct = float(action.get("heal_pct", 0.12)) * heal_multiplier(enemy)
     for target in targets:
-        amount = max(1, int(_target_max_hp(target) * float(action.get("heal_pct", 0.12))))
+        amount = max(1, int(_target_max_hp(target) * heal_pct))
         healed = apply_healing(target, amount, source=enemy)
         if healed > 0:
             c_print(f"  {target['name']} recovers {healed} HP.")
@@ -853,18 +870,24 @@ def _run_aoe_skill(enemy, action, party_members, primary_target, target_con,
 
 
 def enemy_take_turn(enemy, target, target_con, defending, *, extra_logic=None,
-                    all_enemies=None, actual_player=None, party_members=None):
+                    all_enemies=None, actual_player=None, party_members=None,
+                    skip_turn_start=False):
     """Run one regular-enemy turn: upkeep → choose ability → resolve.
 
     Drop-in replacement for the engine's direct ``enemy_attack`` call.
     ``party_members`` is the living party list (player + active allies) the
     engine already computed; it is used for AoE targeting.
-    """
-    _tick_cooldowns(enemy)
 
-    outcome, _fear = begin_enemy_turn(enemy, all_enemies=all_enemies)
-    if outcome:
-        return outcome
+    ``skip_turn_start`` is used by a solo boss's second action: the start of
+    its turn (debuff ticks, stun/blind gates, cooldown tick) already ran for
+    action 1, so action 2 only chooses and resolves an ability.
+    """
+    if not skip_turn_start:
+        _tick_cooldowns(enemy)
+
+        outcome, _fear = begin_enemy_turn(enemy, all_enemies=all_enemies)
+        if outcome:
+            return outcome
 
     kit = get_enemy_kit(enemy)
     choice = choose_enemy_action(enemy, kit, all_enemies, party_members)

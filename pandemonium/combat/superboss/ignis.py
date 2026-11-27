@@ -2,7 +2,9 @@
 import random
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    install_phase_gate, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import apply_weaken, apply_burn_to_player
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
@@ -75,33 +77,44 @@ def combat_ignis(player, floor=None, enemies=None):
             boss["base_con_mod"] = boss["con_mod"]
             enemies.append(boss)
 
+    # Phase bar: the forge (60%) and critical overheating (30%) each get at
+    # least one full round. Heat and attacks remain skippable.
+    boss = install_phase_gate(
+        enemies, boss_key, {1: 0.60, 2: 0.30},
+        label="Ignis",
+    ) or boss
+
     c_print("\nThe chamber floor groans under immense weight.")
     c_print("A featureless iron colossus rises from the forge-pit...")
     c_print(f"Ignis, the Melt-Forge Golem — HP: {boss['hp']}")
     c_input("Press Enter to face the Melt-Forge...")
 
     context = {
+        "phase": 1,
         "heat_level": 0,
         "forge_intensifies": False,   # Phase 2: burn tier upgrades to Inferno
         "final_form": False           # Phase 3: double actions, guaranteed heat
     }
+    boss.bind_context(context)
 
     def pre_player_hook(ctx, elist):
         b = next((e for e in elist if e.get("key") == boss_key), None)
         if b is None:
             return
 
-        # ── Phase 3: Final Form at ≤30% HP ──
-        if not ctx["final_form"] and b["hp"] <= int(b["max_hp"] * 0.30):
-            ctx["final_form"] = True
-            c_print("[CRITICAL OVERHEATING] Ignis exceeds every thermal limit.")
-            c_print("The forge burns white-hot. Heat builds every turn. Double actions!")
-
         # ── Phase 2: Forge Intensifies at ≤60% HP ──
         if not ctx["forge_intensifies"] and b["hp"] <= int(b["max_hp"] * 0.60):
             ctx["forge_intensifies"] = True
+            ctx["phase"] = 2
             c_print("\n💥 [FORGE INTENSIFIES] Ignis's internal furnace glows blinding white!")
             c_print("⚠️  The golem's flames intensify — its attacks now inflict INFERNO!")
+
+        # ── Phase 3: Final Form at ≤30% HP ──
+        if not ctx["final_form"] and b["hp"] <= int(b["max_hp"] * 0.30):
+            ctx["final_form"] = True
+            ctx["phase"] = 3
+            c_print("[CRITICAL OVERHEATING] Ignis exceeds every thermal limit.")
+            c_print("The forge burns white-hot. Heat builds every turn. Double actions!")
 
         # ── Heat buildup ──
         if ctx["final_form"]:

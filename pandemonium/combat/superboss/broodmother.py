@@ -32,7 +32,9 @@ Phase 3 — "Vileheart's Desperation" (35%–0% HP):
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    get_boss, install_phase_gate, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import apply_poison
 from pandemonium.combat.ally import get_living_party, compute_ally_stats
 from pandemonium.combat.combat_io import c_print, c_input
@@ -365,6 +367,13 @@ def combat_broodmother(player, floor=None, enemies=None):
             boss["max_hp"] = boss["hp"]
             enemies.append(boss)
 
+    # Phase bar: the nest (P1) and the swarm (P2) each get at least one full
+    # round. Attacks and summons inside a phase remain skippable.
+    boss = install_phase_gate(
+        enemies, boss_key, {1: PHASE1_HP, 2: PHASE2_HP},
+        label="The Broodmother",
+    ) or boss
+
     # ── Opening narration ────────────────────────────────────────────
     c_print("\nThe air grows thick with the stench of rot and venom.")
     c_print("Hundreds of tiny legs skitter in the darkness above and below.")
@@ -405,6 +414,7 @@ def combat_broodmother(player, floor=None, enemies=None):
         # General
         "boss_enraged_turns": 0,
     }
+    boss.bind_context(context)
 
     # ═══════════════════════════════════════════════════════════════
     # HOOKS

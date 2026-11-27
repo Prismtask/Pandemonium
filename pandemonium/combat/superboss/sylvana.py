@@ -2,7 +2,9 @@
 import random
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    install_phase_gate, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import (
     apply_blind
 )
@@ -135,12 +137,20 @@ def combat_sylvana(player, floor=None, enemies=None):
             boss["max_hp"] = boss["hp"]
             enemies.append(boss)
 
+    # Phase bar: mirror fracture (65%) and final form (30%) each get at
+    # least one full round. Illusion gimmicks stay skippable.
+    boss = install_phase_gate(
+        enemies, boss_key, {1: 0.65, 2: 0.30},
+        label="Sylvana",
+    ) or boss
+
     c_print("\nA thousand reflections shatter apart and reassemble —")
     c_print("Queen of Mirrors Sylvana steps forward, smiling coldly.")
     c_print(f"{boss['name']} — HP: {boss['hp']}")
     c_input("Press Enter to face the Queen of Mirrors...")
 
     context = {
+        "phase": 1,
         "mirror_phase_triggered": False,
         "boss_extra_actions": 0,
         "final_form": False,
@@ -148,6 +158,7 @@ def combat_sylvana(player, floor=None, enemies=None):
         "split_active": False,
         "extra_actions_granted_this_round": False
     }
+    boss.bind_context(context)
 
     def on_kill_hook(target, elist, ctx):
         """Fallback — if something else kills a clone."""
@@ -179,6 +190,7 @@ def combat_sylvana(player, floor=None, enemies=None):
 
         if not ctx["final_form"] and b["hp"] <= int(b["max_hp"] * 0.30):
             ctx["final_form"] = True
+            ctx["phase"] = 3
             c_print("[FINAL FORM] Sylvana screams. Every surface erupts into mirrors!")
             c_print("Her reflection multiplies endlessly — she is EVERYWHERE NOW.")
             c_print("Double actions become permanent. Reflections spawn every 3 turns.")
@@ -188,6 +200,7 @@ def combat_sylvana(player, floor=None, enemies=None):
         if not ctx["mirror_phase_triggered"] and b["hp"] <= int(b["max_hp"] * 0.65):
             should_spawn = True
             ctx["mirror_phase_triggered"] = True
+            ctx["phase"] = max(ctx["phase"], 2)
 
         if ctx["final_form"] and not ctx["split_active"]:
             ctx["reflection_turn_counter"] += 1

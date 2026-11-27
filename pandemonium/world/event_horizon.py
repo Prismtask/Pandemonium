@@ -26,6 +26,7 @@ changes to the status-effect tick routines are required.
 import random
 
 from pandemonium.resources.races_classes import ATTRIBUTES
+from pandemonium.resources.enemies import ENEMIES
 import importlib
 from pandemonium.combat import status_effects as se
 from pandemonium.combat.combat_io import c_print
@@ -137,6 +138,11 @@ BOSS_RUSH_ROSTER = [
      "keys": ["wl_mary_sue"],
      "module": "pandemonium.combat.superboss.mary_sue", "func": "combat_mary_sue"},
 ]
+
+# Keep the ramp valid when a boss's level is re-budgeted (e.g. the normal
+# F40 superbosses were normalized to L40). The sort is stable, so the curated
+# order among same-level bosses is preserved.
+BOSS_RUSH_ROSTER.sort(key=lambda b: ENEMIES[b["keys"][0]]["level"])
 
 # One-time trophy grants by room (docs §10.3/§10.5).
 TROPHY_GRANTS = {
@@ -419,6 +425,15 @@ def apply_enemy_scaling(enemy, player):
     enemy["str_mod"] = int(enemy.get("str_mod", 0) * mods["dmg"])
     enemy["con_mod"] = int(enemy.get("con_mod", 0) * mods["def"])
     enemy["dex_mod"] = int(enemy.get("dex_mod", 0) * mods["def"])
+    # Role stats follow the same axes: WIS is defensive (anti-dodge/heal),
+    # LER and CHA are offensive (skill frequency / debuff chance).
+    # Superboss modules read these as bespoke constants (Chrysalis adds LER to
+    # every dark hit), so scaling them would double-dip on top of str_mod.
+    # Regular enemies only.
+    if not enemy.get("super_boss"):
+        enemy["wis_mod"] = int(enemy.get("wis_mod", 0) * mods["def"])
+        enemy["ler_mod"] = int(enemy.get("ler_mod", 0) * mods["dmg"])
+        enemy["cha_mod"] = int(enemy.get("cha_mod", 0) * mods["dmg"])
     enemy["status_res"] = min(1.0, enemy.get("status_res", 0.0) + mods["status_res"])
     scale_enemy_elemental(enemy, mods["ele_dmg"])
     if mods["regen"] > 0:
@@ -510,6 +525,12 @@ def apply_rush_scaling(enemy, player):
     enemy["str_mod"] = int(enemy.get("str_mod", 0) * mult)
     enemy["con_mod"] = int(enemy.get("con_mod", 0) * mult)
     enemy["dex_mod"] = int(enemy.get("dex_mod", 0) * mult)
+    # Superbosses use WIS/LER/CHA as scripted damage constants;
+    # leave them at their authored values (see apply_enemy_scaling).
+    if not enemy.get("super_boss"):
+        enemy["wis_mod"] = int(enemy.get("wis_mod", 0) * mult)
+        enemy["ler_mod"] = int(enemy.get("ler_mod", 0) * mult)
+        enemy["cha_mod"] = int(enemy.get("cha_mod", 0) * mult)
     enemy["_eh_rush"] = True
 
 

@@ -1,10 +1,11 @@
 from pandemonium.combat.combat_io import c_print
 # enemy_ai.py – enemy turn logic and racial status effects
 import random
+from pandemonium.combat.enemy_scaling import debuff_chance
 from pandemonium.combat.status_effects import (
     apply_bleed, apply_curse, apply_dread, apply_weaken,
     apply_drain, apply_silence, tick_enemy_debuffs, get_weaken_pct,
-    get_bleed_feast_multiplier
+    get_bleed_feast_multiplier, wake_on_damage
 )
 from pandemonium.resources.enemies import ENEMIES
 from pandemonium.combat.weapon.wedding_specials import (
@@ -429,6 +430,14 @@ def enemy_attack(enemy, player, p_con, defending, extra_logic=None, armor_mult=1
     player["current_hp"] -= enemy_dmg
     enemy["_last_attack_damage"] = int(enemy_dmg)
 
+    # --- DIRECT DAMAGE WAKES A SLEEPING PARTY MEMBER ---
+    # DoT ticks (poison/burn/bleed/shock) never route through here, so they
+    # do not wake the sleeper — only a real strike does.
+    if enemy_dmg > 0:
+        wake_msg = wake_on_damage(player, second_person=(actual_player is player))
+        if wake_msg:
+            c_print(f"  {wake_msg}")
+
     # --- MIRROR GUARD THORNS ---
     # Sylvana's Mirror Guard turns the shield itself into a weapon. The
     # attacker takes fixed pure damage whenever it connects with her (even
@@ -529,7 +538,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Beast":
         def beast_bleed(e, player, dmg):
-            if dmg > 0 and random.random() < 0.35:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.35):
                 bleed_dmg = max(2, dmg // 3)
                 result = apply_bleed(player, damage=bleed_dmg, duration=4)
                 if result == "applied":
@@ -541,7 +550,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Undead":
         def undead_curse(e, player, dmg):
-            if dmg > 0 and random.random() < 0.20:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.20):
                 result = apply_curse(player)
                 if result == "applied":
                     return f"The {e['name']}'s touch carries a dark curse! All attributes reduced."
@@ -552,7 +561,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Shadow":
         def shadow_dread(e, player, dmg):
-            if dmg > 0 and random.random() < 0.30:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.30):
                 result = apply_dread(player, duration=2)
                 if result == "applied":
                     return f"The {e['name']}'s darkness fills {player['name']} with supernatural dread!"
@@ -561,7 +570,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Demon":
         def demon_weaken(e, player, dmg):
-            if dmg > 0 and random.random() < 0.25:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.25):
                 result = apply_weaken(player, penalty_pct=0.20, duration=3)
                 if result == "applied":
                     return f"The {e['name']}'s hellfire saps {player['name']}'s strength! STR reduced for 3 turns."
@@ -586,7 +595,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Fey":
         def fey_silence(e, player, dmg):
-            if dmg > 0 and random.random() < 0.25:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.25):
                 result = apply_silence(player, duration=2)
                 if result == "applied":
                     return f"The {e['name']}'s enchantment seals your pack shut for 2 turns!"
@@ -595,7 +604,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Abomination":
         def abomination_weaken(e, player, dmg):
-            if dmg > 0 and random.random() < 0.35:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.35):
                 result = apply_weaken(player, penalty_pct=0.25, duration=3)
                 if result == "applied":
                     return f"The {e['name']}'s corrosive flesh weakens {player['name']}'s muscles! STR −25% for 3 turns."
@@ -606,7 +615,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Giant":
         def giant_weaken(e, player, dmg):
-            if dmg > 0 and random.random() < 0.30:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.30):
                 result = apply_weaken(player, penalty_pct=0.30, duration=2)
                 if result == "applied":
                     return f"The {e['name']}'s crushing blow leaves {player['name']} arms numb! STR −30% for 2 turns."
@@ -617,7 +626,7 @@ def get_race_extra_logic(enemy):
 
     if race == "Gnome":
         def gnome_silence(e, player, dmg):
-            if dmg > 0 and random.random() < 0.20:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.20):
                 result = apply_silence(player, duration=2)
                 if result == "applied":
                     return f"The {e['name']}'s arcane static disrupts {player['name']}'s concentration!"
@@ -627,7 +636,7 @@ def get_race_extra_logic(enemy):
     if race == "Elemental":
         def elemental_blind(e, player, dmg):
             from pandemonium.combat.status_effects import apply_blind
-            if dmg > 0 and random.random() < 0.30:
+            if dmg > 0 and random.random() < debuff_chance(e, 0.30):
                 result = apply_blind(player, duration=2)
                 if result == "applied":
                     return f"A burst of searing light from the {e['name']} blinds {player['name']}!"
@@ -651,8 +660,8 @@ def get_race_extra_logic(enemy):
                 return (f"The {e['name']}'s story rewrites itself — "
                         f"it recovers {heal} HP! (A new chapter begins...)")
 
-            # Plot Twist: random debuff on player
-            if dmg > 0 and roll < 0.22:
+            # Plot Twist: random debuff on player (Charisma-scaled)
+            if dmg > 0 and random.random() < debuff_chance(e, 0.22):
                 twist = random.choice(["confusion", "dread", "silence"])
                 if twist == "confusion":
                     result = apply_confusion(player, duration=2)

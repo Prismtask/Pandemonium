@@ -1687,6 +1687,12 @@ class CityScreen(BaseScreen):
         opt = choice[0]
         if opt == "continue":
             self.player["location"] = "dungeon"
+            # Mirror _launch_dungeon: the next floor must never inherit the
+            # previous run's log or saved-floor state. The old log used to
+            # reappear above the new floor's output (2026-11-27).
+            for key in ("saved_dungeon_floor", "saved_dungeon_rooms",
+                        "saved_dungeon_room_index", "_dungeon_log"):
+                self.player.pop(key, None)
             self.sm.switch_to(
                 DungeonScreen,
                 on_result=self._return_from_dungeon,

@@ -108,6 +108,12 @@ def _flag_and_cooldown_tags(entity):
     if entity.get("parrot_target"):
         statuses.append("🦜TGT")
 
+    # Sleep resistance — accumulated +25% per landed sleep (capped at 75%).
+    # Shown for every actor so the anti-cheese ramp is legible.
+    sleep_res = entity.get("sleep_resist", 0) or 0
+    if sleep_res > 0:
+        statuses.append(f"SRES {int(round(float(sleep_res) * 100))}%")
+
     # Potion sickness — healing consumable cooldown (player + allies)
     potion_sickness = entity.get("potion_sickness", 0)
     if potion_sickness > 0:
@@ -139,6 +145,7 @@ def _active_debuff_tags(entity):
         "vulnerable": "VUL",
         "confusion": "CNF",
         "elemental_weakness": "ELW",
+        "sleep": "SLP",
     }
     for d in entity.get("active_debuffs", []):
         if d["type"] == "burn":

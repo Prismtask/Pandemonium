@@ -1198,14 +1198,24 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             msg_parts.append(f"{display_name(ally)} grants haste for {duration} turns!")
 
         elif effect_type == "sleep":
-            if target and target_type == "enemy":
-                apply_sleep(target, duration)
-                msg_parts.append(f"{target['name']} falls asleep!")
-            else:
-                live = [e for e in enemies if e["hp"] > 0]
-                for e in live:
-                    apply_sleep(e, duration)
-                msg_parts.append(f"{display_name(ally)} lulls all enemies to sleep!")
+            single = bool(target and target_type == "enemy")
+            live = [target] if single else [e for e in enemies if e["hp"] > 0]
+            slept = []
+            for e in live:
+                sleep_res = apply_sleep(e, duration)
+                if sleep_res == "applied":
+                    slept.append(e["name"])
+                elif sleep_res == "sleep_resisted":
+                    msg_parts.append(f"{e['name']}'s sleep resistance holds!")
+                elif sleep_res == "resisted":
+                    msg_parts.append(f"{e['name']} shrugs off the sleep!")
+                elif sleep_res == "already_asleep":
+                    msg_parts.append(f"{e['name']} is already asleep.")
+            if slept:
+                if single:
+                    msg_parts.append(f"{slept[0]} falls fast asleep!")
+                else:
+                    msg_parts.append(f"{display_name(ally)} lulls {', '.join(slept)} to sleep!")
 
         elif effect_type == "paralyze":
             if target and target_type == "enemy":
@@ -1465,6 +1475,16 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                             continue
                         if apply_entomb(e, sub_duration) != "resisted":
                             msg_parts.append(f"{e['name']} is entombed in stone!")
+                elif sub_type == "sleep":
+                    chance = sub.get("chance", 1.0)
+                    for e in enemy_targets:
+                        if random.random() >= chance:
+                            continue
+                        sleep_res = apply_sleep(e, sub_duration)
+                        if sleep_res == "applied":
+                            msg_parts.append(f"{e['name']} falls fast asleep!")
+                        elif sleep_res == "sleep_resisted":
+                            msg_parts.append(f"{e['name']}'s sleep resistance holds!")
                 elif sub_type == "stat_debuff":
                     stat = sub.get("stat", "Strength")
                     debuff_value = _scaled_mag(_scale_effect_value(sub, ally.get("level", 1)))
@@ -1517,6 +1537,11 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             dmg, did_crit = _calc_dmg(e, power, skill_def.get("ignore_armor", False), guaranteed_crit=guaranteed)
             e["hp"] -= dmg
             msg_parts.append(format_damage_msg(display_name(ally), e['name'], dmg, element=skill_def.get("elemental"), crit=did_crit, skill_name=skill_def['name']))
+            # Direct damage wakes a sleeper; a 0-damage tick of a DoT skill does not.
+            if dmg > 0:
+                wake_msg = wake_on_damage(e)
+                if wake_msg:
+                    msg_parts.append(wake_msg)
             total_dmg += dmg
             if is_bleeding(e):
                 bleed_feast_dmg += dmg
@@ -1556,8 +1581,11 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 if apply_shock(e, _scaled_mag(skill_def["shock_damage"]), skill_def.get("shock_duration", 3)) != "resisted":
                     msg_parts.append(f"{e['name']} is shocked!")
             if skill_def.get("apply_sleep"):
-                if apply_sleep(e, skill_def.get("sleep_duration", 3)) != "resisted":
-                    msg_parts.append(f"{e['name']} falls asleep!")
+                sleep_res = apply_sleep(e, skill_def.get("sleep_duration", 3))
+                if sleep_res == "applied":
+                    msg_parts.append(f"{e['name']} falls fast asleep!")
+                elif sleep_res == "sleep_resisted":
+                    msg_parts.append(f"{e['name']}'s sleep resistance holds!")
             if skill_def.get("apply_paralyze"):
                 if apply_paralyze(e, skill_def.get("paralyze_duration", 2)) != "resisted":
                     msg_parts.append(f"{e['name']} is paralyzed!")
@@ -1618,10 +1646,12 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
             dmg, did_crit = _calc_dmg(target, power, skill_def.get("ignore_armor", False), guaranteed_crit=guaranteed)
             target["hp"] -= dmg
             msg_parts.append(format_damage_msg(display_name(ally), target['name'], dmg, element=skill_def.get("elemental"), crit=did_crit, skill_name=skill_def['name']))
-            # Wake sleeping enemy on damage
-            wake_msg = wake_on_damage(target)
-            if wake_msg:
-                msg_parts.append(wake_msg)
+            # Direct damage wakes a sleeper — a DoT-only skill that deals no
+            # damage must leave the target asleep.
+            if dmg > 0:
+                wake_msg = wake_on_damage(target)
+                if wake_msg:
+                    msg_parts.append(wake_msg)
             if target["hp"] <= 0:
                 msg_parts.append(f"{target['name']} is defeated!")
                 victory = True
@@ -1660,8 +1690,11 @@ def execute_ally_skill(ally, player, skill_id, skill_def, enemies, allies):
                 if apply_shock(target, _scaled_mag(skill_def["shock_damage"]), skill_def.get("shock_duration", 3)) != "resisted":
                     msg_parts.append(f"{target['name']} is shocked!")
             if skill_def.get("apply_sleep"):
-                if apply_sleep(target, skill_def.get("sleep_duration", 3)) != "resisted":
-                    msg_parts.append(f"{target['name']} falls asleep!")
+                sleep_res = apply_sleep(target, skill_def.get("sleep_duration", 3))
+                if sleep_res == "applied":
+                    msg_parts.append(f"{target['name']} falls fast asleep!")
+                elif sleep_res == "sleep_resisted":
+                    msg_parts.append(f"{target['name']}'s sleep resistance holds!")
             if skill_def.get("apply_paralyze"):
                 if apply_paralyze(target, skill_def.get("paralyze_duration", 2)) != "resisted":
                     msg_parts.append(f"{target['name']} is paralyzed!")

@@ -13,7 +13,9 @@ import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.ally import get_active_allies, compute_ally_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    clamp_phase_hp, superboss_combat_loop,
+)
 from pandemonium.combat.combat_io import c_print, c_input
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.core.utils import display_name
@@ -74,8 +76,21 @@ COLOR_DATA = {
 class _PaletteBossDict(dict):
     """Intercept HP decreases to apply damage_taken_mult (Umber stance defense).
 
-    Mirrors the wrapper pattern used by Slitcurrent / Rientrante.
+    Mirrors the wrapper pattern used by Slitcurrent / Rientrante. HP is then
+    clamped to the current phase floor so the 65% / 30% transitions cannot be
+    skipped. The 10% Signature stays a behavior (skippable by burst).
     """
+    PHASE_GATES = {1: 0.65, 2: 0.30}
+
+    def __init__(self, base, context=None):
+        super().__init__(base)
+        self._phase_context = context
+        self._phase_gate_round = None
+        self._phase_gate_phase = None
+
+    def bind_context(self, context):
+        self._phase_context = context
+        return self
 
     def __setitem__(self, key, value):
         if key == "hp" and "hp" in self and value < self["hp"]:
@@ -84,6 +99,11 @@ class _PaletteBossDict(dict):
                 dmg = self["hp"] - value
                 dmg = max(0, int(dmg * mult))
                 value = self["hp"] - dmg
+        if key == "hp":
+            value = clamp_phase_hp(
+                value, boss=self, context=self._phase_context,
+                gates=self.PHASE_GATES, label="Palette", state=self,
+            )
         super().__setitem__(key, value)
 
 
@@ -681,6 +701,7 @@ def combat_palette(player, floor=None, enemies=None):
         "player_survived_burst": False,
         "player_held_the_canvas": False,
     }
+    boss.bind_context(context)
 
     _apply_stance(boss, context)
 

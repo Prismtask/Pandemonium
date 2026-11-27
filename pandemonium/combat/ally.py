@@ -2,6 +2,7 @@
 """Ally system - companions recruited from house monster girls."""
 from pandemonium.combat.combat_io import c_print, c_input, c_renders_menus
 import random
+from pandemonium.combat.status_effects import wake_on_damage
 from pandemonium.combat.stats import compute_enemy_attributes
 from pandemonium.resources.enemies import ENEMIES
 from pandemonium.resources.races_classes import ATTRIBUTES
@@ -1221,7 +1222,29 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
     """Handle an ally's turn in combat. Player chooses the ally's action.
 
     Returns: "continue", "victory", "dead", or "retry"
+
+    Wraps the action resolver so any direct damage the ally deals — basic,
+    skill or weapon — wakes a sleeping enemy. DoT ticks and DoT-only
+    applications never lose HP here, so they do not wake the target.
     """
+    hp_before = {id(e): e.get("hp", 0) for e in enemies if isinstance(e, dict)}
+    result = _handle_ally_turn_impl(
+        ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha,
+        on_kill=on_kill,
+    )
+    for enemy in enemies:
+        if not isinstance(enemy, dict):
+            continue
+        if enemy.get("hp", 0) <= 0:
+            continue
+        if enemy.get("hp", 0) < hp_before.get(id(enemy), enemy.get("hp", 0)):
+            wake_msg = wake_on_damage(enemy)
+            if wake_msg:
+                c_print(f"  {wake_msg}")
+    return result
+
+
+def _handle_ally_turn_impl(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, on_kill=None):
     from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, COLOR_NAMES as _BRUSH_COLORS
     from pandemonium.combat.weapon.palette_brush import (
                 _actor_has_palette_brush, execute_impasto_exhibit,
@@ -1287,6 +1310,12 @@ def handle_ally_turn(ally, player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p
     if consume_stun(ally):
         print_combat_hud(player, enemies, active_ally=ally)
         c_print(f"  {display_name(ally)} is stunned and cannot act!")
+        return "continue"
+
+    # ── Sleep: lose this action (parity with enemy_ai) ──
+    if ally.get("asleep"):
+        print_combat_hud(player, enemies, active_ally=ally)
+        c_print(f"  {display_name(ally)} is fast asleep and cannot act!")
         return "continue"
 
     # Per-action status markers (White Knight skill dodge / accuracy penalty)

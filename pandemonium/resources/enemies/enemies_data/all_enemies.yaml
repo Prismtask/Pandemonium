@@ -134,7 +134,7 @@ Human:
       Strength: 2
       Constitution: 2
       Dexterity: 2
-      Wisdom: 2
+      Wisdom: 4
       Learning: 3
       Charisma: 2
     boss: false
@@ -1315,7 +1315,7 @@ Gnome:
       Strength: 1
       Constitution: 1
       Dexterity: 4
-      Wisdom: 2
+      Wisdom: 3
       Learning: 3
       Charisma: 1
     boss: false
@@ -1357,7 +1357,7 @@ Gnome:
       Strength: 1
       Constitution: 2
       Dexterity: 2
-      Wisdom: 2
+      Wisdom: 4
       Learning: 6
       Charisma: 2
     boss: false
@@ -1652,7 +1652,7 @@ Goblin:
       Strength: 1
       Constitution: 1
       Dexterity: 3
-      Wisdom: 2
+      Wisdom: 4
       Learning: 1
       Charisma: 2
     boss: false
@@ -1933,7 +1933,7 @@ Demon:
       Strength: 3
       Constitution: 3
       Dexterity: 3
-      Wisdom: 2
+      Wisdom: 4
       Learning: 3
       Charisma: 5
     boss: false
@@ -2354,7 +2354,7 @@ Lizardfolk:
       Strength: 3
       Constitution: 5
       Dexterity: 3
-      Wisdom: 2
+      Wisdom: 4
       Learning: 2
       Charisma: 2
     boss: false
@@ -4389,7 +4389,7 @@ Orc:
       Strength: 3
       Constitution: 3
       Dexterity: 1
-      Wisdom: 2
+      Wisdom: 4
       Learning: 2
       Charisma: 2
     boss: false
@@ -4459,7 +4459,7 @@ Orc:
       Strength: 5
       Constitution: 4
       Dexterity: 2
-      Wisdom: 2
+      Wisdom: 4
       Learning: 2
       Charisma: 2
     boss: false
@@ -4543,7 +4543,7 @@ Orc:
       Strength: 8
       Constitution: 4
       Dexterity: 2
-      Wisdom: 2
+      Wisdom: 3
       Learning: 2
       Charisma: 2
     boss: false

@@ -18,6 +18,7 @@ from pandemonium.gui.widgets.confirm_dialog import ok_dialog
 from pandemonium.combat.combat_io import BaseCombatIO, set_io, reset_io
 from pandemonium.combat.combat_engine import combat
 from pandemonium.combat.stats import enemy_stats
+from pandemonium.world.enemy_suffixes import apply_room_suffixes
 from pandemonium.core.utils import strip_ansi, display_name
 from pandemonium.gui.combat_pacer import CombatPacer
 from pandemonium.combat.combat_io import is_border_line
@@ -153,7 +154,8 @@ class CombatScreen(BaseScreen):
     def __init__(self, parent, screen_manager,
                  enemy_keys=None, enemies=None, floor=None, room_num=None,
                  total_rooms=None, on_result=None, is_overlay=False,
-                 combat_context=None, combat_func=None, **kwargs):
+                 combat_context=None, combat_func=None, suffixes=None,
+                 **kwargs):
         # Ensure screen_manager/player are available before use
         self.sm = screen_manager
         self.player = screen_manager.player if screen_manager else None
@@ -192,6 +194,11 @@ class CombatScreen(BaseScreen):
             self.enemies = enemies
         elif self.player and self.enemy_keys:
             self.enemies = [enemy_stats(k, self.player) for k in self.enemy_keys]
+
+        # Spawn-time suffixes from the floor generator (see
+        # world/enemy_suffixes.py). Boss rooms never carry them.
+        if self.enemies and suffixes:
+            apply_room_suffixes(self.enemies, suffixes, floor or 1)
 
         super().__init__(parent, screen_manager, **kwargs)
 

@@ -149,6 +149,16 @@ class ScreenManager:
                       (on_dismiss is NOT forwarded — it is consumed here.)
         """
         if self._overlay_screen is not None:
+            # A live CombatScreen must never be silently replaced: dismissing
+            # it aborts the fight thread without delivering a result, and the
+            # dungeon reports "Combat was interrupted" ~10 s later
+            # (2026-11-27). Refuse the push and keep the fight up.
+            # Name check instead of isinstance — this module deliberately
+            # avoids importing the screen chain (startup fast path).
+            if type(self._overlay_screen).__name__ == "CombatScreen":
+                print(f"[ScreenManager] Refused to push {screen_class.__name__} "
+                      f"over a live CombatScreen.")
+                return
             # Dismiss any existing overlay first
             self._dismiss_overlay()
 

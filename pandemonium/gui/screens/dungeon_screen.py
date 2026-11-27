@@ -12,6 +12,7 @@ map side panel.
 import queue
 import time
 import tkinter as tk
+from tkinter import ttk
 
 from pandemonium.gui.screens.facility_screen import (
     FacilityScreen, _MAX_OUTPUT_LINES, _TRIM_OUTPUT_TO,
@@ -199,41 +200,57 @@ class DungeonScreen(FacilityScreen):
         else:
             self.sm.log(f"Entering {dungeon_name} — Floor {floor} ({region.title()} Region)", category="info")
 
-        # Main container with two columns
+        # Main container with two columns — left panel 30%, dungeon log 70%
         container = tk.Frame(self, bg=Theme.BG_DARK)
         container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        container.grid_columnconfigure(0, weight=1)  # left panels
-        container.grid_columnconfigure(1, weight=3)  # output panel
+        container.grid_columnconfigure(0, weight=3, uniform="dungeon_cols")  # left panel
+        container.grid_columnconfigure(1, weight=7, uniform="dungeon_cols")  # output panel
         container.grid_rowconfigure(0, weight=1)   # main content (map, party, log)
         container.grid_rowconfigure(1, weight=0)   # input / buttons
         container.grid_rowconfigure(2, weight=0)   # action buttons (flee)
 
-        # ── Left column: sub-container for Map (top) + Party Status (bottom) ──
+        # ── Left column: single tabbed panel — Map (default) / Party Status ──
         left_frame = tk.Frame(container, bg=Theme.BG_DARK)
         left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=5)
-        left_frame.grid_rowconfigure(0, weight=2)   # Map — smaller
-        left_frame.grid_rowconfigure(1, weight=3)   # Party Status — bigger
+        left_frame.grid_rowconfigure(0, weight=1)
         left_frame.grid_columnconfigure(0, weight=1)
         left_frame.grid_propagate(False)
         left_width = max(200, Theme.FONT_SIZE * 20)
         left_frame.config(width=left_width)
 
-        # ── Top: Map panel (relabeled "Rift" during Event Horizon runs) ────
-        map_panel_title = (" Rift " if self._eh_run
-                           else " Arena " if self._map_boss is not None
-                           else " Map ")
-        map_frame = tk.LabelFrame(
-            left_frame,
-            text=map_panel_title,
-            bg=Theme.BG_DARK,
-            fg=Theme.TEXT,
-            font=Theme.FONT_BOLD,
-            highlightthickness=1,
-            highlightbackground=Theme.BORDER,
+        # Tabs share the inventory screen's notebook styling.
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure(
+            "Dungeon.TNotebook",
+            background=Theme.BG_DARK,
+            foreground=Theme.TEXT,
+            tabmargins=[2, 5, 2, 0],
         )
-        map_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 3))
+        style.configure(
+            "Dungeon.TNotebook.Tab",
+            background=Theme.BG_MID,
+            foreground=Theme.TEXT,
+            font=Theme.FONT_BOLD,
+            padding=[10, 4],
+        )
+        style.map(
+            "Dungeon.TNotebook.Tab",
+            background=[("selected", Theme.BG_LIGHT)],
+            foreground=[("selected", Theme.TEXT_HEADER)],
+        )
+
+        self._side_notebook = ttk.Notebook(left_frame, style="Dungeon.TNotebook")
+        self._side_notebook.grid(row=0, column=0, sticky="nsew")
+
+        # ── Tab 1 (default): Map (relabeled "Rift" during Event Horizon runs) ──
+        map_panel_title = ("Rift" if self._eh_run
+                           else "Arena" if self._map_boss is not None
+                           else "Map")
+        map_frame = tk.Frame(self._side_notebook, bg=Theme.BG_DARK)
         map_frame.grid_rowconfigure(0, weight=1)
         map_frame.grid_columnconfigure(0, weight=1)
+        self._side_notebook.add(map_frame, text=f" {map_panel_title} ")
 
         self.map_text = tk.Text(
             map_frame,
@@ -266,19 +283,11 @@ class DungeonScreen(FacilityScreen):
                           "\n"
                           " The Warden waits.")
 
-        # ── Bottom: Party Status panel (modern GUI with HP bars) ──────────
-        self._party_frame = tk.LabelFrame(
-            left_frame,
-            text=" Party Status ",
-            bg=Theme.BG_DARK,
-            fg=Theme.ACCENT,
-            font=Theme.FONT_BOLD,
-            highlightthickness=1,
-            highlightbackground=Theme.BORDER,
-        )
-        self._party_frame.grid(row=1, column=0, sticky="nsew", pady=(3, 0))
+        # ── Tab 2: Party Status panel (modern GUI with HP bars) ───────────
+        self._party_frame = tk.Frame(self._side_notebook, bg=Theme.BG_DARK)
         self._party_frame.grid_rowconfigure(0, weight=1)
         self._party_frame.grid_columnconfigure(0, weight=1)
+        self._side_notebook.add(self._party_frame, text=" Party Status ")
 
         # Scrollable canvas for party members
         self._party_canvas = tk.Canvas(
@@ -746,19 +755,38 @@ class DungeonScreen(FacilityScreen):
 
             grace = 10.0 if seen_overlay else 30.0
             if time.monotonic() - missing_since >= grace:
+                top = self.sm.get_top_screen()
+                top_name = type(top).__name__ if top is not None else "nothing"
                 self._append_output(
-                    f"\n[ERROR: {label} screen vanished without a result — "
-                    f"aborting the encounter.]")
-                if seen_overlay:
-                    # Dismiss the orphaned overlay on the GUI thread
+                    f"\n[ERROR: {label} screen vanished without a result "
+                    f"(now showing {top_name}) — aborting the encounter.]")
+                if isinstance(top, CombatScreen):
+                    # Dismiss the orphaned overlay on the GUI thread. Never
+                    # dismiss a DIFFERENT overlay — a screen switch already
+                    # put the player somewhere else (2026-11-27).
                     try:
                         self.sm.root.after(0, self.sm.dismiss_overlay)
                     except tk.TclError:
                         pass  # Root is gone — app is closing anyway
                 return "timeout"
 
+    def _schedule_overlay_safely(self, callback):
+        """Schedule an overlay-push callback on the GUI thread.
+
+        Returns False when the Tk root is already gone (screen closing) so
+        the caller can hand the dungeon thread an immediate "error" instead
+        of letting it wait out the vanished-screen grace — that used to
+        surface as a spurious "Combat was interrupted" city exit
+        (2026-11-27).
+        """
+        try:
+            self.sm.root.after(0, callback)
+        except (tk.TclError, RuntimeError):
+            return False
+        return True
+
     def _gui_combat(self, player, enemy_keys, floor=None, room_num=None,
-                    total_rooms=None, enemies=None):
+                    total_rooms=None, enemies=None, suffixes=None):
         """Callback passed to explore_dungeon as combat_override.
 
         Shows CombatScreen as an overlay (does NOT destroy DungeonScreen),
@@ -768,19 +796,33 @@ class DungeonScreen(FacilityScreen):
         result_queue = queue.Queue()
 
         def start_combat():
+            import traceback
             from pandemonium.gui.screens.combat_screen import CombatScreen
-            self.sm.push_overlay(
-                CombatScreen,
-                enemy_keys=enemy_keys,
-                enemies=enemies,
-                floor=floor,
-                room_num=room_num,
-                total_rooms=total_rooms,
-                on_result=lambda r: result_queue.put(r),
-                is_overlay=True,
-            )
+            try:
+                self.sm.push_overlay(
+                    CombatScreen,
+                    enemy_keys=enemy_keys,
+                    enemies=enemies,
+                    floor=floor,
+                    room_num=room_num,
+                    total_rooms=total_rooms,
+                    suffixes=suffixes,
+                    on_result=lambda r: result_queue.put(r),
+                    is_overlay=True,
+                )
+            except Exception:
+                # The overlay never appeared. Deliver an immediate error
+                # result instead of letting the dungeon thread wait out the
+                # 30 s "screen never showed" grace — that used to surface
+                # as a spurious "Combat was interrupted" city exit
+                # (2026-11-27).
+                traceback.print_exc()
+                result_queue.put("error")
 
-        self.sm.root.after(0, start_combat)
+        try:
+            self.sm.root.after(0, start_combat)
+        except (tk.TclError, RuntimeError):
+            return "error"  # Root torn down — never leave the run hanging
         return self._await_combat_result(result_queue, "Combat")
 
     def _gui_floor_clear(self, player, floor_num=None, total_floors=None,
@@ -890,19 +932,27 @@ class DungeonScreen(FacilityScreen):
             total = int(tier.get("total", 1) or 1)
 
             def start_rush_combat():
+                import traceback
                 from pandemonium.gui.screens.combat_screen import CombatScreen
-                self.sm.push_overlay(
-                    CombatScreen,
-                    enemy_keys=enemy_keys,
-                    on_result=lambda r: result_queue.put(r),
-                    is_overlay=True,
-                    combat_func=combat_fn,
-                    combat_context="boss_rush",
-                    room_num=index,
-                    total_rooms=total,
-                )
+                try:
+                    self.sm.push_overlay(
+                        CombatScreen,
+                        enemy_keys=enemy_keys,
+                        on_result=lambda r: result_queue.put(r),
+                        is_overlay=True,
+                        combat_func=combat_fn,
+                        combat_context="boss_rush",
+                        room_num=index,
+                        total_rooms=total,
+                    )
+                except Exception:
+                    # Overlay never appeared — unblock the dungeon thread now
+                    # instead of waiting out the 30 s "never seen" grace.
+                    traceback.print_exc()
+                    result_queue.put("error")
 
-            self.sm.root.after(0, start_rush_combat)
+            if not self._schedule_overlay_safely(start_rush_combat):
+                return "error"
             return self._await_combat_result(result_queue, "Boss Rush combat")
 
         # Handle Chrysalis (Pandemonium floor 20 override, passed as string tier)
@@ -910,20 +960,25 @@ class DungeonScreen(FacilityScreen):
             boss_key = "entangled_chrysalis"
 
             def start_combat():
+                import traceback
                 from pandemonium.combat.superboss.entangled_chrysalis import combat_entangled_chrysalis
                 from pandemonium.gui.screens.combat_screen import CombatScreen
-                from pandemonium.combat.superboss.white_knight import combat_white_knight
-                self.sm.push_overlay(
-                    CombatScreen,
-                    enemy_keys=[boss_key, "temporal_shard_pyre", "temporal_shard_pulse", "temporal_shard_ruin"],
-                    floor=floor,
-                    on_result=lambda r: result_queue.put(r),
-                    is_overlay=True,
-                    combat_func=combat_entangled_chrysalis,
-                    combat_context="superboss",
-                )
+                try:
+                    self.sm.push_overlay(
+                        CombatScreen,
+                        enemy_keys=[boss_key, "temporal_shard_pyre", "temporal_shard_pulse", "temporal_shard_ruin"],
+                        floor=floor,
+                        on_result=lambda r: result_queue.put(r),
+                        is_overlay=True,
+                        combat_func=combat_entangled_chrysalis,
+                        combat_context="superboss",
+                    )
+                except Exception:
+                    traceback.print_exc()
+                    result_queue.put("error")
 
-            self.sm.root.after(0, start_combat)
+            if not self._schedule_overlay_safely(start_combat):
+                return "error"
             return self._await_combat_result(result_queue, "Superboss combat")
 
         # Handle White Knight (Pandemonium floor 40 override, passed as string tier)
@@ -931,17 +986,25 @@ class DungeonScreen(FacilityScreen):
             boss_key = "white_knight"
 
             def start_combat():
-                self.sm.push_overlay(
-                    CombatScreen,
-                    enemy_keys=[boss_key],
-                    floor=floor,
-                    on_result=lambda r: result_queue.put(r),
-                    is_overlay=True,
-                    combat_func=combat_white_knight,
-                    combat_context="superboss",
-                )
+                import traceback
+                from pandemonium.gui.screens.combat_screen import CombatScreen
+                from pandemonium.combat.superboss.white_knight import combat_white_knight
+                try:
+                    self.sm.push_overlay(
+                        CombatScreen,
+                        enemy_keys=[boss_key],
+                        floor=floor,
+                        on_result=lambda r: result_queue.put(r),
+                        is_overlay=True,
+                        combat_func=combat_white_knight,
+                        combat_context="superboss",
+                    )
+                except Exception:
+                    traceback.print_exc()
+                    result_queue.put("error")
 
-            self.sm.root.after(0, start_combat)
+            if not self._schedule_overlay_safely(start_combat):
+                return "error"
             return self._await_combat_result(result_queue, "Superboss combat")
 
         # ── Wonderland Superbosses (string tier names from _wonderland_superboss_dispatch) ──
@@ -971,18 +1034,24 @@ class DungeonScreen(FacilityScreen):
                 return "victory"
 
             def start_wl_combat():
+                import traceback
                 from pandemonium.gui.screens.combat_screen import CombatScreen
-                self.sm.push_overlay(
-                    CombatScreen,
-                    enemy_keys=[boss_key],
-                    floor=floor,
-                    on_result=lambda r: result_queue.put(r),
-                    is_overlay=True,
-                    combat_func=func,
-                    combat_context="superboss",
-                )
+                try:
+                    self.sm.push_overlay(
+                        CombatScreen,
+                        enemy_keys=[boss_key],
+                        floor=floor,
+                        on_result=lambda r: result_queue.put(r),
+                        is_overlay=True,
+                        combat_func=func,
+                        combat_context="superboss",
+                    )
+                except Exception:
+                    traceback.print_exc()
+                    result_queue.put("error")
 
-            self.sm.root.after(0, start_wl_combat)
+            if not self._schedule_overlay_safely(start_wl_combat):
+                return "error"
             return self._await_combat_result(result_queue, "Superboss combat")
 
         # Map tier → (boss_enemy_key, combat_function)
@@ -1026,17 +1095,24 @@ class DungeonScreen(FacilityScreen):
             return "victory"
 
         def start_combat():
-            self.sm.push_overlay(
-                CombatScreen,
-                enemy_keys=[boss_key],
-                floor=floor,
-                on_result=lambda r: result_queue.put(r),
-                is_overlay=True,
-                combat_func=func,
-                combat_context="superboss",
-            )
+            import traceback
+            from pandemonium.gui.screens.combat_screen import CombatScreen
+            try:
+                self.sm.push_overlay(
+                    CombatScreen,
+                    enemy_keys=[boss_key],
+                    floor=floor,
+                    on_result=lambda r: result_queue.put(r),
+                    is_overlay=True,
+                    combat_func=func,
+                    combat_context="superboss",
+                )
+            except Exception:
+                traceback.print_exc()
+                result_queue.put("error")
 
-        self.sm.root.after(0, start_combat)
+        if not self._schedule_overlay_safely(start_combat):
+            return "error"
         return self._await_combat_result(result_queue, "Superboss combat")
 
     # ── Result handling ───────────────────────────────────────────────────────
@@ -1159,7 +1235,7 @@ class DungeonScreen(FacilityScreen):
         try:
             self.map_text.config(state=tk.NORMAL)
             self.map_text.delete("1.0", tk.END)
-            self.map_text.insert(tk.END, text)
+            self.map_text.insert(tk.END, strip_ansi(text))
             self.map_text.config(state=tk.DISABLED)
         except tk.TclError:
             pass  # widget destroyed (screen dismissed while update pending)

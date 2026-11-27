@@ -36,7 +36,7 @@ from pandemonium.combat.stats import compute_player_stats
 from pandemonium.combat.enemy_ai import enemy_attack
 from pandemonium.combat.player_actions import handle_player_turn
 from pandemonium.combat.combat_ui import print_combat_hud, print_player_mini_hud, print_turn_order, print_round_header, current_time_label
-from pandemonium.combat.status_effects import tick_player_debuffs, tick_player_buffs, try_consume_death_ward, consume_stun, clear_stun
+from pandemonium.combat.status_effects import tick_player_debuffs, tick_player_buffs, try_consume_death_ward, consume_stun, clear_stun, clear_sleep
 from pandemonium.combat.skills import tick_skill_cooldowns
 from pandemonium.combat.fractured_hourglass import tick_hourglass_cooldown
 from pandemonium.combat.ally import (
@@ -52,6 +52,111 @@ import random
 def get_boss(elist, key):
     """Return the first enemy dict matching ``key``, or None."""
     return next((e for e in elist if e.get("key") == key), None)
+
+
+def clamp_phase_hp(value, *, boss, context, gates, label, phase_key="phase", state=None):
+    """Clamp one HP write to the current phase's floor.
+
+    ``gates`` maps phase number -> HP fraction floor. A phase listed there
+    cannot be crossed by damage until the boss module advances
+    ``context[phase_key]`` (normally in its pre-round phase hook). That gives
+    the phase at least one full round on the field.
+
+    Only **phase transitions** are protected. Attacks, summons, signatures and
+    other behaviors inside a phase remain fully skippable by burst damage.
+    """
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return value
+    max_hp = boss.get("max_hp", 0) or 0
+    if max_hp <= 0:
+        return value
+
+    phase = 1
+    if context is not None:
+        try:
+            phase = int(context.get(phase_key, 1) or 1)
+        except (TypeError, ValueError):
+            phase = 1
+
+    floor_pct = gates.get(phase)
+    if floor_pct is None:
+        return max(0.0, numeric)
+
+    floor = max(1, int(max_hp * floor_pct))
+    if numeric >= floor:
+        return numeric
+
+    round_no = 0
+    if context is not None:
+        try:
+            round_no = int(context.get("round", 0) or 0)
+        except (TypeError, ValueError):
+            round_no = 0
+    last_round = getattr(state, "_phase_gate_round", None) if state is not None else None
+    last_phase = getattr(state, "_phase_gate_phase", None) if state is not None else None
+    if state is None or last_round != round_no or last_phase != phase:
+        if state is not None:
+            state._phase_gate_round = round_no
+            state._phase_gate_phase = phase
+        c_print(
+            f"  ✋ {label}'s phase bar holds at "
+            f"{int(round(floor_pct * 100))}% — the phase must resolve first."
+        )
+    return floor
+
+
+class PhaseGatedBoss(dict):
+    """Boss dict wrapper that enforces phase HP floors.
+
+    Use :func:`install_phase_gate` to wrap a boss that has no custom dict
+    wrapper of its own. Bosses with an existing wrapper (Chrysalis, Palette,
+    Yinglong) call :func:`clamp_phase_hp` from their own ``__setitem__`` so
+    their extra damage rules still apply.
+    """
+
+    def __init__(self, base, gates, *, context=None, label=None, phase_key="phase"):
+        super().__init__(base)
+        self._phase_gates = {int(k): float(v) for k, v in dict(gates).items()}
+        self._phase_context = context
+        self._phase_key = phase_key
+        self._phase_label = label or str(base.get("name", "The boss"))
+        self._phase_gate_round = None
+        self._phase_gate_phase = None
+
+    def bind_context(self, context):
+        self._phase_context = context
+        return self
+
+    def __setitem__(self, key, value):
+        if key == "hp":
+            value = clamp_phase_hp(
+                value, boss=self, context=self._phase_context,
+                gates=self._phase_gates, label=self._phase_label,
+                phase_key=self._phase_key, state=self,
+            )
+        super().__setitem__(key, value)
+
+
+def install_phase_gate(enemies, boss_key, gates, *, label=None, phase_key="phase"):
+    """Wrap the *boss_key* enemy in *enemies* with a :class:`PhaseGatedBoss`.
+
+    Returns the wrapper (or the existing one). The caller must call
+    ``wrapper.bind_context(context)`` once the combat context dict exists.
+    """
+    for idx, enemy in enumerate(enemies):
+        if enemy.get("key") != boss_key:
+            continue
+        if isinstance(enemy, PhaseGatedBoss):
+            enemy._phase_gates = {int(k): float(v) for k, v in dict(gates).items()}
+            if label:
+                enemy._phase_label = label
+            return enemy
+        wrapped = PhaseGatedBoss(enemy, gates, label=label, phase_key=phase_key)
+        enemies[idx] = wrapped
+        return wrapped
+    return None
 
 
 def superboss_triple_action_loop(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, on_kill, print_hud_func):
@@ -155,6 +260,7 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
     begin_map_boss_uniques(player)
     # Stun never crosses an encounter boundary (stale save / previous fight).
     clear_stun(player)
+    clear_sleep(player)
 
     # Party stress: settle the previous fight's falls, then let Burned Out
     # companions refuse this one (docs/stress_system_design.md).
@@ -174,6 +280,7 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
     # Init/clear ally unique-equipment state (mirrors combat_engine._combat_inner)
     for ally in player.get("allies", []):
         clear_stun(ally)
+        clear_sleep(ally)
         if ally.get("current_hp", 0) > 0:
             clear_authors_pen_state(ally)
             _clear_captain_cutlass_state_actor(ally, player_ref=player)
@@ -370,6 +477,13 @@ def superboss_combat_loop(player, enemies, floor, boss_name, context,
                 # action before handle_player_turn runs.
                 if consume_stun(player):
                     c_print(f"{player['name']} is stunned and cannot act!")
+                    continue
+
+                # Generic Sleep (Dormouse Captain lullabies, enemy skill
+                # riders) — same pre-prompt skip. Direct damage wakes the
+                # player; the round-end tick clears it naturally.
+                if player.get("asleep"):
+                    c_print(f"{player['name']} is fast asleep and cannot act!")
                     continue
 
                 if combatant.get("extra_turn"):

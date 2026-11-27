@@ -2445,6 +2445,24 @@ learnable_skills:
       - 12
       - 30
       - 60
+    sleep_song:
+      name: Sleep Song
+      description: A drifting lullaby that puts one enemy to sleep for 2 turns. Direct damage wakes them; each sleep that lands hardens them against the next.
+      tier: 3
+      exp_cost: 2000
+      required_level: 16
+      required_cap: 20
+      category: support
+      cooldown: 4
+      target: enemy
+      effect:
+        type: sleep
+        duration: 2
+      elemental: water
+      mastery_thresholds:
+      - 12
+      - 30
+      - 60
     mass_regenerate:
       name: Mass Regenerate
       description: Grant all allies 8% HP recovery each turn for 3 turns.

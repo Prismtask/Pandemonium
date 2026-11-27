@@ -398,14 +398,19 @@ innate_skill_defs:
     elemental: wind
   dust_cloud:
     name: Dust Cloud
-    description: Blind enemies with magical dust.
+    description: Sleep-dusted wing scales drift over the enemy line — 40% chance to drag each enemy into sleep, and the rest are blinded.
     category: support
-    cooldown: 3
+    cooldown: 4
     target: enemies
     effect:
-      type: blind
-      value: 0.5
-      duration: 2
+      type: multi
+      effects:
+        - type: blind
+          value: 0.5
+          duration: 2
+        - type: sleep
+          duration: 2
+          chance: 0.4
     elemental: earth
   acidic_blob:
     name: Acidic Blob
@@ -833,12 +838,13 @@ innate_skill_defs:
     elemental: water
   ocean_lullaby:
     name: Ocean Lullaby
-    description: Sing a soothing melody that heals an ally.
+    description: A tide-slow song that drags every enemy toward sleep. Direct damage wakes them; each sleep that lands hardens them against the next.
     category: support
-    cooldown: 3
-    target: ally_or_self
-    power_type: wis
-    base_power: 18
+    cooldown: 4
+    target: enemies
+    effect:
+      type: sleep
+      duration: 2
     elemental: water
   crimson_slash:
     name: Crimson Slash

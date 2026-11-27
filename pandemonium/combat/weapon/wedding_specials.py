@@ -94,7 +94,9 @@ def _active(player):
 
 
 def _is_boss(target):
-    return bool(target.get("key") and target.get("name", "").startswith("Empowered ") or target.get("boss", False))
+    # The old "Empowered" final-room leader is retired; boss effects now key
+    # off the template/runtime boss flag (solo bosses share it).
+    return bool(target.get("boss", False))
 
 
 def _msg(text):

@@ -29,7 +29,9 @@ import random
 import pandemonium.world.wonderland_guests as wonderland_guests
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import (defer_dialogue)
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    install_phase_gate, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.ally import get_living_party
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
@@ -491,6 +493,13 @@ def combat_wicked_witch(player, floor=None, enemies=None):
             witch["max_hp"] = witch["hp"]
             witch["hp"] = witch["max_hp"]  # Reset HP in GUI mode
 
+    # Phase bar: Emerald Flame (65%) and Flying Fury (30%) each get at least
+    # one full round. Monkeys, flight cycles and melting stay skippable.
+    witch = install_phase_gate(
+        enemies, WITCH_KEY, {1: 0.65, 2: 0.30},
+        label="The Wicked Witch",
+    ) or witch
+
     # ── Check for Dorothy ────────────────────────────────────────────────
     dorothy = next((a for a in player.get("allies", [])
                     if a.get("_heroine_key") == "dorothy"
@@ -544,6 +553,7 @@ def combat_wicked_witch(player, floor=None, enemies=None):
         "dorothy_variant": dorothy_variant,
         "dorothy_hint_given": False,
     }
+    witch.bind_context(context)
 
     # ── Hooks ───────────────────────────────────────────────────────────
 

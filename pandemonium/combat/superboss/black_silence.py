@@ -8,7 +8,9 @@ Uses the same 9 workshops the player's Black Silence Gloves would grant.
 import random
 from pandemonium.combat.stats import enemy_stats, compute_player_stats
 from pandemonium.combat.combat_ui import print_combat_hud
-from pandemonium.combat.superboss.superboss_common import get_boss, superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    get_boss, install_phase_gate, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.helpers import format_damage_msg
 from pandemonium.combat.combat_io import c_print, c_input
@@ -386,6 +388,13 @@ def combat_black_silence(player, floor=None, enemies=None):
             boss["max_hp"] = boss["hp"]
             enemies.append(boss)
 
+    # Phase bar: Phase 1 cannot be burst past its 60% transition. The
+    # Phase 2 → 3 revival is already a scripted phase gate of its own.
+    boss = install_phase_gate(
+        enemies, boss_key, {1: 0.60},
+        label="The Black Silence",
+    ) or boss
+
     # Opening narration
     c_print("\nYou find yourself in a ruined workshop — or perhaps nine workshops,")
     c_print("collapsed into one another like a deck of cards shuffled by grief.")
@@ -410,6 +419,7 @@ def combat_black_silence(player, floor=None, enemies=None):
         "furioso_timer": 0,
         "phase2_dex_bonus_applied": False,
     }
+    boss.bind_context(context)
 
     # Initial workshop roll
     _reroll_workshops(context)

@@ -1,5 +1,6 @@
 # stats.py – attribute math, scaling, and enemy stats
 from pandemonium.resources.enemies import ENEMIES, ENEMY_RACES
+from pandemonium.combat.boss_styles import apply_solo_boss_budget, is_solo_boss
 from pandemonium.resources.races_classes import ATTRIBUTES
 from pandemonium.inventory.core import get_total_equipment_mods
 from pandemonium.core.utils import get_difficulty_multiplier_from_time
@@ -74,11 +75,21 @@ def enemy_stats(enemy_key, player=None):
     str_mod = attrs["Strength"]
     con_mod = attrs["Constitution"]
     dex_mod = attrs["Dexterity"]
+    wis_mod = attrs["Wisdom"]
+    ler_mod = attrs["Learning"]
+    cha_mod = attrs["Charisma"]
 
     scaled_hp = int(base_hp * multiplier * pandemonium_mult)
     scaled_str = int(str_mod * (1 + (multiplier - 1) * 0.7) * pandemonium_mult)
     scaled_con = int(con_mod * (1 + (multiplier - 1) * 0.6) * pandemonium_mult)
     scaled_dex = int(dex_mod * (1 + (multiplier - 1) * 0.5) * pandemonium_mult)
+    # WIS / LER / CHA drive healing, skill frequency and debuff chance
+    # (combat/enemy_scaling.py). Race mods can make them negative (Undead
+    # WIS −2, Construct CHA −5), so clamp at zero instead of scaling a
+    # negative into a healing penalty.
+    scaled_wis = max(0, int(wis_mod * (1 + (multiplier - 1) * 0.5) * pandemonium_mult))
+    scaled_ler = max(0, int(ler_mod * (1 + (multiplier - 1) * 0.5) * pandemonium_mult))
+    scaled_cha = max(0, int(cha_mod * (1 + (multiplier - 1) * 0.6) * pandemonium_mult))
 
     result = {
         "key": enemy_key,
@@ -89,6 +100,9 @@ def enemy_stats(enemy_key, player=None):
         "str_mod": scaled_str,
         "con_mod": scaled_con,
         "dex_mod": scaled_dex,
+        "wis_mod": scaled_wis,
+        "ler_mod": scaled_ler,
+        "cha_mod": scaled_cha,
         "level": template["level"],
         "multiplier": round(multiplier, 2),
         "monster_girl": template.get("monster_girl", False),
@@ -102,6 +116,13 @@ def enemy_stats(enemy_key, player=None):
         "abilities": template.get("abilities"),
         "ai_disabled": template.get("ai_disabled", False),
     }
+
+    # Solo bosses board alone: trade the escort minions for a much larger HP
+    # pool, a stat bump and a second action (combat_engine reads
+    # boss_actions). Applied before Event Horizon scaling so the rift scales
+    # the buffed instance.
+    if template.get("boss") and is_solo_boss(enemy_key, template):
+        apply_solo_boss_budget(result)
 
     # Add elemental stats
     e_res, e_dmg = compute_enemy_elemental(result)
@@ -355,9 +376,16 @@ def _get_dodge_dex(entity):
 
 
 def _get_dodge_wis(entity):
-    """Get effective Wisdom for dodge calculations."""
+    """Get effective Wisdom for dodge calculations.
+
+    Enemies carry ``wis_mod`` since 2026-11-24 (``enemy_stats`` used to drop
+    it). A wise attacker is harder to dodge, so late-game foes with WIS 6–9
+    now shave 12–18% off a DEX-only dodge build — the intended counter to the
+    80% dodge cap. Hand-built enemy dicts without ``wis_mod`` keep the old
+    behaviour (0).
+    """
     if "dex_mod" in entity and "attributes" not in entity:
-        return 0  # enemies don't have Wisdom
+        return entity.get("wis_mod", 0) or 0
     return get_effective_attribute(entity, "Wisdom")
 
 

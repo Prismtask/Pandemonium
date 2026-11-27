@@ -35,7 +35,9 @@ import random
 import pandemonium.world.wonderland_guests as wonderland_guests
 from pandemonium.combat.stats import enemy_stats
 from pandemonium.combat.combat_ui import (defer_dialogue)
-from pandemonium.combat.superboss.superboss_common import superboss_combat_loop
+from pandemonium.combat.superboss.superboss_common import (
+    install_phase_gate, superboss_combat_loop,
+)
 from pandemonium.combat.status_effects import apply_bleed
 from pandemonium.combat.combat_io import c_print, c_input, c_clear
 from pandemonium.combat.ally import get_active_allies, get_living_party
@@ -477,6 +479,14 @@ def combat_jabberwock(player, floor=None, enemies=None):
             jabber["max_hp"] = jabber["hp"]
             jabber["hp"] = jabber["max_hp"]
 
+    # Phase bar: each of the four narrative phases gets at least one full
+    # round. Bandersnatch, Whiffling, Vorpal Beam and the Final Strike stay
+    # skippable behaviors inside their phase.
+    jabber = install_phase_gate(
+        enemies, JABBERWOCK_KEY, {1: 0.75, 2: 0.45, 3: 0.20},
+        label="The Jabberwock",
+    ) or jabber
+
     # ── Check for Alice ──────────────────────────────────────────────────
     alice = _get_alice(player)
     alice_variant = bool(alice and wonderland_guests.is_variant_active(player, "alice"))
@@ -559,6 +569,7 @@ def combat_jabberwock(player, floor=None, enemies=None):
         # Skip player turn (used for stun-like effects)
         "skip_player_turn": False,
     }
+    jabber.bind_context(context)
 
     # ── Hooks ───────────────────────────────────────────────────────────
 

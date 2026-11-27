@@ -807,30 +807,81 @@ def try_consume_death_ward(actor):
 # ---------------------------------------------------------------------------
 # 3. SLEEP (Action Lock, Breaks on Damage)
 # ---------------------------------------------------------------------------
+# Every sleep that LANDS leaves the target harder to sleep again: +25% sleep
+# resistance per application, capped at 75% so a repeat sleep can always land
+# on a high roll. This exists to stop infinite-sleep cheese runs on bosses and
+# the player alike. The resistance only decays when combat ends (clear_sleep).
+SLEEP_RESIST_PER_SLEEP = 0.25
+SLEEP_RESIST_CAP = 0.75
 
-def apply_sleep(enemy, duration=3):
-    """Put an enemy to sleep. Slept enemies skip turns until damaged."""
-    if check_status_resisted(enemy):
+
+def get_sleep_resist(target):
+    """Return the target's accumulated sleep resistance (0.0–SLEEP_RESIST_CAP)."""
+    try:
+        return max(0.0, min(SLEEP_RESIST_CAP, float(target.get("sleep_resist", 0.0) or 0.0)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def apply_sleep(target, duration=3):
+    """Put a target to sleep. Slept targets skip turns until damaged.
+
+    Works for enemies, allies and the player. Damage wakes the sleeper, but
+    damage-over-time ticks and DoT-only applications (poison flasks, burn
+    skills with no direct damage) deliberately do NOT wake it — see
+    :func:`wake_on_damage`, which is only called from direct-damage sites.
+
+    Returns ``"resisted"`` (boss status resistance), ``"sleep_resisted"``
+    (accumulated sleep resistance), ``"already_asleep"`` or ``"applied"``.
+    """
+    if check_status_resisted(target):
         return "resisted"
-    if enemy.get("asleep"):
+    if target.get("asleep"):
         return "already_asleep"
-    enemy["asleep"] = True
-    enemy.setdefault("active_debuffs", []).append({
+    resist = get_sleep_resist(target)
+    if resist > 0.0 and random.random() < resist:
+        return "sleep_resisted"
+    target["asleep"] = True
+    target["sleep_resist"] = min(SLEEP_RESIST_CAP, resist + SLEEP_RESIST_PER_SLEEP)
+    target.setdefault("active_debuffs", []).append({
         "type": "sleep",
         "remaining": duration,
     })
     return "applied"
 
 
-def wake_on_damage(enemy):
-    """Call after dealing damage to a sleeping enemy. Returns message or None."""
-    if enemy.get("asleep"):
-        enemy["asleep"] = False
-        enemy["active_debuffs"] = [
-            d for d in enemy.get("active_debuffs", []) if d.get("type") != "sleep"
+def wake_on_damage(target, second_person=False):
+    """Call after dealing DIRECT damage to a sleeping target.
+
+    Returns a wake message or None. DoT ticks (poison/burn/bleed/shock) and
+    skills that only apply a DoT without dealing direct damage must not call
+    this — the sleeper stays down.
+    """
+    if target.get("asleep"):
+        target["asleep"] = False
+        target["active_debuffs"] = [
+            d for d in target.get("active_debuffs", []) if d.get("type") != "sleep"
         ]
-        return f"The {enemy['name']} jolts awake!"
+        if second_person:
+            return "You jolt awake!"
+        if target.get("is_ally"):
+            return f"{target['name']} jolts awake!"
+        return f"The {target['name']} jolts awake!"
     return None
+
+
+def clear_sleep(actor):
+    """Drop all sleep state and accumulated sleep resistance from an actor.
+
+    Used at combat boundaries (start/end) so a save taken mid-fight cannot
+    carry a stale sleep or stacked resistance into the next encounter.
+    """
+    actor["asleep"] = False
+    actor["sleep_resist"] = 0.0
+    if actor.get("active_debuffs"):
+        actor["active_debuffs"] = [
+            d for d in actor["active_debuffs"] if d.get("type") != "sleep"
+        ]
 
 
 
@@ -1210,7 +1261,7 @@ def _tick_enemy_freeze(enemy, messages):
 
 
 def tick_player_debuffs(player):
-    """Tick poison/bleed/slow/weaken/silence/dread/curse debuffs on the player.
+    """Tick poison/bleed/slow/weaken/silence/dread/curse/sleep debuffs on the player.
 
     Returns (messages, died).
     """
@@ -1230,7 +1281,8 @@ def tick_player_debuffs(player):
                 player["active_debuffs"].remove(debuff)
                 messages.append("The Star hastens the curse — it fades a turn early.")
                 for dtype, flag in (("slow", "slowed"), ("blind", "blinded"),
-                                    ("silence", "silenced"), ("dread", "dreaded")):
+                                    ("silence", "silenced"), ("dread", "dreaded"),
+                                    ("sleep", "asleep")):
                     if debuff.get("type") == dtype and not any(
                             d.get("type") == dtype
                             for d in player["active_debuffs"]):
@@ -1361,6 +1413,18 @@ def tick_player_debuffs(player):
             if debuff["remaining"] <= 0:
                 player["active_debuffs"].remove(debuff)
                 messages.append("Your mind clears — the confusion lifts.")
+
+        elif dtype == "sleep":
+            # Sleep on the party (Dormouse Captain, boss riders). Ticked at
+            # round end; the turn gate in player_actions/ally skips the
+            # sleeper's next action. Sleep resistance is NOT reset here —
+            # it persists for the whole encounter.
+            debuff["remaining"] -= 1
+            if debuff["remaining"] <= 0:
+                player["asleep"] = False
+                player["active_debuffs"].remove(debuff)
+                messages.append("You wake from the lullaby." if not player.get("is_ally")
+                                else f"{player.get('name', 'They')} wakes from the lullaby.")
 
     died = player["current_hp"] <= 0
     return messages, died
@@ -1621,6 +1685,7 @@ def get_player_status_tags(player):
         "shock":   "Shocked",
         "void_touched": "Void-Touched",
         "paint":   "Painted",
+        "sleep":   "Asleep",
     }
     buff_labels = {
         "haste":   "Hasted",

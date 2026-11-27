@@ -1029,6 +1029,10 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
                 return "dead"
             elif result == "fled":
                 return "fled"
+            elif result in ("timeout", "error"):
+                # Interrupted/crashed fight — the caller must end the run, not
+                # treat the room as cleared (2026-11-27).
+                return "timeout"
             elif result == "victory":
                 # Award reduced XP for this forced fight
                 enemy_level = ENEMIES[enemy_key]["level"]
@@ -1181,6 +1185,9 @@ def handle_stat_check_room(player, floor, event_key, combat_override=None):
                 return "dead"
             elif result == "fled":
                 return "fled"
+            elif result in ("timeout", "error"):
+                # Interrupted/crashed fight — the caller must end the run.
+                return "timeout"
             elif result == "victory":
                 enemy_level = ENEMIES[enemy_key]["level"]
                 gain_exp(player, enemy_level * 10)

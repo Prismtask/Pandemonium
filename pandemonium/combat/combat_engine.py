@@ -25,12 +25,14 @@ import random
 from pandemonium.combat.stats import compute_player_stats, enemy_stats
 from pandemonium.combat.enemy_ai import get_race_extra_logic
 from pandemonium.combat.enemy_skills import enemy_take_turn
+from pandemonium.combat.boss_styles import SOLO_ACTION_MIN_PARTY
+from pandemonium.world.enemy_suffixes import apply_room_suffixes
 from pandemonium.combat.player_actions import handle_player_turn
 from pandemonium.combat.combat_ui import (
     print_turn_order, print_round_header, print_pre_initiative_enemies,
     current_time_label,
 )
-from pandemonium.combat.status_effects import tick_player_debuffs, tick_player_buffs, try_consume_death_ward, clear_stun
+from pandemonium.combat.status_effects import tick_player_debuffs, tick_player_buffs, try_consume_death_ward, clear_stun, clear_sleep
 from pandemonium.combat.ally import (
     get_alive_allies, get_active_allies, get_living_party, compute_ally_stats, handle_ally_turn,
     auto_fill_active_slots, reinforce_fallen_allies,
@@ -334,8 +336,10 @@ def clear_battle_scoped_state(player):
                                      if b.get("source") != "crystal_atelier"]
     # Stun only costs an action inside the fight — a fight that ends while
     # an actor is stunned must not make them skip their first action next time.
+    # Sleep and its accumulated resistance are battle-scoped too.
     for actor in [player] + list(player.get("allies", [])):
         clear_stun(actor)
+        clear_sleep(actor)
     # Reset potion sickness between combats
     player["potion_sickness"] = 0
 
@@ -349,12 +353,16 @@ def _end_combat_with_result(player, result):
     return tick_result if tick_result == "dead" else result
 
 
-def combat(player, enemy_keys, floor=None, room_num=None, total_rooms=None, enemies=None):
+def combat(player, enemy_keys, floor=None, room_num=None, total_rooms=None,
+           enemies=None, suffixes=None):
     """Generic combat loop supporting player + allies vs enemies.
-    
+
     Args:
         enemies: Optional pre-created enemy dicts. If provided, combat uses
                  these instances directly instead of creating new ones.
+        suffixes: Optional ``{index: suffix_id}`` map from the floor generator.
+                  Applied to the spawned instances before the first round
+                  (see world/enemy_suffixes.py).
     """
     from pandemonium.combat.weapon.prescript_ledger import reset_all_state as reset_prescript_state
     # ── Reconcile vorpal skills before combat ────────────────────────────
@@ -385,7 +393,8 @@ def combat(player, enemy_keys, floor=None, room_num=None, total_rooms=None, enem
         solo_order_saved = list(order_now) if order_now is not None else None
         player["allies"] = []
     try:
-        return _combat_inner(player, enemy_keys, floor, room_num, total_rooms, enemies=enemies)
+        return _combat_inner(player, enemy_keys, floor, room_num, total_rooms,
+                             enemies=enemies, suffixes=suffixes)
     finally:
         if solo_saved is not None:
             player["allies"] = solo_saved
@@ -394,7 +403,8 @@ def combat(player, enemy_keys, floor=None, room_num=None, total_rooms=None, enem
         end_wedding_combat(player)
 
 
-def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=None, enemies=None):
+def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=None,
+                  enemies=None, suffixes=None):
     """Generic combat loop supporting player + allies vs enemies."""
     from pandemonium.combat.weapon.map_boss_uniques import (
             begin_map_boss_uniques, clear_map_boss_unique_state,
@@ -443,12 +453,15 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
     if _actor_has_palette_brush(player):
         init_brush_state(player)
 
-    # Stun never crosses an encounter boundary — a stale flag from a save
-    # taken mid-fight (or an old fight that ended while stunned) is dropped.
+    # Stun/sleep never cross an encounter boundary — a stale flag from a save
+    # taken mid-fight (or an old fight that ended while stunned/asleep) is
+    # dropped, and sleep resistance starts every fight at 0%.
     clear_stun(player)
+    clear_sleep(player)
     # Init/clear ally specials
     for ally in player.get("allies", []):
         clear_stun(ally)
+        clear_sleep(ally)
         if ally.get("current_hp", 0) > 0:
             clear_abyss_fang_state(ally)
             # Clear cutlass state on ally (actor version)
@@ -472,6 +485,11 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
         # Use provided enemies directly (GUI mode shares state)
         pass
 
+    # Spawn-time suffixes (replaces the old Empowered final-room buff).
+    # Applied before the opening HUD so the name/HP are correct everywhere.
+    if suffixes:
+        apply_room_suffixes(enemies, suffixes, floor or 1)
+
     def _bestiary_kill(target, _enemies):
         from pandemonium.progression.bestiary import record_defeat
         if target.get("no_bestiary"):
@@ -483,18 +501,6 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
     if floor is not None and player.get("cutlass_high_tide_floor") != floor:
         player["cutlass_high_tide_stacks"] = 0
         player["cutlass_high_tide_floor"] = floor
-
-    # --- NEW: Buff the normal enemy acting as the Floor Boss ---
-    if floor is not None and room_num is not None and total_rooms is not None:
-        # If it's the final room, and NOT a true boss floor (every 5th)
-        if room_num == total_rooms and floor % 5 != 0 and enemies:
-            main_enemy = enemies[0]
-            main_enemy["name"] = f"Empowered {main_enemy['name']}"
-            main_enemy["max_hp"] = int(main_enemy["max_hp"] * 1.30)
-            main_enemy["hp"] = main_enemy["max_hp"]
-            main_enemy["str_mod"] = int(main_enemy["str_mod"] * 1.20)
-            main_enemy["con_mod"] = int(main_enemy["con_mod"] * 1.20)
-            main_enemy["dex_mod"] = int(main_enemy["dex_mod"] * 1.20)
 
     c_print("\nEnemies approach!")
     for e in enemies:
@@ -864,73 +870,88 @@ def _combat_inner(player, enemy_keys, floor=None, room_num=None, total_rooms=Non
                     c_print(f"  ({enemy['name']} is captured and cannot act.)")
                     continue
 
-                # Pick a target from alive party members
-                alive_party = get_living_party(player)
-                if not alive_party:
-                    c_print("  Your entire party has fallen!")
-                    return _end_combat_with_result(player, "dead")
+                # Solo bosses act twice once the party fields 3+ actors
+                # (player + 2 allies). The second action re-rolls the target
+                # and skips start-of-turn upkeep so DoTs only tick once.
+                actions = int(enemy.get("boss_actions", 1) or 1)
+                if actions > 1 and len(get_living_party(player)) < SOLO_ACTION_MIN_PARTY:
+                    actions = 1
 
-                # Target selection: weighted 50% player, 50% random ally
-                if len(alive_party) == 1:
-                    target = alive_party[0]
-                else:
-                    weights = []
-                    for member in alive_party:
-                        base_w = 2.0 if member is player else 1.0
-                        weights.append(base_w * get_aggro_multiplier(member))
-                    target = random.choices(alive_party, weights=weights)[0]
+                for action_idx in range(actions):
+                    if enemy["hp"] <= 0:
+                        break
 
-                # Determine if the target was defending
-                is_defending = False
-                if target is player:
-                    is_defending = defending
-
-                # Get target's Constitution for damage reduction
-                if target is player:
-                    target_con = p_con
-                else:
-                    a_str, a_con, a_dex, a_ler, a_wis, a_cha = compute_ally_stats(target)
-                    target_con = a_con
-
-                extra = get_race_extra_logic(enemy)
-                _eh_debuffs_before = debuff_signature(alive_party)
-                enemy["_combat_round"] = round_num
-                # Regular enemies choose between basic attacks, skills,
-                # AoE skills, heals and AoE heals. Superboss modules keep
-                # calling enemy_attack directly from their own loops.
-                outcome = enemy_take_turn(
-                    enemy, target, target_con, is_defending,
-                    extra_logic=extra, all_enemies=enemies,
-                    actual_player=player, party_members=alive_party,
-                )
-                if outcome == "dead":
-                    # AoE skills can kill someone other than the engine's
-                    # primary target — resolve the player's death first.
-                    death_target = player if player["current_hp"] <= 0 else target
-                    if try_consume_death_ward(death_target):
-                        if not death_target.pop("_eh_emperor_saved", False):
-                            if death_target is player:
-                                c_print("  Your Undying Vow flares — you survive at 1 HP!")
-                            else:
-                                c_print(f"  Undying Vow holds — {death_target['name']} survives at 1 HP!")
-                    elif death_target is player:
-                        c_print("  You have been slain.")
+                    # Pick a target from alive party members
+                    alive_party = get_living_party(player)
+                    if not alive_party:
+                        c_print("  Your entire party has fallen!")
                         return _end_combat_with_result(player, "dead")
-                    else:
-                        death_target["defeated"] = True
-                        death_target["current_hp"] = 0
-                        # Print is_defeated dialogue if available
-                        template = ENEMIES.get(death_target.get("key", ""), {})
-                        dialogue = template.get("dialogue", {})
-                        defeated_line = dialogue.get("is_defeated", f"{death_target['name']} has fallen!")
-                        if "{name}" in defeated_line:
-                            defeated_line = defeated_line.format(name=death_target['name'])
-                        c_print(f"  {defeated_line}")
+                    if action_idx:
+                        c_print(f"\n  ⚡ {enemy['name']} acts again! "
+                                f"({action_idx + 1}/{actions})")
 
-                # Event Horizon — Justice: the enemy's debuffs mirror back
-                for _m in joker_mirror_debuffs(player, enemy, alive_party,
-                                               _eh_debuffs_before):
-                    c_print(_m)
+                    # Target selection: weighted 50% player, 50% random ally
+                    if len(alive_party) == 1:
+                        target = alive_party[0]
+                    else:
+                        weights = []
+                        for member in alive_party:
+                            base_w = 2.0 if member is player else 1.0
+                            weights.append(base_w * get_aggro_multiplier(member))
+                        target = random.choices(alive_party, weights=weights)[0]
+
+                    # Determine if the target was defending
+                    is_defending = False
+                    if target is player:
+                        is_defending = defending
+
+                    # Get target's Constitution for damage reduction
+                    if target is player:
+                        target_con = p_con
+                    else:
+                        a_str, a_con, a_dex, a_ler, a_wis, a_cha = compute_ally_stats(target)
+                        target_con = a_con
+
+                    extra = get_race_extra_logic(enemy)
+                    _eh_debuffs_before = debuff_signature(alive_party)
+                    enemy["_combat_round"] = round_num
+                    # Regular enemies choose between basic attacks, skills,
+                    # AoE skills, heals and AoE heals. Superboss modules keep
+                    # calling enemy_attack directly from their own loops.
+                    outcome = enemy_take_turn(
+                        enemy, target, target_con, is_defending,
+                        extra_logic=extra, all_enemies=enemies,
+                        actual_player=player, party_members=alive_party,
+                        skip_turn_start=(action_idx > 0),
+                    )
+                    if outcome == "dead":
+                        # AoE skills can kill someone other than the engine's
+                        # primary target — resolve the player's death first.
+                        death_target = player if player["current_hp"] <= 0 else target
+                        if try_consume_death_ward(death_target):
+                            if not death_target.pop("_eh_emperor_saved", False):
+                                if death_target is player:
+                                    c_print("  Your Undying Vow flares — you survive at 1 HP!")
+                                else:
+                                    c_print(f"  Undying Vow holds — {death_target['name']} survives at 1 HP!")
+                        elif death_target is player:
+                            c_print("  You have been slain.")
+                            return _end_combat_with_result(player, "dead")
+                        else:
+                            death_target["defeated"] = True
+                            death_target["current_hp"] = 0
+                            # Print is_defeated dialogue if available
+                            template = ENEMIES.get(death_target.get("key", ""), {})
+                            dialogue = template.get("dialogue", {})
+                            defeated_line = dialogue.get("is_defeated", f"{death_target['name']} has fallen!")
+                            if "{name}" in defeated_line:
+                                defeated_line = defeated_line.format(name=death_target['name'])
+                            c_print(f"  {defeated_line}")
+
+                    # Event Horizon — Justice: the enemy's debuffs mirror back
+                    for _m in joker_mirror_debuffs(player, enemy, alive_party,
+                                                   _eh_debuffs_before):
+                        c_print(_m)
 
         enemies[:] = prune_dead(enemies, player)
         if not enemies:

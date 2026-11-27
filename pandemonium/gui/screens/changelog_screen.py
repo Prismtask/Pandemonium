@@ -223,6 +223,21 @@ class ChangelogScreen(BaseScreen):
                          "so beta's feature-frozen promise did not fit. The stage appears in "
                          "the window title, the main-menu version line and this screen.")
 
+        self._add_section("Sleep — Full Status Wiring")
+        self._add_bullet("**Sleep is now a real status for everyone.** Sleeping enemies, allies "
+                         "and the player lose their action; **direct damage wakes them**, while "
+                         "damage-over-time ticks and DoT-only skills (no direct damage) do not.")
+        self._add_bullet("Every sleep that lands leaves **Sleep Resistance (+25% per stack, "
+                         "capped at 75%)** on the target — a sleeping target is harder to put "
+                         "down again, but a high roll can always proc it. Resistance is shown "
+                         "as **SRES** in the HUD and resets between fights. **SLP** marks a "
+                         "sleeper.")
+        self._add_bullet("New sources: the **Dormouse** murmurs a sleep rider, the **Dormouse "
+                         "Captain's** lullaby now actually sleeps you, the **Sleep Bomb** item "
+                         "puts one enemy under (no damage, so it never wakes its own target), "
+                         "and **Siren's Ocean Lullaby**, **Moth Girl's Dust Cloud** and the "
+                         "learnable **Sleep Song** (Barracks) let allies inflict it.")
+
         self._add_version("v0.1.9.0 — The Family We Choose")
 
         self._add_section("Blacksmith — Element Stripping")

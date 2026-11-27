@@ -2,7 +2,7 @@ from pandemonium.combat.combat_io import c_print, c_input, c_renders_menus
 from pandemonium.combat.helpers import ACTION_CANCELLED_MSG
 import random
 from pandemonium.core.character import player_max_hp
-from pandemonium.combat.status_effects import cure_curse, apply_poison, apply_healing, is_silenced, is_dreaded, consume_stun
+from pandemonium.combat.status_effects import cure_curse, apply_poison, apply_healing, is_silenced, is_dreaded, consume_stun, wake_on_damage
 from pandemonium.combat.combat_ui import print_combat_hud
 from pandemonium.combat.weapon.abyss_fang import wield_abyss_fang
 from pandemonium.combat.weapon.wedding_specials import (
@@ -35,6 +35,30 @@ from pandemonium.world.curse_pandemonium import is_flee_blocked
 
 
 def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, on_kill=None, on_hit=None, _action_override=None):
+    """Player action entry point.
+
+    Wraps the action resolver so ANY source of direct damage — basic attack,
+    class skill, weapon special, item — wakes a sleeping enemy, while DoT
+    ticks and DoT-only applications (no HP loss during the action) do not.
+    """
+    hp_before = {id(e): e.get("hp", 0) for e in enemies if isinstance(e, dict)}
+    result = _handle_player_turn_impl(
+        player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha,
+        on_kill=on_kill, on_hit=on_hit, _action_override=_action_override,
+    )
+    for enemy in enemies:
+        if not isinstance(enemy, dict):
+            continue
+        if enemy.get("hp", 0) <= 0:
+            continue
+        if enemy.get("hp", 0) < hp_before.get(id(enemy), enemy.get("hp", 0)):
+            wake_msg = wake_on_damage(enemy)
+            if wake_msg:
+                c_print(f"  {wake_msg}")
+    return result
+
+
+def _handle_player_turn_impl(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha, on_kill=None, on_hit=None, _action_override=None):
     # Free-action skills (Time Warp) must never leak past their own action.
     from pandemonium.combat.weapon.palette_brush import _actor_has_palette_brush, on_brush_attack_hit
     from pandemonium.combat.weapon.palette_brush import begin_actor_turn
@@ -90,6 +114,14 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
         _name = player.get("name")
         c_print(f"  {_name} is stunned and cannot act!" if _name
                 else "  You are stunned and cannot act!")
+        return "continue", False
+
+    # ── Sleep: lose this action (parity with enemy_ai) ──
+    if player.get("asleep"):
+        print_combat_hud(player, enemies)
+        _name = player.get("name")
+        c_print(f"  {_name} is fast asleep and cannot act!" if _name
+                else "  You are fast asleep and cannot act!")
         return "continue", False
 
     # Palette's Brush: reset the once-per-turn stance flag
@@ -632,8 +664,8 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
             # Escape/flee/capture items handle their own target logic separately.
             affects_enemy = (
                 any(k in item for k in ["status", "blind_enemy", "damage_over_time",
-                                         "poison_damage", "stun_chance", "expose_armor",
-                                         "burn_tier", "shock_damage"]) or
+                                         "poison_damage", "stun_chance", "sleep_chance",
+                                         "expose_armor", "burn_tier", "shock_damage"]) or
                 (item.get("type") == "utility" and
                  item.get("power", item.get("base_power", 0)) > 0 and
                  "escape_bonus" not in item and
@@ -830,7 +862,8 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                     msg += f"{target['name']} shrugs off the shock! "
                 else:
                     msg += f"The shock on {target['name']} is renewed! "
-            if item.get("type") == "utility" and "damage_over_time" not in item and "stun_chance" not in item:
+            if (item.get("type") == "utility" and "damage_over_time" not in item
+                    and "stun_chance" not in item and "sleep_chance" not in item):
                 item_power = item.get("power", item.get("base_power", 0))
                 if item_power > 0:
                     dmg = item_power + get_dexterity_damage_bonus(player)
@@ -861,6 +894,22 @@ def handle_player_turn(player, enemies, p_str, p_con, p_dex, p_ler, p_wis, p_cha
                         msg += f"The {target['name']} is stunned and loses its next turn! "
                 else:
                     msg += "The stun attempt fails. "
+            if "sleep_chance" in item:
+                # Sleep Bomb — pure control, no damage, so the bomb itself
+                # never wakes the target it just put down.
+                from pandemonium.combat.status_effects import apply_sleep
+                if random.random() < item["sleep_chance"]:
+                    sleep_result = apply_sleep(target, item.get("sleep_duration", 2))
+                    if sleep_result == "applied":
+                        msg += f"The {target['name']} falls fast asleep! "
+                    elif sleep_result == "sleep_resisted":
+                        msg += f"The {target['name']}'s sleep resistance holds! "
+                    elif sleep_result == "already_asleep":
+                        msg += f"The {target['name']} is already asleep. "
+                    else:
+                        msg += f"The {target['name']} shrugs off the sleep bomb! "
+                else:
+                    msg += "The sleep bomb sputters — the target stays awake. "
             if item.get("status") == "slow":
                 from pandemonium.combat.status_effects import apply_slow_to_enemy
                 apply_slow_to_enemy(target, duration=item.get("slow_duration", 2))

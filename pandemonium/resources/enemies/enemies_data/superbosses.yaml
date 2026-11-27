@@ -3,7 +3,7 @@ Superbosses:
     name: Broodmother Vileheart
     race: Beast
     level: 24
-    base_hp: 770
+    base_hp: 900
     mods:
       Strength: 8
       Constitution: 8
@@ -48,7 +48,7 @@ Superbosses:
     name: Dream-Devouring Slitcurrent
     race: Abomination
     level: 21
-    base_hp: 820
+    base_hp: 900
     mods:
       Strength: 8
       Constitution: 8
@@ -78,7 +78,7 @@ Superbosses:
     name: Ignis, the Melt-Forge Golem
     race: Construct
     level: 21
-    base_hp: 840
+    base_hp: 900
     mods:
       Strength: 8
       Constitution: 10
@@ -93,7 +93,7 @@ Superbosses:
     name: Queen of Mirrors Sylvana
     race: Fey
     level: 21
-    base_hp: 780
+    base_hp: 900
     mods:
       Strength: 3
       Constitution: 4
@@ -107,8 +107,8 @@ Superbosses:
   heaven_banished_dragon_yinglong:
     name: Yinglong, Heaven-Banished Dragon
     race: Dragonkin
-    level: 25
-    base_hp: 872
+    level: 40
+    base_hp: 1900
     mods:
       Strength: 7
       Constitution: 9
@@ -152,12 +152,12 @@ Superbosses:
   rientrante_frostbound:
     name: Rientrante, the Administrator
     race: Human
-    level: 25
-    base_hp: 820
+    level: 40
+    base_hp: 1900
     mods:
       Strength: 10
-      Constitution: 8
-      Dexterity: 6
+      Constitution: 9
+      Dexterity: 8
       Wisdom: 3
       Learning: 4
       Charisma: 2
@@ -217,12 +217,12 @@ Superbosses:
   captain_everlong_ship:
     name: Captain of the Everlong Ship
     race: Undead
-    level: 22
-    base_hp: 880
+    level: 40
+    base_hp: 1200
     mods:
-      Strength: 9
-      Constitution: 8
-      Dexterity: 6
+      Strength: 10
+      Constitution: 10
+      Dexterity: 8
       Wisdom: 4
       Learning: 3
       Charisma: 5
@@ -232,86 +232,111 @@ Superbosses:
   seaman_everlong:
     name: Seaman of the Everlong Ship
     race: Undead
-    level: 18
-    base_hp: 285
+    level: 34
+    base_hp: 360
     mods:
-      Strength: 5
-      Constitution: 4
-      Dexterity: 4
-      Wisdom: 2
-      Learning: 2
-      Charisma: 2
+      Strength: 8
+      Constitution: 6
+      Dexterity: 6
+      Wisdom: 5
+      Learning: 4
+      Charisma: 5
     boss: false
     super_boss: false
     minion_only: true
   gunner_everlong:
     name: Gunner of the Everlong Ship
     race: Undead
-    level: 19
-    base_hp: 230
+    level: 35
+    base_hp: 320
     mods:
-      Strength: 6
-      Constitution: 3
-      Dexterity: 6
-      Wisdom: 2
-      Learning: 3
-      Charisma: 2
+      Strength: 9
+      Constitution: 4
+      Dexterity: 9
+      Wisdom: 4
+      Learning: 4
+      Charisma: 5
     boss: false
     super_boss: false
     minion_only: true
   brawler_everlong:
     name: Brawler of the Everlong Ship
     race: Undead
-    level: 20
-    base_hp: 280
+    level: 36
+    base_hp: 400
     mods:
-      Strength: 7
-      Constitution: 6
-      Dexterity: 3
-      Wisdom: 2
-      Learning: 2
-      Charisma: 2
+      Strength: 11
+      Constitution: 7
+      Dexterity: 5
+      Wisdom: 4
+      Learning: 3
+      Charisma: 6
     boss: false
     super_boss: false
     minion_only: true
   boatswain_everlong:
     name: Boatswain of the Everlong Ship
     race: Undead
-    level: 19
-    base_hp: 235
+    level: 35
+    base_hp: 350
     mods:
-      Strength: 5
-      Constitution: 5
-      Dexterity: 4
-      Wisdom: 3
-      Learning: 3
-      Charisma: 3
+      Strength: 8
+      Constitution: 6
+      Dexterity: 6
+      Wisdom: 7
+      Learning: 6
+      Charisma: 8
     boss: false
     super_boss: false
     minion_only: true
   lookout_everlong:
     name: Lookout of the Everlong Ship
     race: Undead
-    level: 18
-    base_hp: 230
+    level: 34
+    base_hp: 330
     mods:
-      Strength: 4
-      Constitution: 3
-      Dexterity: 7
-      Wisdom: 3
-      Learning: 3
-      Charisma: 2
+      Strength: 7
+      Constitution: 4
+      Dexterity: 10
+      Wisdom: 6
+      Learning: 6
+      Charisma: 6
     boss: false
     super_boss: false
     minion_only: true
+  chaplain_everlong:
+    name: Chaplain of the Everlong Ship
+    race: Undead
+    level: 35
+    base_hp: 340
+    mods:
+      Strength: 6
+      Constitution: 5
+      Dexterity: 6
+      Wisdom: 14
+      Learning: 9
+      Charisma: 12
+    boss: false
+    super_boss: false
+    minion_only: true
+    role: supporter
+    abilities:
+      - type: heal
+        name: Saltwater Benediction
+        heal_pct: 0.16
+        cooldown: 3
+      - type: aoe_heal
+        name: Chant of the Deep
+        heal_pct: 0.10
+        cooldown: 5
   black_silence:
     name: The Black Silence
     race: Human
-    level: 28
-    base_hp: 920
+    level: 40
+    base_hp: 2000
     mods:
       Strength: 10
-      Constitution: 7
+      Constitution: 10
       Dexterity: 12
       Wisdom: 4
       Learning: 8
@@ -328,11 +353,11 @@ Superbosses:
   chromatic_artisan:
     name: Palette, the Chromatic Artisan
     race: Elemental
-    level: 35
-    base_hp: 900
+    level: 40
+    base_hp: 2000
     mods:
-      Strength: 7
-      Constitution: 5
+      Strength: 9
+      Constitution: 7
       Dexterity: 10
       Wisdom: 10
       Learning: 10
